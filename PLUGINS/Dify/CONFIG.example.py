@@ -1,4 +1,5 @@
 # Dify 插件文档地址: https://asf.viperrtp.com/zh/asf/PLUGINS/Dify/
+# Dify Doc: https://asf.viperrtp.com/asf/PLUGINS/Dify/
 
 # Dify API接口
 DIFY_BASE_URL = "http://192.168.241.128/v1"

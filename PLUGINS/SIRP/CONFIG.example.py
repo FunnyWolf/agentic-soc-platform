@@ -1,4 +1,4 @@
-# SIRP Config
+# SIRP Config https://asf.viperrtp.com/asf/PLUGINS/SIRP/
 # 配置文档参考 https://asf.viperrtp.com/zh/asf/PLUGINS/SIRP/
 
 SIRP_URL = "http://192.168.241.128:8880"

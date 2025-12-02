@@ -205,13 +205,14 @@ class Case(object):
         pass
 
     @staticmethod
-    def get(rowid) -> InputCase:
-        case = WorksheetRow.get(Case.WORKSHEET_ID, rowid, include_system_fields=False)
+    def get(rowid, include_system_fields=False) -> InputCase:
+        case = WorksheetRow.get(Case.WORKSHEET_ID, rowid, include_system_fields=include_system_fields)
         # alert id
-        alerts = WorksheetRow.relations(Case.WORKSHEET_ID, rowid, Case.ALERT_FIELD_ID, relation_worksheet_id=Alert.WORKSHEET_ID, include_system_fields=False)
+        alerts = WorksheetRow.relations(Case.WORKSHEET_ID, rowid, Case.ALERT_FIELD_ID, relation_worksheet_id=Alert.WORKSHEET_ID,
+                                        include_system_fields=include_system_fields)
         for alert in alerts:
             artifacts = WorksheetRow.relations(Alert.WORKSHEET_ID, alert.get("rowId"), Alert.ARTIFACT_FIELD_ID, relation_worksheet_id=Artifact.WORKSHEET_ID,
-                                               include_system_fields=False)
+                                               include_system_fields=include_system_fields)
             alert[Alert.ARTIFACT_FIELD_ID] = artifacts
         case[Case.ALERT_FIELD_ID] = alerts
         return case
@@ -257,6 +258,28 @@ class Case(object):
             if len(rows) > 1:
                 logger.warning(f"found multiple rows with deduplication_key {deduplication_key}")
             return rows[0]
+        else:
+            return None
+
+    @staticmethod
+    def get_by_case_id(case_id: str):
+        filter = {
+            "type": "group",
+            "logic": "AND",
+            "children": [
+                {
+                    "type": "condition",
+                    "field": "case_id",
+                    "operator": "eq",
+                    "value": case_id
+                },
+            ]
+        }
+        rows = WorksheetRow.list(Case.WORKSHEET_ID, filter)
+        if rows:
+            if len(rows) > 1:
+                logger.warning(f"found multiple rows with case_id {case_id}")
+            return Case.get(rows[0]['rowId'])
         else:
             return None
 

@@ -8,7 +8,6 @@ from PLUGINS.SIRP.sirpapi import Playbook as SIRPPlaybook
 
 
 class Playbook(BasePlaybook):
-    RUN_AS_JOB = True
     TYPE = "ARTIFACT"
     NAME = "TI Enrichment By AlienVaultOTX"
 
@@ -45,7 +44,7 @@ class Playbook(BasePlaybook):
 
 
 if __name__ == "__main__":
-    params_debug = {'rowid': 'a966036e-b29e-4449-be48-23293bacac5d', 'worksheet': 'Artifact'}
+    params_debug = {'rowid': '54725ee3-c85d-49e7-ac09-4cb982dab957', 'worksheet': 'Artifact'}
     module = Playbook()
     module._params = params_debug
     module.run()

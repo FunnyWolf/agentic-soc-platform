@@ -7,9 +7,8 @@ from PLUGINS.SIRP.sirpapi import Playbook as SIRPPlaybook
 
 
 class Playbook(BasePlaybook):
-    RUN_AS_JOB = True
     TYPE = "ARTIFACT"
-    NAME = "TI Enrichment Update"
+    NAME = "TI Enrichment By Mock"
 
     def __init__(self):
         super().__init__()  # do not delete this code

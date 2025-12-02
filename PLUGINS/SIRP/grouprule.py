@@ -7,11 +7,7 @@ class GroupRule(object):
     告警聚合规则,用于定义如何将多个告警(alert)聚合到同一个案件(case)中。
     基本方法: 根据规则ID、告警中的凭据(artifact)以及时间窗口，生成去重指纹(deduplication key)。还有相同指纹的告警会被聚合到同一个案件中。
     还可以定义案件标题的模板，以便生成更具描述性的案件标题。
-<<<<<<<< HEAD:Lib/grouprule.py
-    方法在心智成本和聚合效果之间取得平衡，适用于绝大多数常见的告警聚合场景。
-========
     方法在心智成本和聚合效果之间取得平衡，适用于绝大多数常见地告警聚合场景。
->>>>>>>> origin/master:PLUGINS/SIRP/grouprule.py
     """
 
     def __init__(self,
@@ -21,13 +17,9 @@ class GroupRule(object):
                  case_title_template: str = None,
                  deduplication_window: str = "24h",
                  source: str = "Default",
-<<<<<<<< HEAD:Lib/grouprule.py
-                 workbook: str = None
-========
                  workbook: str = None,
                  follow_alert_severity: bool = True,
                  append_alert_tags: bool = True,
->>>>>>>> origin/master:PLUGINS/SIRP/grouprule.py
                  ):
 
         self.rule_id = rule_id
@@ -36,12 +28,9 @@ class GroupRule(object):
         self.case_title_template = case_title_template
         self.source = source
         self.workbook = workbook
-<<<<<<<< HEAD:Lib/grouprule.py
-========
         self.follow_alert_severity = follow_alert_severity
         self.append_alert_tags = append_alert_tags
         
->>>>>>>> origin/master:PLUGINS/SIRP/grouprule.py
         valid_windows = ['10m', '30m', '1h', '8h', '12h', '24h']
         if deduplication_window not in valid_windows:
             raise ValueError(f"'{deduplication_window}' 不是一个有效的时间窗口选项。请从 {valid_windows} 中选择。")

@@ -8,7 +8,7 @@ from Lib.log import logger
 
 
 class BasePlaybook(BaseAPI):
-    RUN_AS_JOB = False  # 是否作为后台任务运行
+    RUN_AS_JOB = True  # 是否作为后台任务运行
     TYPE = None
     NAME = None
 

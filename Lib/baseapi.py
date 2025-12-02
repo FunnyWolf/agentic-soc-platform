@@ -54,7 +54,7 @@ class BaseAPI(ABC):
         else:
             return module_name
 
-    def _get_md_file_path(self, filename: str) -> str:
+    def _get_md_file_path(self, filename: str, lang=None) -> str:
         """
         根据 workbook 名称获取文件路径。
         """
@@ -65,7 +65,10 @@ class BaseAPI(ABC):
             if filename.endswith('.md'):  # "senior_phishing_expert.md"
                 fname = filename
             else:
-                fname = f"{filename}.md"  # "senior_phishing_expert"
+                if lang is not None:
+                    fname = f"{filename}_{lang}.md"  # "senior_phishing_expert_en"
+                else:
+                    fname = f"{filename}.md"  # "senior_phishing_expert"
 
             if os.path.isfile(os.path.join(DATA_DIR, fname)):  # "ES-Rule-21-Phishing_user_report_mail/senior_phishing_expert.md"
                 template_path = os.path.join(DATA_DIR, fname)
@@ -90,9 +93,9 @@ class BaseAPI(ABC):
             logger.warning(f"Failed to load prompt template {template_path}: {str(e)}")
             raise e
 
-    def load_system_prompt_template(self, filename):
+    def load_system_prompt_template(self, filename, lang=None):
         """加载系统提示模板"""
-        template_path = self._get_md_file_path(filename)
+        template_path = self._get_md_file_path(filename, lang=lang)
         try:
             with open(template_path, 'r', encoding='utf-8') as f:
                 system_prompt_template: SystemMessagePromptTemplate = SystemMessagePromptTemplate.from_template(f.read())
@@ -102,8 +105,8 @@ class BaseAPI(ABC):
             logger.warning(f"Failed to load prompt template {template_path}: {str(e)}")
             raise e
 
-    def load_human_prompt_template(self, filename):
-        template_path = self._get_md_file_path(filename)
+    def load_human_prompt_template(self, filename, lang=None):
+        template_path = self._get_md_file_path(filename, lang=lang)
         try:
             with open(template_path, 'r', encoding='utf-8') as f:
                 human_prompt_template: HumanMessagePromptTemplate = HumanMessagePromptTemplate.from_template(f.read())

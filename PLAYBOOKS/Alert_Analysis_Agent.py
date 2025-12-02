@@ -22,9 +22,8 @@ class AgentState(BaseModel):
 
 
 class Playbook(LanggraphPlaybook):
-    RUN_AS_JOB = True  # 异步模块
     TYPE = "ALERT"  # 分类标签
-    NAME = "Suggestion Generation by LLM"  # 剧本名称
+    NAME = "Alert Analysis Agent"  # 剧本名称
 
     def __init__(self):
         super().__init__()  # do not delete this code
@@ -69,7 +68,7 @@ class Playbook(LanggraphPlaybook):
             # 运行
             llm_api = LLMAPI()
 
-            llm = llm_api.get_model()
+            llm = llm_api.get_model(tag="fast")
 
             # 构建消息列表
             messages = [
@@ -120,7 +119,7 @@ class Playbook(LanggraphPlaybook):
 
 
 if __name__ == "__main__":
-    params_debug = {'rowid': '55639caf-c648-4130-bc9f-8d38becfe20f', 'worksheet': 'alert'}
+    params_debug = {'rowid': '113d3844-792d-47f9-b4f5-29e6f9b3c776', 'worksheet': 'alert'}
     module = Playbook()
     module._params = params_debug
     module.run()

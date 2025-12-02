@@ -137,7 +137,7 @@ class Module(LanggraphModule):
             # Invoke LLM with structured output schema for consistent analysis results
             openai_api = LLMAPI()
 
-            llm = openai_api.get_model()
+            llm = openai_api.get_model(tag=["fast", "structured_output"])
             llm = llm.with_structured_output(AnalyzeResult)
             response: AnalyzeResult = llm.invoke(messages)
 

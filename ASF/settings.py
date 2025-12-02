@@ -69,7 +69,7 @@ LOGGING = {
     },
     'formatters': {
         'standard': {
-            'format': '[%(levelname)s][%(asctime).19s][%(filename)s][%(lineno)d][%(threadName)s] : %(message)s '
+            'format': '[%(levelname)s][%(asctime).19s][%(filename)s][%(lineno)d]: %(message)s '
         },
     },
     'handlers': {

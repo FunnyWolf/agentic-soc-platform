@@ -6,6 +6,7 @@ from PLUGINS.SIRP.nocolyapi import WorksheetRow
 
 
 class Playbook(BasePlaybook):
+    RUN_AS_JOB = False
 
     def __init__(self):
         super().__init__()  # do not delete this code

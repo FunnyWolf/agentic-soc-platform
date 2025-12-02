@@ -8,77 +8,104 @@ from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-from PLUGINS.LLM.CONFIG import LLM_PROXY, LLM_TYPE, LLM_BASE_URL, LLM_MODEL, LLM_API_KEY
+from PLUGINS.LLM.CONFIG import LLM_CONFIGS
 
 
 class LLMAPI(object):
     """
     一个通用的 LLM API 客户端。
     它会自动从 CONFIG.py 读取配置并初始化对应的后端。
+    支持通过 tag 动态选择模型配置。
     在遇到错误时，它会直接抛出异常。
     """
 
-    def __init__(self):
+    def __init__(self, temperature: float = 0.0):
         """
         初始化 LLM API 客户端。
-        客户端类型由 CONFIG.py 中的 LLM_TYPE 变量决定。
+        从 CONFIG.py 中的 LLM_CONFIGS 加载配置列表。
         """
-        self.client_type = LLM_TYPE
-        if self.client_type not in ['openai', 'ollama']:
-            raise ValueError(f"Invalid LLM_TYPE in CONFIG.py: '{self.client_type}'. Must be 'openai' or 'ollama'.")
+        if not LLM_CONFIGS or not isinstance(LLM_CONFIGS, list):
+            raise ValueError("LLM_CONFIGS in CONFIG.py is missing, empty, or not a list.")
 
-        self.api_key = LLM_API_KEY
-        self.base_url = LLM_BASE_URL
-        self.model = LLM_MODEL
-        self.temperature = 0.0
+        self.configs = LLM_CONFIGS
+        self.default_config = self.configs[0]
+        self.temperature = temperature
         self.alive = False
 
-    # 以下 set_* 方法允许在运行时动态覆盖从CONFIG加载的默认值
-    def set_api_key(self, api_key: str):
-        self.api_key = api_key
-
-    def set_base_url(self, base_url: str):
-        self.base_url = base_url.rstrip('/')
-
-    def set_temperature(self, temperature: float):
-        self.temperature = temperature
-
-    def set_model(self, model: str):
-        self.model = model
-
-    def get_model(self, **kwargs) -> None | ChatOpenAI | ChatOllama:
+    def get_model(self, tag: str | list[str] | None = None, **kwargs) -> ChatOpenAI | ChatOllama:
         """
-        根据 client_type 获取并返回相应的 LangChain ChatModel 实例。
-        """
+        根据 tag 获取并返回相应的 LangChain ChatModel 实例。
 
-        if self.client_type == 'openai':
-            params = {
-                "base_url": self.base_url,
-                "api_key": self.api_key,
-                "model": self.model,
-                "temperature": self.temperature,
-                "http_client": httpx.Client(proxy=LLM_PROXY) if LLM_PROXY else None,
-            }
-            params.update(kwargs)
+        Args:
+            tag (str | list[str], optional):
+                - str: 查找包含此标签的第一个配置。
+                - list[str]: 查找同时包含所有这些标签的第一个配置。
+                - None: 使用列表中的第一个默认配置。
+            **kwargs: 允许在调用时覆盖模型参数 (e.g., temperature, model).
+
+        Raises:
+            ValueError: 如果找不到匹配指定标签(或标签列表)的配置。
+            ValueError: 如果配置中的 client_type 不支持。
+
+        Returns:
+            ChatOpenAI | ChatOllama: LangChain 的聊天模型实例。
+        """
+        selected_config = None
+
+        if tag is None:
+            selected_config = self.default_config
+        else:
+            for config in self.configs:
+                config_tags = set(config.get("tags", []))
+
+                # 如果 tag 是一个列表，检查所有必需的标签是否存在
+                if isinstance(tag, list):
+                    required_tags = set(tag)
+                    if required_tags.issubset(config_tags):
+                        selected_config = config
+                        break
+                # 如果 tag 是一个字符串，检查该标签是否存在
+                elif isinstance(tag, str):
+                    if tag in config_tags:
+                        selected_config = config
+                        break
+
+        if selected_config is None:
+            raise ValueError(f"No LLM configuration found matching tag(s): '{tag}'")
+
+        # 准备模型参数
+        params = {
+            "temperature": self.temperature,
+            "model": selected_config.get("model"),
+        }
+        # 更新kwargs，允许在运行时覆盖默认值
+        params.update(kwargs)
+
+        client_type = selected_config.get("type")
+
+        if client_type == 'openai':
+            params.update({
+                "base_url": selected_config.get("base_url"),
+                "api_key": selected_config.get("api_key"),
+                "http_client": httpx.Client(proxy=selected_config.get("proxy")) if selected_config.get("proxy") else None,
+            })
             return ChatOpenAI(**params)
 
-        elif self.client_type == 'ollama':
-            params = {
-                "base_url": self.base_url,
-                "model": self.model,
-                "temperature": self.temperature,
-            }
-            params.update(kwargs)
+        elif client_type == 'ollama':
+            params.update({
+                "base_url": selected_config.get("base_url"),
+            })
+            # Ollama doesn't use api_key or http_client in the same way
             return ChatOllama(**params)
         else:
-            raise ValueError(f"Unsupported client_type: {self.client_type}")
+            raise ValueError(f"Unsupported client_type: {client_type}")
 
     def is_alive(self) -> bool:
         """
-        测试与模型的基本连通性。
+        测试与默认模型的基本连通性。
         成功则返回 True，否则直接抛出异常 (例如: ConnectionError, ValueError)。
         """
-        model = self.get_model()
+        model = self.get_model()  # 使用默认配置
         parser = StrOutputParser()
         chain = model | parser
         messages = [
@@ -97,9 +124,9 @@ class LLMAPI(object):
         self.alive = True
         return True
 
-    def is_support_function_calling(self) -> bool:
+    def is_support_function_calling(self, tag: str = None) -> bool:
         """
-        测试模型是否支持函数调用（Tool Calling）能力。
+        测试指定（或默认）模型是否支持函数调用（Tool Calling）能力。
         成功则返回 True，否则直接抛出异常。
         """
 
@@ -107,7 +134,7 @@ class LLMAPI(object):
             """A test function that returns the input string."""
             return x
 
-        model = self.get_model()
+        model = self.get_model(tag=tag)
         model_with_tools = model.bind_tools([test_func])
         test_messages = [
             ("system", "When user says test, call test_func with 'hello' as argument."),

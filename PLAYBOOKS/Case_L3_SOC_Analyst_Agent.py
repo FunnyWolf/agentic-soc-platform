@@ -47,7 +47,6 @@ class AnalyzeResult(BaseModel):
 
 
 class Playbook(LanggraphPlaybook):
-    RUN_AS_JOB = True
     TYPE = "CASE"
     NAME = "L3 SOC Analyst Agent"
 
@@ -98,7 +97,7 @@ class Playbook(LanggraphPlaybook):
             # 运行
             llm_api = LLMAPI()
 
-            llm = llm_api.get_model()
+            llm = llm_api.get_model(tag="structured_output")
 
             # 构建消息列表
             messages = [
@@ -158,7 +157,7 @@ class Playbook(LanggraphPlaybook):
 
 
 if __name__ == "__main__":
-    params_debug = {'rowid': '27ca1468-5e3b-46ca-b238-3308539241e1', 'worksheet': 'case'}
+    params_debug = {'rowid': '6635d1e1-406a-4dcb-9b07-797f584db207', 'worksheet': 'case'}
     module = Playbook()
     module._params = params_debug
     module.run()

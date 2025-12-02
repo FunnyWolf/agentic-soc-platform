@@ -130,7 +130,7 @@ class Module(LanggraphModule):
             # Execute
             openai_api = LLMAPI()
 
-            llm = openai_api.get_model()
+            llm = openai_api.get_model(tag="structured_output")
             llm = llm.with_structured_output(AnalyzeResult)
             response: AnalyzeResult = llm.invoke(messages)
 
