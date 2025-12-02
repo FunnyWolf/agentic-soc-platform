@@ -1,9 +1,9 @@
-﻿# 插件文档地址: https://asf.viperrtp.com/zh/asf/PLUGINS/LLM/
+﻿# 插件文档地址: https://asp.viperrtp.com/zh/asf/PLUGINS/LLM/
 # get_model(tag="xxx") 会按顺序查找并使用第一个包含 "xxx" 标签的配置。tag可以自由定制.
 # 如果不提供 tag，则默认使用列表中的第一个配置。
 # ASF中正在使用的tag  "cheap","fast","powerful","function_calling","structured_output"
 
-# Doc: https://asf.viperrtp.com/asf/PLUGINS/LLM/
+# Doc: https://asp.viperrtp.com/asf/PLUGINS/LLM/
 # `get_model(tag="xxx")` will search for and use the first configuration containing the tag "xxx" in order. The tag can be customized.
 # If no tag is provided, the first configuration in the list will be used by default.
 # Tags currently used in ASF: "cheap", "fast", "powerful", "function_calling", "structured_output"
