@@ -1,19 +1,13 @@
 ![cover-v5-optimized](Docker/Img/img.png)
 
 <p align="center">
-  <a href="https://asp.viperrtp.com/asf/Development/environment_setup/">Getting-started</a> ·
-  <a href="https://asp.viperrtp.com/asf/Introduction/what_is_asf/">Documentation</a>
+  <a href="https://asp.viperrtp.com/zh/asf/Development/environment_setup/">Getting-started</a> ·
+  <a href="https://asp.viperrtp.com/zh/asf/Introduction/what_is_asf/">Documentation</a>
 </p>
 
 <p align="center">
     <a href="https://asp.viperrtp.com/" target="_blank">
         <img alt="Static Badge" src="https://img.shields.io/badge/Website-F04438"></a>
-    <a href="https://discord.gg/3R9yZvQueT" target="_blank">
-        <img src="https://img.shields.io/badge/Community-blue?logo=discord&labelColor=%20%235462eb&logoColor=%20%23f5f5f5&color=%20%235462eb"
-            alt="chat on Discord"></a>
-    <a href="https://twitter.com/intent/follow?screen_name=viperrtp" target="_blank">
-        <img src="https://img.shields.io/twitter/follow/viperrtp?logo=X&color=%20%23f5f5f5"
-            alt="follow on X(Twitter)"></a>
     <a href="https://github.com/funnywolf/agentic-soc-platform/graphs/commit-activity" target="_blank">
         <img alt="Commits last month" src="https://img.shields.io/github/commit-activity/m/funnywolf/agentic-soc-platform?labelColor=%20%2332b583&color=%20%2312b76a"></a>
     <a href="https://github.com/funnywolf/agentic-soc-platform/" target="_blank">
@@ -51,7 +45,6 @@ ASP 通过简化的多阶段流程处理安全告警和事件：
 4. **模块引擎**: ASP **模块** 从其指定的流中消费告警，执行分析（通常使用 AI Agent），丰富数据，并确定结果。
 5. **SIRP 平台**: 模块的输出（现在已格式化为标准化的安全记录）被发送到 **SIRP** 平台，在那里创建或更新案例、告警和 Artifact。
 6. **剧本引擎**: 分析师可以从 SIRP 用户界面触发针对案例、告警或 Artifact 的 **剧本**，以执行进一步的自动化操作，例如威胁情报丰富或修复。
-
 
 ![img_1.webp](Docker/Img/img_20.png)
 ![img_2.webp](Docker/Img/img_21.png)
