@@ -11,7 +11,7 @@ except:
     SECRET_KEY = utils.get_random_secret_key()
     os.environ['SECRET_KEY'] = SECRET_KEY
 
-from CONFIG import REDIS_URL
+from PLUGINS.Redis.CONFIG import REDIS_URL
 
 DEBUG = False
 ALLOWED_HOSTS = ['*']

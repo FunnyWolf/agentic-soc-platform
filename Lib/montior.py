@@ -8,11 +8,12 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from django.contrib.auth.models import User
 
 from Automation.Handle.playbook import Playbook
-from CONFIG import REDIS_STREAM_STORE_DAYS, ASF_TOKEN
+from PLUGINS.Redis.CONFIG import REDIS_STREAM_STORE_DAYS
 from Lib.engine import Engine
 from Lib.log import logger
 from Lib.redis_stream_api import RedisStreamAPI
 from Lib.xcache import Xcache
+from PLUGINS.SIRP.CONFIG import ASP_REST_API_TOKEN
 
 
 class MainMonitor(object):
@@ -35,7 +36,7 @@ class MainMonitor(object):
         api_usr = User()
         api_usr.username = "api_token"
         api_usr.is_active = True
-        Xcache.set_token_user(ASF_TOKEN, api_usr, None)
+        Xcache.set_token_user(ASP_REST_API_TOKEN, api_usr, None)
 
         logger.info("加载剧本配置信息")
         Playbook.load_all_module_config()

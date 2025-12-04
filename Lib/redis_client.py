@@ -1,6 +1,6 @@
 import redis
 
-from CONFIG import REDIS_URL
+from PLUGINS.Redis.CONFIG import REDIS_URL
 from Lib.log import logger
 
 
