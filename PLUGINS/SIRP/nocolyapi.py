@@ -181,7 +181,7 @@ class WorksheetRow(object):
     def create(worksheet_id: str, fields: list):
 
         fields = [
-            field for field in fields if field.get("value") is not None
+            field for field in fields if field.get("value") is not None and field.get("value") != ""
         ]
 
         url = f"{SIRP_URL}/api/v3/app/worksheets/{worksheet_id}/rows"

@@ -325,6 +325,23 @@ class Playbook(object):
         return row_id
 
 
+class PlaybookMessage(object):
+    WORKSHEET_ID = "playbook_message"
+
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def create(fields: list):
+        row_id = WorksheetRow.create(PlaybookMessage.WORKSHEET_ID, fields)
+        return row_id
+
+    @staticmethod
+    def update(row_id, fields: list):
+        row_id = WorksheetRow.update(PlaybookMessage.WORKSHEET_ID, row_id, fields)
+        return row_id
+
+
 class Notice(object):
 
     @staticmethod
