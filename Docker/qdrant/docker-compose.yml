@@ -1,0 +1,15 @@
+services:
+  qdrant:
+    #image: qdrant/qdrant:latest
+    image: docker.1ms.run/qdrant/qdrant:latest
+    container_name: qdrant_service
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    environment:
+      # 设置你的 API Key
+      - QDRANT__SERVICE__API_KEY=qdrant-password-for-agentic-soc-platform
+    volumes:
+      - ./qdrant_storage:/qdrant/storage
+      - ./qdrant_config:/qdrant/config
+    restart: always
