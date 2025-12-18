@@ -1,0 +1,34 @@
+# Nginx 配置文件，用于反向代理 Ollama 服务并启用基础认证
+# sudo htpasswd -c /etc/nginx/.htpasswd admin
+# sudo nano /etc/nginx/sites-available/ollama
+# sudo ln -s /etc/nginx/sites-available/ollama /etc/nginx/sites-enabled/
+# sudo rm /etc/nginx/sites-enabled/default
+# sudo nginx -t
+# sudo systemctl restart nginx
+
+
+server {
+    listen 11434;
+    # 如果有域名可以填写，否则保持默认或填写服务器IP
+    server_name _; 
+
+    location / {
+        # 开启基础认证
+        auth_basic "Ollama Restrict Access";
+        auth_basic_user_file /etc/nginx/.htpasswd;
+
+        # 反向代理到 Ollama 服务
+        proxy_pass http://127.0.0.1:11434;
+        
+        # 传递必要的 Header
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # 增加超时时间以支持长文本生成
+        proxy_read_timeout 300s;
+        proxy_connect_timeout 300s;
+        proxy_send_timeout 300s;
+    }
+}

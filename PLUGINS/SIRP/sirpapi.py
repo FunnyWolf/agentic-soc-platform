@@ -7,7 +7,7 @@ import requests
 
 from Lib.api import string_to_timestamp, get_current_time_str
 from Lib.log import logger
-from PLUGINS.Embeddings.embeddingsapi import EmbeddingsAPI
+from PLUGINS.Embeddings.embeddings_qdrant import EmbeddingsAPI
 from PLUGINS.SIRP.CONFIG import SIRP_NOTICE_WEBHOOK
 from PLUGINS.SIRP.grouprule import GroupRule
 from PLUGINS.SIRP.nocolyapi import WorksheetRow, OptionSet

@@ -7,6 +7,8 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
 
+from Lib.log import logger
+
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 from PLUGINS.LLM.CONFIG import LLM_CONFIGS
 
@@ -72,7 +74,7 @@ class LLMAPI(object):
 
         if selected_config is None:
             raise ValueError(f"No LLM configuration found matching tag(s): '{tag}'")
-
+        logger.debug(f"Using LLM configuration: {selected_config}")
         # 准备模型参数
         params = {
             "temperature": self.temperature,

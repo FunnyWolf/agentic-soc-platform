@@ -1,3 +1,7 @@
+# import os
+# os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
+# uncomment the above line to set a custom Hugging Face endpoint if needed.
+
 import uuid
 
 import httpx
@@ -18,9 +22,10 @@ class EmbeddingsAPI(object):
 
     def __init__(self):
 
+        self.sparse_model = FastEmbedSparse(model_name="Qdrant/bm25")
+
         if EMBEDDINGS_TYPE not in ['openai', 'ollama']:
             raise ValueError(f"Invalid EMBEDDINGS_TYPE in CONFIG.py: '{EMBEDDINGS_TYPE}'. Must be 'openai' or 'ollama'.")
-
         self.dense_model = None
         http_client = httpx.Client(proxy=EMBEDDINGS_PROXY) if EMBEDDINGS_PROXY else None
         if EMBEDDINGS_TYPE == 'openai':
@@ -37,8 +42,13 @@ class EmbeddingsAPI(object):
         else:
             raise ValueError(f"Unsupported client_type: {EMBEDDINGS_TYPE}")
 
-        self.sparse_model = FastEmbedSparse(model_name="Qdrant/bm25")
         self.vector_client = Qdrant.get_client()
+
+    def delete_collection(self, collection_name: str):
+        if self.vector_client.collection_exists(collection_name):
+            self.vector_client.delete_collection(collection_name=collection_name)
+            return True
+        return False
 
     def vector_store(self, collection_name: str) -> QdrantVectorStore:
         if not self.vector_client.collection_exists(collection_name):
@@ -70,7 +80,8 @@ class EmbeddingsAPI(object):
         doc_id = str(uuid.uuid5(namespace, ids))
         vector_store = self.vector_store(collection_name)
         document = Document(id=doc_id, page_content=page_content, metadata=metadata)
-        vector_store.add_documents([document])
+        result = vector_store.add_documents([document])
+        return result
 
     def search_documents(self, collection_name: str, query: str, k: int):
         vector_store = self.vector_store(collection_name)
