@@ -1,0 +1,37 @@
+services:
+  neo4j:
+    image: docker.1ms.run/neo4j:latest
+    #image: neo4j:latest
+    container_name: neo4j-server
+    restart: always
+    ports:
+      # HTTP (浏览器访问 7474)
+      - "7474:7474"
+      # Bolt (程序连接 7687)
+      - "7687:7687"
+    environment:
+      # 配置账号密码 (用户名: neo4j, 密码: neo4j-password-for-agentic-soc-platform)
+      - NEO4J_AUTH=neo4j/neo4j-password-for-agentic-soc-platform
+
+      # 绑定地址到 0.0.0.0 以允许外部访问
+      - NEO4J_server_default__listen__address=0.0.0.0
+
+      # 预装核心插件：APOC (实用函数库) 和 GDS (图算法库)
+      - NEO4J_PLUGINS=["apoc", "graph-data-science"]
+
+      # APOC 权限配置：允许访问系统命令及导入导出
+      - NEO4J_apoc_export_file_enabled=true
+      - NEO4J_apoc_import_file_enabled=true
+      - NEO4J_dbms_security_procedures_unrestricted=apoc.*,gds.*
+
+      # 内存限制建议 (根据您的机器内存调整)
+      - NEO4J_server_memory_heap_initial__size=512M
+      - NEO4J_server_memory_heap_max__size=1G
+      - NEO4J_server_memory_pagecache_size=512M
+
+    volumes:
+      # 数据持久化
+      - ./neo4j/data:/data
+      - ./neo4j/logs:/logs
+      - ./neo4j/import:/var/lib/neo4j/import
+      - ./neo4j/plugins:/plugins

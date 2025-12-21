@@ -23,26 +23,29 @@ class EmbeddingsAPI(object):
     def __init__(self):
 
         self.sparse_model = FastEmbedSparse(model_name="Qdrant/bm25")
+        self.dense_model = self.get_dense_model()
+        self.vector_client = Qdrant.get_client()
 
+    @staticmethod
+    def get_dense_model():
         if EMBEDDINGS_TYPE not in ['openai', 'ollama']:
             raise ValueError(f"Invalid EMBEDDINGS_TYPE in CONFIG.py: '{EMBEDDINGS_TYPE}'. Must be 'openai' or 'ollama'.")
-        self.dense_model = None
         http_client = httpx.Client(proxy=EMBEDDINGS_PROXY) if EMBEDDINGS_PROXY else None
         if EMBEDDINGS_TYPE == 'openai':
             # noinspection PyTypeChecker
-            self.dense_model = OpenAIEmbeddings(
+            dense_model = OpenAIEmbeddings(
                 base_url=EMBEDDINGS_BASE_URL,
                 model=EMBEDDINGS_MODEL,
                 api_key=EMBEDDINGS_API_KEY,
                 check_embedding_ctx_length=False,
                 http_client=http_client
             )
+            return dense_model
         elif EMBEDDINGS_TYPE == 'ollama':
-            self.dense_model = OllamaEmbeddings(base_url=EMBEDDINGS_BASE_URL, model=EMBEDDINGS_MODEL)
+            dense_model = OllamaEmbeddings(base_url=EMBEDDINGS_BASE_URL, model=EMBEDDINGS_MODEL)
+            return dense_model
         else:
             raise ValueError(f"Unsupported client_type: {EMBEDDINGS_TYPE}")
-
-        self.vector_client = Qdrant.get_client()
 
     def delete_collection(self, collection_name: str):
         if self.vector_client.collection_exists(collection_name):

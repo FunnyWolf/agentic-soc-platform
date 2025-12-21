@@ -26,6 +26,7 @@ dependencies = [
     "langgraph-checkpoint-redis>=0.2.1",
     "lxml>=6.0.2",
     "mcp[cli]>=1.23.0",
+    "mem0ai[graph]>=1.0.1",
     "openpyxl>=3.1.5",
     "optionset",
     "pluginbase>=1.0.1",
