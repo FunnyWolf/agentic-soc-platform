@@ -7,8 +7,15 @@ from PLUGINS.SIRP.CONFIG import SIRP_URL, SIRP_APPKEY, SIRP_SIGN
 HEADERS = {"HAP-Appkey": SIRP_APPKEY,
            "HAP-Sign": SIRP_SIGN}
 
-SIRP_REQUEST_TIMEOUT = 3  # seconds
+SIRP_REQUEST_TIMEOUT = 10  # seconds
 
+HTTP_SESSION = requests.Session()
+adapter = requests.adapters.HTTPAdapter(
+    pool_connections=10,
+    pool_maxsize=10
+)
+HTTP_SESSION.mount('http://', adapter)
+HTTP_SESSION.mount('https://', adapter)
 
 class FieldType(TypedDict):
     id: str
@@ -162,7 +169,7 @@ class WorksheetRow(object):
             "pageSize": 1000,
         }
         try:
-            response = requests.post(url,
+            response = HTTP_SESSION.post(url,
                                      timeout=SIRP_REQUEST_TIMEOUT,
                                      headers=HEADERS,
                                      json=data)
@@ -330,7 +337,8 @@ class OptionSet(object):
         optionsets = OptionSet.list()
         for optionset in optionsets:
             if optionset["name"] == name:
-                return optionset
+                options = optionset.get("options", [])
+                return options
         raise Exception(f"optionset {name} not found")
 
     @staticmethod

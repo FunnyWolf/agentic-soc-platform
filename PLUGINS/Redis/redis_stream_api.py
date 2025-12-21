@@ -288,7 +288,7 @@ class RedisStreamAPI:
         """
         # 计算最老允许的时间戳，单位为毫秒
         # Unix时间戳（秒）* 1000
-        logger.info(f"开始清理Redis Stream中超过 {max_age_days} 天的键值对...")
+        logger.info(f"Clean Redis Stream older than {max_age_days} days.")
         cutoff_timestamp_ms = int((datetime.datetime.now() - datetime.timedelta(days=max_age_days)).timestamp() * 1000)
 
         try:
@@ -302,8 +302,8 @@ class RedisStreamAPI:
 
                     # `XTRIM` 带有 `MINID` 选项，用于删除ID小于指定ID的所有条目
                     trimmed_count = self.redis_client.xtrim(key, minid=trim_id)
-                    logger.info(f"  已从Stream '{key}' 中删除 {trimmed_count} 个过期条目。")
+                    logger.info(f"Delete {trimmed_count} items from '{key}'")
         except Exception as e:
             logger.exception(e)
         finally:
-            logger.info("清理任务完成。")
+            logger.info("clean task finished.")

@@ -304,7 +304,7 @@ class CMDB(object):
                         ) -> Annotated[List[Dict[str, Any]], "A list of all CIs associated with the user, including employee profiles, primary PCs/workstations, or primarily responsible servers."]:
         """
         [F. User/Responsible Person Query]: Retrieves a list of all configuration items (CIs) primarily used by or responsible for by a specific user.
-        This interface is used for user-related security incidents (such as phishing, credential leakage) to quickly locate all of the user's related assets for isolation or forensics.
+        This interface is used for user-related security incidents (such as phishing, credential leakage) to quickly locate all the user's related assets for isolation or forensics.
         If the associated CI or user profile cannot be found, a LookupError is thrown.
         """
         if not user_id:
@@ -359,7 +359,7 @@ def get_ci_context_tool(
 
 def fuzzy_search_ci_tool(
         partial_hostname: Annotated[Optional[str], "Partial hostname fragment, e.g. 'prod-'. If provided, a partial match will be performed."] = None,
-        regex_pattern: Annotated[Optional[str], "Regular expression for advanced matching, for example 'aws-\d+'. Choose one from partial_hostname."] = None
+        regex_pattern: Annotated[Optional[str], "Regular expression for advanced matching, for example 'aws-\\d+'. Choose one from partial_hostname."] = None
 ) -> Annotated[List[Dict[str, Any]], "A list of matched CIs, returning only CI ID, CI type, hostname, and business criticality."]:
     """
     Retrieves a list of matching configuration items (CIs) based on a partial hostname or regular expression.
@@ -405,7 +405,7 @@ def get_cis_by_user_tool(
 ) -> Annotated[List[Dict[str, Any]], "A list of all CIs associated with the user, including employee profiles, primary PCs/workstations, or primarily responsible servers."]:
     """
     Retrieves a list of all configuration items (CIs) primarily used by or responsible for by a specific user.
-    This interface is used for user-related security incidents (such as phishing, credential leakage) to quickly locate all of the user's related assets for isolation or forensics.
+    This interface is used for user-related security incidents (such as phishing, credential leakage) to quickly locate all the user's related assets for isolation or forensics.
     """
     return cmdb_instance.get_cis_by_user(user_id)
 

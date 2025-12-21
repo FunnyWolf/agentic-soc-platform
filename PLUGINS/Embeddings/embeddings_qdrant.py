@@ -83,6 +83,13 @@ class EmbeddingsAPI(object):
         result = vector_store.add_documents([document])
         return result
 
+    def delete_document(self, collection_name: str, ids: str):
+        namespace = uuid.NAMESPACE_DNS
+        doc_id = str(uuid.uuid5(namespace, ids))
+        vector_store = self.vector_store(collection_name)
+        result = vector_store.delete(ids=[doc_id])
+        return result
+
     def search_documents(self, collection_name: str, query: str, k: int):
         vector_store = self.vector_store(collection_name)
         results = vector_store.similarity_search_with_score(query, k=k)

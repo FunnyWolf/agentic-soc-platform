@@ -104,6 +104,7 @@ class Artifact(object):
 class Alert(object):
     WORKSHEET_ID = "alert"
     ARTIFACT_FIELD_ID = "artifact"
+    COLLECTION_NAME = "sirp_alert"
 
     def __init__(self):
         pass
@@ -401,6 +402,66 @@ class Playbook(object):
             ]
         }
         result = Playbook.list(artifact_filter)
+        return result
+
+
+KnowledgeAction = Literal["Store", "Remove", "Done"]
+KnowledgeUsing = Literal[0, 1]
+
+
+class Knowledge(object):
+    WORKSHEET_ID = "knowledge"
+    COLLECTION_NAME = "sirp_knowledge"
+
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def list(filter: dict):
+        result = WorksheetRow.list(Knowledge.WORKSHEET_ID, filter, include_system_fields=False)
+        return result
+
+    @staticmethod
+    def create(fields: list):
+        row_id = WorksheetRow.create(Knowledge.WORKSHEET_ID, fields)
+        return row_id
+
+    @staticmethod
+    def update(row_id, fields: list):
+        row_id = WorksheetRow.update(Knowledge.WORKSHEET_ID, row_id, fields)
+        return row_id
+
+    @staticmethod
+    def update_action_and_using(row_id, action: KnowledgeAction, using: KnowledgeUsing):
+        fields = [
+            {"id": "action", "value": action},
+            {"id": "using", "value": using},
+        ]
+        row_id = WorksheetRow.update(Knowledge.WORKSHEET_ID, row_id, fields)
+        return row_id
+
+    @staticmethod
+    def get_undone_actions():
+        options = OptionSet.get("knowledge_action")
+
+        action_list = []
+        for option in options:
+            if option.get("value") != "Done":
+                action_list.append(option.get("key"))
+
+        artifact_filter = {
+            "type": "group",
+            "logic": "AND",
+            "children": [
+                {
+                    "type": "condition",
+                    "field": "action",
+                    "operator": "in",
+                    "value": action_list
+                }
+            ]
+        }
+        result = Knowledge.list(artifact_filter)
         return result
 
 
