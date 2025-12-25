@@ -15,6 +15,7 @@ from Lib.baseplaybook import LanggraphPlaybook
 from Lib.configs import DATA_DIR
 from Lib.llmapi import load_system_prompt_template
 from PLUGINS.LLM.llmapi import LLMAPI
+# change this to your actual Splunk api
 from PLUGINS.Mock.SIEM_Splunk import splunk_search_tool
 
 # Define constants for graph nodes

@@ -5,8 +5,8 @@ from langchain_core.documents import Document
 
 from Lib.log import logger
 from PLUGINS.Embeddings.embeddings_qdrant import embedding_api_singleton_qdrant
-from PLUGINS.SIRP.sirpapi import Knowledge
 from PLUGINS.Mem0.CONFIG import USE as MEM_ZERO_USE
+from PLUGINS.SIRP.sirpapi import Knowledge
 
 if MEM_ZERO_USE:
     from PLUGINS.Mem0.mem_zero import mem_zero_singleton
@@ -25,6 +25,7 @@ class AgentKnowledge(object):
         """
         Search the internal knowledge base for specific entities, business-specific logic, SOPs, or historical context.
         """
+        logger.debug(f"knowledge search : {query}")
         threshold = 0.8
         result_all = []
         docs_qdrant = embedding_api_singleton_qdrant.search_documents_with_rerank(collection_name=Knowledge.COLLECTION_NAME, query=query, k=10, top_n=3)
@@ -46,9 +47,10 @@ class AgentKnowledge(object):
                 memory = one_record.get("memory", "")
                 if rerank_score >= threshold:
                     result_all.append(memory)
-        print(query)
-        print(result_all)
-        return json.dumps(result_all, ensure_ascii=False)
+
+        results = json.dumps(result_all, ensure_ascii=False)
+        logger.debug(f"Knowledge search results : {results}")
+        return results
 
 # if __name__ == "__main__":
 #     query = "test@gmail.com"
