@@ -83,7 +83,7 @@ SEARCH_TOOL = KnowledgeAgent.search
 
 class Playbook(LanggraphPlaybook):
     TYPE = "CASE"
-    NAME = "L3 SOC Analyst Agent"
+    NAME = "L3 SOC Analyst Agent With Tools"
 
     def __init__(self):
         super().__init__()
