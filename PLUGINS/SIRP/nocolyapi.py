@@ -1,7 +1,9 @@
 from typing import TypedDict, Literal, List, Union, Any, Dict
 
 import requests
+from requests.adapters import HTTPAdapter
 
+from Lib.xcache import Xcache
 from PLUGINS.SIRP.CONFIG import SIRP_URL, SIRP_APPKEY, SIRP_SIGN
 
 HEADERS = {"HAP-Appkey": SIRP_APPKEY,
@@ -10,7 +12,8 @@ HEADERS = {"HAP-Appkey": SIRP_APPKEY,
 SIRP_REQUEST_TIMEOUT = 10  # seconds
 
 HTTP_SESSION = requests.Session()
-adapter = requests.adapters.HTTPAdapter(
+HTTP_SESSION.headers.update(HEADERS)
+adapter = HTTPAdapter(
     pool_connections=10,
     pool_maxsize=10
 )
@@ -72,10 +75,13 @@ class Worksheet(object):
 
     @staticmethod
     def get_fields(worksheet_id: str) -> Dict[str, FieldType]:
+        cached_fields = Xcache.get_sirp_fields(worksheet_id)
+        if cached_fields is not None:
+            return cached_fields
 
         url = f"{SIRP_URL}/api/v3/app/worksheets/{worksheet_id}"
 
-        response = requests.get(
+        response = HTTP_SESSION.get(
             url,
             params={"includeSystemFields": True},
             headers=HEADERS
@@ -91,6 +97,7 @@ class Worksheet(object):
                     fields_dict[field["alias"]] = field
                 else:
                     fields_dict[field["id"]] = field
+            Xcache.set_sirp_fields(worksheet_id, fields_dict)
             return fields_dict
         else:
             raise Exception(f"error_code: {response_data.get('error_code')} error_msg: {response_data.get('error_msg')}")
@@ -104,31 +111,28 @@ class WorksheetRow(object):
     def get(worksheet_id: str, row_id: str, include_system_fields=True):
         url = f"{SIRP_URL}/api/v3/app/worksheets/{worksheet_id}/rows/{row_id}"
         fields = Worksheet.get_fields(worksheet_id)
-        try:
-            response = requests.get(
-                url,
-                timeout=SIRP_REQUEST_TIMEOUT,
-                params={"includeSystemFields": include_system_fields},
-                headers=HEADERS
-            )
-            response.raise_for_status()
+        response = HTTP_SESSION.get(
+            url,
+            timeout=SIRP_REQUEST_TIMEOUT,
+            params={"includeSystemFields": include_system_fields},
+            headers=HEADERS
+        )
+        response.raise_for_status()
 
-            response_data = response.json()
-            if response_data.get("success"):
-                row = response_data.get("data")
-                data_new = WorksheetRow._format_row(row, fields, include_system_fields)
-                return data_new
-            else:
-                raise Exception(f"error_code: {response_data.get('error_code')} error_msg: {response_data.get('error_msg')}")
-        except Exception as e:
-            raise
+        response_data = response.json()
+        if response_data.get("success"):
+            row = response_data.get("data")
+            data_new = WorksheetRow._format_row(row, fields, include_system_fields)
+            return data_new
+        else:
+            raise Exception(f"error_code: {response_data.get('error_code')} error_msg: {response_data.get('error_msg')}")
 
     @staticmethod
     def _format_row(row, fields, include_system_fields=True):
         data_new = {}
         for key in row:
             if key in SYSTEM_FIELDS:
-                if include_system_fields:
+                if include_system_fields or key == "rowid":
                     data_new[key] = row[key]
                 else:
                     continue
@@ -175,34 +179,33 @@ class WorksheetRow(object):
                 }
             ],
             "includeTotalCount": True,
-            "includeSystemFields": include_system_fields,
             "pageSize": 1000,
+            # "includeSystemFields": include_system_fields, # no meaning in this version of nocoly
             # "fields": fields,
             # "useFieldIdAsKey": False,
         }
-        try:
-            response = HTTP_SESSION.post(url,
-                                         timeout=SIRP_REQUEST_TIMEOUT,
-                                         headers=HEADERS,
-                                         json=data)
-            response.raise_for_status()
-            response_data = response.json()
-            if response_data.get("success"):
+        response = HTTP_SESSION.post(url,
+                                     timeout=SIRP_REQUEST_TIMEOUT,
+                                     headers=HEADERS,
+                                     json=data)
+        response.raise_for_status()
+        response_data = response.json()
+        if response_data.get("success"):
+            rows = response_data.get("data").get("rows")
+            if rows:
                 fields = Worksheet.get_fields(worksheet_id)
-                rows = response_data.get("data").get("rows")
                 rows_new = []
                 for row in rows:
                     data_new = WorksheetRow._format_row(row, fields, include_system_fields)
                     rows_new.append(data_new)
                 return rows_new
             else:
-                raise Exception(f"error_code: {response_data.get('error_code')} error_msg: {response_data.get('error_msg')}")
-        except Exception as e:
-            raise
+                return rows
+        else:
+            raise Exception(f"error_code: {response_data.get('error_code')} error_msg: {response_data.get('error_msg')}")
 
     @staticmethod
-    def create(worksheet_id: str, fields: list, triggerWorkflow: bool = False):
-
+    def create(worksheet_id: str, fields: list, trigger_workflow: bool = False):
         fields = [
             field for field in fields if field.get("value") is not None and field.get("value") != ""
         ]
@@ -210,15 +213,15 @@ class WorksheetRow(object):
         url = f"{SIRP_URL}/api/v3/app/worksheets/{worksheet_id}/rows"
 
         data = {
-            "triggerWorkflow": triggerWorkflow,
+            "triggerWorkflow": trigger_workflow,
             "fields": fields
         }
 
         try:
-            response = requests.post(url,
-                                     timeout=SIRP_REQUEST_TIMEOUT,
-                                     headers=HEADERS,
-                                     json=data)
+            response = HTTP_SESSION.post(url,
+                                         timeout=SIRP_REQUEST_TIMEOUT,
+                                         headers=HEADERS,
+                                         json=data)
             response.raise_for_status()
 
             response_data = response.json()
@@ -241,21 +244,17 @@ class WorksheetRow(object):
             "triggerWorkflow": True,
             "fields": fields
         }
-
-        try:
-            response = requests.patch(url,
+        response = HTTP_SESSION.patch(url,
                                       timeout=SIRP_REQUEST_TIMEOUT,
                                       headers=HEADERS,
                                       json=data)
-            response.raise_for_status()
+        response.raise_for_status()
 
-            response_data = response.json()
-            if response_data.get("success"):
-                return response_data.get("data")
-            else:
-                raise Exception(f"error_code: {response_data.get('error_code')} error_msg: {response_data.get('error_msg')}")
-        except Exception as e:
-            raise
+        response_data = response.json()
+        if response_data.get("success"):
+            return response_data.get("data")
+        else:
+            raise Exception(f"error_code: {response_data.get('error_code')} error_msg: {response_data.get('error_msg')}")
 
     @staticmethod
     def delete(worksheet_id: str, row_ids: list):
@@ -267,20 +266,17 @@ class WorksheetRow(object):
             "triggerWorkflow": True,
         }
 
-        try:
-            response = requests.delete(url,
+        response = HTTP_SESSION.delete(url,
                                        timeout=SIRP_REQUEST_TIMEOUT,
                                        headers=HEADERS,
                                        json=data)
-            response.raise_for_status()
+        response.raise_for_status()
 
-            response_data = response.json()
-            if response_data.get("success"):
-                return response_data.get("data")
-            else:
-                raise Exception(f"error_code: {response_data.get('error_code')} error_msg: {response_data.get('error_msg')}")
-        except Exception as e:
-            raise
+        response_data = response.json()
+        if response_data.get("success"):
+            return response_data.get("data")
+        else:
+            raise Exception(f"error_code: {response_data.get('error_code')} error_msg: {response_data.get('error_msg')}")
 
     @staticmethod
     def relations(worksheet_id: str, row_id: str, field: str, relation_worksheet_id: str, include_system_fields: bool = True, page_size: int = 1000,
@@ -296,25 +292,23 @@ class WorksheetRow(object):
             params["pageIndex"] = page_index
         if include_system_fields is not None:
             params["isReturnSystemFields"] = include_system_fields
-        try:
-            response = requests.get(url,
+
+        response = HTTP_SESSION.get(url,
                                     timeout=SIRP_REQUEST_TIMEOUT,
                                     headers=HEADERS,
                                     params=params)
-            response.raise_for_status()
+        response.raise_for_status()
 
-            response_data = response.json()
-            if response_data.get("success"):
-                rows = response_data.get("data").get("rows")
-                rows_new = []
-                for row in rows:
-                    data_new = WorksheetRow._format_row(row, fields, include_system_fields)
-                    rows_new.append(data_new)
-                return rows_new
-            else:
-                raise Exception(f"error_code: {response_data.get('error_code')} error_msg: {response_data.get('error_msg')}")
-        except Exception as e:
-            raise
+        response_data = response.json()
+        if response_data.get("success"):
+            rows = response_data.get("data").get("rows")
+            rows_new = []
+            for row in rows:
+                data_new = WorksheetRow._format_row(row, fields, include_system_fields)
+                rows_new.append(data_new)
+            return rows_new
+        else:
+            raise Exception(f"error_code: {response_data.get('error_code')} error_msg: {response_data.get('error_msg')}")
 
     @staticmethod
     def get_rowid_list_from_rowid(rowid):
@@ -330,17 +324,21 @@ class OptionSet(object):
 
     @staticmethod
     def list():
-
+        cached_optionsets = Xcache.get_sirp_optionset()
+        if cached_optionsets is not None:
+            return cached_optionsets
         url = f"{SIRP_URL}/api/v3/app/optionsets"
 
-        response = requests.get(url,
-                                timeout=SIRP_REQUEST_TIMEOUT,
-                                headers=HEADERS)
+        response = HTTP_SESSION.get(url,
+                                    timeout=SIRP_REQUEST_TIMEOUT,
+                                    headers=HEADERS)
         response.raise_for_status()
 
         response_data = response.json()
         if response_data.get("success"):
-            return response_data.get("data").get("optionsets")
+            optionsets: List[Dict[str, Any]] = response_data.get("data").get("optionsets")
+            Xcache.set_sirp_optionset(optionsets)
+            return optionsets
         else:
             raise Exception(f"error_code: {response_data.get('error_code')} error_msg: {response_data.get('error_msg')}")
 
@@ -380,6 +378,7 @@ if __name__ == "__main__":
     # test code
     # worksheet_id = "case"
     # row_id = "47da1d00-c9bf-4b5f-8ab8-8877ec292b98"
+    OptionSet.list()
     worksheet_id = "knowledge"
     row_id = "2b2b9cf5-01ee-4e5f-aadf-1772ee294915"
 

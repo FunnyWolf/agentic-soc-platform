@@ -13,9 +13,33 @@ class Xcache(object):
     XCACHE_TOKEN = "XCACHE_TOKEN"
     XCACHE_MODULES_TASK_LIST = "XCACHE_MODULES_TASK_LIST"
     XCACHE_MODULES_CONFIG = "XCACHE_MODULES_CONFIG"
+    XCACHE_SIRP_OPTIONSET = "XCACHE_SIRP_OPTIONSET"
+    XCACHE_SIRP_FIELDS = "XCACHE_SIRP_FIELDS"
 
     def __init__(self):
         pass
+
+    @staticmethod
+    def set_sirp_fields(worksheet_id, fields, expire=60):
+        key = f"{Xcache.XCACHE_SIRP_FIELDS}-{worksheet_id}"
+        cache.set(key, fields, expire)
+
+    @staticmethod
+    def get_sirp_fields(worksheet_id):
+        key = f"{Xcache.XCACHE_SIRP_FIELDS}-{worksheet_id}"
+        fields = cache.get(key)
+        return fields
+
+    @staticmethod
+    def set_sirp_optionset(optionset, expire=60):
+        key = f"{Xcache.XCACHE_SIRP_OPTIONSET}"
+        cache.set(key, optionset, expire)
+
+    @staticmethod
+    def get_sirp_optionset():
+        key = f"{Xcache.XCACHE_SIRP_OPTIONSET}"
+        optionset = cache.get(key)
+        return optionset
 
     @staticmethod
     def alive_token(token):

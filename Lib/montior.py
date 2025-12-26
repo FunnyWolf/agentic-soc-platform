@@ -55,7 +55,8 @@ class MainMonitor(object):
                 # Wait for the specified execution interval before running again
                 time.sleep(exec_interval)
             except Exception as e:
-                logger.error(f"Error in {task_name}: {str(e)}")
+                logger.error(f"Error in {task_name}")
+                logger.exception(e)
                 time.sleep(retry_interval)
 
     def start_background_task(self, task_func: Callable, task_name: str, retry_interval: int = 5, exec_interval: int = None):
