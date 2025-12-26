@@ -96,6 +96,14 @@ LOGGING = {
             'level': 'INFO',
             'propagate': True
         },
+        'asp': {
+            'handlers': [
+                'console',
+                'file',
+            ],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
 
     }
 }

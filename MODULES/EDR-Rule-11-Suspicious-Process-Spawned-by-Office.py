@@ -4,8 +4,10 @@ from datetime import datetime
 from typing import Optional, Union, Dict, Any
 
 from langchain_core.messages import AIMessage, HumanMessage
+from langgraph.graph import END
 from langgraph.graph import StateGraph
 from langgraph.graph.state import CompiledStateGraph
+from langgraph.types import Command
 from pydantic import BaseModel, Field
 
 from Lib.api import string_to_string_time, get_current_time_str
@@ -36,7 +38,10 @@ class Module(LanggraphModule):
             # Get raw alert from stream
             alert = self.read_message()
             if alert is None:
-                return
+                return Command(
+                    update={"alert": {}},
+                    goto=END
+                )
 
             # for splunk webhook
             # alert = json.loads(alert["_raw"])

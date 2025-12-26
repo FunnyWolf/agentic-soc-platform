@@ -15,10 +15,9 @@ from Lib.engine import Engine
 from Lib.log import logger
 from Lib.xcache import Xcache
 from PLUGINS.Embeddings.embeddings_qdrant import embedding_api_singleton_qdrant
-from PLUGINS.Redis.CONFIG import REDIS_STREAM_STORE_DAYS
+from PLUGINS.Mem0.CONFIG import USE as MEM_ZERO_USE
 from PLUGINS.Redis.redis_stream_api import RedisStreamAPI
 from PLUGINS.SIRP.sirpapi import Playbook as SIRPPlaybook, Knowledge, KnowledgeAction
-from PLUGINS.Mem0.CONFIG import USE as MEM_ZERO_USE
 
 if MEM_ZERO_USE:
     from PLUGINS.Mem0.mem_zero import mem_zero_singleton
@@ -101,19 +100,14 @@ class MainMonitor(object):
         # self.MainScheduler.start()
 
         delay_time = 3
-        delay_time_clean_thread = 60 * 60
 
         # Start background tasks
-        self.start_background_task(self.subscribe_clean_thread, "subscribe_clean_thread", delay_time_clean_thread)
         self.start_background_task(self.subscribe_pending_playbook, "subscribe_pending_playbook", delay_time)
         self.start_background_task(self.subscribe_knowledge_action, "subscribe_knowledge_action", delay_time)
 
         # engine
         self.engine.start()
         logger.info("Background services started.")
-
-    def subscribe_clean_thread(self):
-        self.redis_stream_api.clean_redis_stream(max_age_days=REDIS_STREAM_STORE_DAYS)
 
     @staticmethod
     def subscribe_pending_playbook():

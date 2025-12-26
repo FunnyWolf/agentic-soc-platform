@@ -46,6 +46,7 @@ class LanggraphModule(BaseModule):
             self.agent_state = AgentState()
         for event in self.graph.stream(self.agent_state, config, stream_mode="values"):
             self.logger.debug(event)
+        self.logger.debug(f"{self.module_name} finished processing.")
 
     def run(self):
         self.run_graph()

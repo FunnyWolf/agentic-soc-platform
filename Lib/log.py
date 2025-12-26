@@ -1,3 +1,3 @@
 import logging
 
-logger = logging.getLogger("django")
+logger = logging.getLogger("asp")

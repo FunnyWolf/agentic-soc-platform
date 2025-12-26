@@ -28,7 +28,7 @@ class Module(BaseModule):
         # Get raw alert from stream
         alert = self.read_message()
         if alert is None:
-            return
+            return None
 
         # Parse data, this is an example of handling JSON data sent by Splunk Webhook
         # alert = json.loads(alert["_raw"])
@@ -40,7 +40,7 @@ class Module(BaseModule):
         alert["headers"] = headers
 
         self.agent_state.alert_raw = alert
-        return
+        return None
 
     def alert_analyze_node(self):
         client = Dify()
