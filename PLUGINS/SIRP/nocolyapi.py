@@ -3,6 +3,7 @@ from typing import TypedDict, Literal, List, Union, Any, Dict
 import requests
 from requests.adapters import HTTPAdapter
 
+from Lib.log import logger
 from Lib.xcache import Xcache
 from PLUGINS.SIRP.CONFIG import SIRP_URL, SIRP_APPKEY, SIRP_SIGN
 
@@ -130,14 +131,18 @@ class WorksheetRow(object):
     @staticmethod
     def _format_row(row, fields, include_system_fields=True):
         data_new = {}
-        for key in row:
-            if key in SYSTEM_FIELDS:
-                if include_system_fields or key == "rowid":
-                    data_new[key] = row[key]
+        for alias in row:
+            if alias in SYSTEM_FIELDS:
+                if include_system_fields or alias == "rowid":
+                    data_new[alias] = row[alias]
                 else:
                     continue
             else:
-                data_new[key] = WorksheetRow._format_value(fields.get(key), row[key])
+                field = fields.get(alias)
+                if field is None:
+                    logger.warning(f"field {alias} not found in fields")
+                    continue
+                data_new[alias] = WorksheetRow._format_value(field, row[alias])
         return data_new
 
     @staticmethod
