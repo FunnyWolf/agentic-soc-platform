@@ -1,0 +1,23 @@
+# PLUGINS/Forwarder/uvicorn.toml
+
+[server]
+# Path to the FastAPI application: module_name.variable_name
+# This assumes the uvicorn command is run from the project root.
+app = "PLUGINS.Forwarder.main:app"
+
+# Host address to listen on
+host = "0.0.0.0"
+
+# Port to listen on. This should match the port defined in PLUGINS/Forwarder/CONFIG.py (8001)
+port = 8001
+
+# Number of worker processes. For production, consider using multiple workers
+# (e.g., workers = 2 or more, depending on your server's CPU cores).
+workers = 1
+
+# Log level. Set to "info" or "warning" for production to reduce verbosity.
+log_level = "info"
+
+# Disable auto-reloading for background/production environments.
+# Set to true for development if you want the server to restart on code changes.
+reload = false
