@@ -166,7 +166,6 @@ INSTALLED_APPS = [
 
     'channels',
     'Core',
-    'Forwarder.apps.ForwarderConfig',
 ]
 APPEND_SLASH = False
 
