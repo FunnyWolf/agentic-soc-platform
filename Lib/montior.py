@@ -8,7 +8,7 @@ from typing import Callable
 from apscheduler.schedulers.background import BackgroundScheduler
 from django.contrib.auth.models import User
 
-from Automation.Handle.playbook import Playbook
+from Lib.playbook import Playbook
 from Lib.apsmodule import aps_module
 from Lib.baseplaybook import BasePlaybook
 from Lib.engine import Engine
