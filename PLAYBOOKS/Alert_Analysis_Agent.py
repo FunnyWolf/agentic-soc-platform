@@ -29,7 +29,6 @@ class Playbook(LanggraphPlaybook):
     def init(self):
         def preprocess_node(state: AgentState):
             """Preprocess data"""
-            # worksheet = self.param("worksheet")
             alert = Alert.get(self.param_source_rowid)
             state.alert = alert
             return state
