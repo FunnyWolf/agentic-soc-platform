@@ -14,6 +14,7 @@ SIRP_REQUEST_TIMEOUT = 10  # seconds
 
 HTTP_SESSION = requests.Session()
 HTTP_SESSION.headers.update(HEADERS)
+HTTP_SESSION.verify = False
 adapter = HTTPAdapter(
     pool_connections=10,
     pool_maxsize=10
@@ -84,8 +85,7 @@ class Worksheet(object):
 
         response = HTTP_SESSION.get(
             url,
-            params={"includeSystemFields": True},
-            headers=HEADERS
+            params={"includeSystemFields": True}
         )
         response.raise_for_status()
 
@@ -115,8 +115,7 @@ class WorksheetRow(object):
         response = HTTP_SESSION.get(
             url,
             timeout=SIRP_REQUEST_TIMEOUT,
-            params={"includeSystemFields": include_system_fields},
-            headers=HEADERS
+            params={"includeSystemFields": include_system_fields}
         )
         response.raise_for_status()
 
@@ -173,41 +172,75 @@ class WorksheetRow(object):
             return value
 
     @staticmethod
+    def translate_filter_names_to_ids(filter_data, fields_config):
+        if filter_data.get("type") == "group":
+            for child in filter_data.get("children", []):
+                WorksheetRow.translate_filter_names_to_ids(child, fields_config)
+
+        elif filter_data.get("type") == "condition":
+            if filter_data.get("operator") == "in" and isinstance(filter_data.get("value"), list):
+                field_key = filter_data.get("field")
+
+                target_field = fields_config.get(field_key)
+                if not target_field:
+                    for f in fields_config.values():
+                        if f.get("id") == field_key:
+                            target_field = f
+                            break
+
+                if target_field and target_field.get("options"):
+                    value_to_key = {opt["value"]: opt["key"] for opt in target_field["options"]}
+                    filter_data["value"] = [value_to_key.get(v, v) for v in filter_data["value"]]
+
+    @staticmethod
     def list(worksheet_id: str, filter: dict, include_system_fields=True):
         url = f"{SIRP_URL}/api/v3/app/worksheets/{worksheet_id}/rows/list"
-        data = {
-            "filter": filter,
-            "sorts": [
-                {
-                    "field": "utime",
-                    "direction": "desc"
-                }
-            ],
-            "includeTotalCount": True,
-            "pageSize": 1000,
-            # "includeSystemFields": include_system_fields, # no meaning in this version of nocoly
-            # "fields": fields,
-            # "useFieldIdAsKey": False,
-        }
-        response = HTTP_SESSION.post(url,
-                                     timeout=SIRP_REQUEST_TIMEOUT,
-                                     headers=HEADERS,
-                                     json=data)
-        response.raise_for_status()
-        response_data = response.json()
-        if response_data.get("success"):
-            rows = response_data.get("data").get("rows")
-            if rows:
-                fields = Worksheet.get_fields(worksheet_id)
-                rows_new = []
-                for row in rows:
-                    data_new = WorksheetRow._format_row(row, fields, include_system_fields)
-                    rows_new.append(data_new)
-                return rows_new
-            else:
-                return rows
-        else:
-            raise Exception(f"error_code: {response_data.get('error_code')} error_msg: {response_data.get('error_msg')}")
+        all_rows = []
+        page_index = 1
+        page_size = 1000
+        fields_config = Worksheet.get_fields(worksheet_id)
+        WorksheetRow.translate_filter_names_to_ids(filter, fields_config)
+        while True:
+            data = {
+                "filter": filter,
+                "sorts": [
+                    {
+                        "field": "utime",
+                        "isAsc": False
+                    }
+                ],
+                "includeTotalCount": True,
+                "pageSize": page_size,
+                "pageIndex": page_index
+            }
+
+            response = HTTP_SESSION.post(url,
+                                         timeout=SIRP_REQUEST_TIMEOUT,
+                                         headers=HEADERS,
+                                         json=data)
+            response.raise_for_status()
+            response_data = response.json()
+
+            if not response_data.get("success"):
+                raise Exception(f"error_code: {response_data.get('error_code')} error_msg: {response_data.get('error_msg')}")
+
+            result_data = response_data.get("data")
+            rows = result_data.get("rows")
+            total_count = result_data.get("total", 0)
+
+            if not rows:
+                break
+
+            for row in rows:
+                formatted_row = WorksheetRow._format_row(row, fields_config, include_system_fields)
+                all_rows.append(formatted_row)
+
+            if len(all_rows) >= total_count:
+                break
+
+            page_index += 1
+
+        return all_rows
 
     @staticmethod
     def create(worksheet_id: str, fields: list, trigger_workflow: bool = False):
@@ -225,7 +258,6 @@ class WorksheetRow(object):
         try:
             response = HTTP_SESSION.post(url,
                                          timeout=SIRP_REQUEST_TIMEOUT,
-                                         headers=HEADERS,
                                          json=data)
             response.raise_for_status()
 
@@ -251,7 +283,6 @@ class WorksheetRow(object):
         }
         response = HTTP_SESSION.patch(url,
                                       timeout=SIRP_REQUEST_TIMEOUT,
-                                      headers=HEADERS,
                                       json=data)
         response.raise_for_status()
 
@@ -273,7 +304,6 @@ class WorksheetRow(object):
 
         response = HTTP_SESSION.delete(url,
                                        timeout=SIRP_REQUEST_TIMEOUT,
-                                       headers=HEADERS,
                                        json=data)
         response.raise_for_status()
 
@@ -300,7 +330,6 @@ class WorksheetRow(object):
 
         response = HTTP_SESSION.get(url,
                                     timeout=SIRP_REQUEST_TIMEOUT,
-                                    headers=HEADERS,
                                     params=params)
         response.raise_for_status()
 
@@ -335,8 +364,7 @@ class OptionSet(object):
         url = f"{SIRP_URL}/api/v3/app/optionsets"
 
         response = HTTP_SESSION.get(url,
-                                    timeout=SIRP_REQUEST_TIMEOUT,
-                                    headers=HEADERS)
+                                    timeout=SIRP_REQUEST_TIMEOUT)
         response.raise_for_status()
 
         response_data = response.json()
