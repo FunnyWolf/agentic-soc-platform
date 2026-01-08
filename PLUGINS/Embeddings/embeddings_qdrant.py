@@ -5,6 +5,7 @@ import os
 import uuid
 
 import httpx
+import torch
 import urllib3
 from langchain_classic.retrievers import ContextualCompressionRetriever
 from langchain_classic.retrievers.document_compressors import CrossEncoderReranker
@@ -16,9 +17,13 @@ from langchain_qdrant import QdrantVectorStore, FastEmbedSparse, RetrievalMode
 from qdrant_client import models
 
 from Lib.configs import BASE_DIR
+from Lib.log import logger
 from PLUGINS.Embeddings.CONFIG import EMBEDDINGS_TYPE, EMBEDDINGS_BASE_URL, EMBEDDINGS_MODEL, EMBEDDINGS_API_KEY, EMBEDDINGS_SIZE, EMBEDDINGS_PROXY
 from PLUGINS.Qdrant.qdrant import Qdrant
 
+# 检查 GPU 是否可用
+device = "cuda" if torch.cuda.is_available() else "cpu"
+logger.info(f"Using device for embeddings and reranker: {device}")
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
@@ -32,7 +37,10 @@ class EmbeddingsAPI(object):
         self.dense_model = self.get_dense_model()
         self.vector_client = Qdrant.get_client()
         self.rerank_model = HuggingFaceCrossEncoder(model_name=os.path.join(BASE_DIR, 'Docker', 'Huggingface', 'bge-reranker-v2-m3'),
-                                                    model_kwargs={'local_files_only': True})
+                                                    model_kwargs={
+                                                        'local_files_only': True,
+                                                        'device': device
+                                                    })
 
     @staticmethod
     def get_dense_model():
@@ -104,13 +112,13 @@ class EmbeddingsAPI(object):
         )
         return vector_store
 
-    def add_document(self, collection_name: str, ids: str, page_content: str, metadata: dict) -> list[str]:
+    def add_document(self, collection_name: str, ids: str, page_content: str, metadata: dict) -> str:
         namespace = uuid.NAMESPACE_DNS
         doc_id = str(uuid.uuid5(namespace, ids))
         vector_store = self.vector_store(collection_name)
         document = Document(id=doc_id, page_content=page_content, metadata=metadata)
         result = vector_store.add_documents([document])
-        return result
+        return result[0]
 
     def delete_document(self, collection_name: str, ids: str) -> bool | None:
         namespace = uuid.NAMESPACE_DNS
@@ -124,7 +132,7 @@ class EmbeddingsAPI(object):
         results = vector_store.similarity_search_with_score(query, k=k)
         return results
 
-    def search_documents_with_rerank(self, collection_name: str, query: str, k: int = 20, top_n: int = 5) -> list[tuple[Document, float]]:
+    def search_documents_with_rerank(self, collection_name: str, query: str, k: int = 20, top_n: int = 5) -> list[Document]:
         """
         手动实现重排序以获取分数
         """
