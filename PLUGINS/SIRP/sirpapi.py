@@ -1,4 +1,3 @@
-import json
 import os
 from enum import StrEnum
 from typing import TypedDict, List, Optional, Union, Dict, Any, NotRequired, Literal
@@ -7,7 +6,6 @@ import requests
 
 from Lib.api import string_to_timestamp, get_current_time_str
 from Lib.log import logger
-from PLUGINS.Embeddings.embeddings_qdrant import embedding_api_singleton_qdrant
 from PLUGINS.SIRP.CONFIG import SIRP_NOTICE_WEBHOOK
 from PLUGINS.SIRP.grouprule import GroupRule
 from PLUGINS.SIRP.nocolyapi import WorksheetRow, OptionSet
@@ -103,8 +101,7 @@ class Artifact(object):
 
 class Alert(object):
     WORKSHEET_ID = "alert"
-    ARTIFACT_FIELD_ID = "artifact"
-    COLLECTION_NAME = "sirp_alert"
+    ARTIFACT_FIELD_ID = "artifacts"
 
     def __init__(self):
         pass
@@ -178,27 +175,6 @@ class Alert(object):
         row_id = WorksheetRow.create(Alert.WORKSHEET_ID, alert_fields)
 
         return row_id
-
-    @staticmethod
-    def embeddings_alert(row_id: str, alert: InputAlert):
-        metadata = {}
-        for key in alert:
-            if isinstance(alert[key], str):
-                metadata[key] = alert[key]
-            else:
-                metadata[key] = json.dumps(alert[key])  # Truncate long text to avoid exceeding the limit
-
-        embedding_api_singleton_qdrant.add_document(
-            collection_name="alert",
-            ids=row_id,
-            page_content=alert["description"],
-            metadata=metadata
-        )
-
-    @staticmethod
-    def search_alerts(query: str, k: int):
-        result = embedding_api_singleton_qdrant.search_documents(collection_name="alert", query=query, k=k)
-        return result
 
 
 class Case(object):

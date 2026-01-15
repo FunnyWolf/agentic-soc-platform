@@ -10,7 +10,7 @@ from PLUGINS.SIRP.nocolyapi import Worksheet
 
 print(time.time())
 if __name__ == "__main__":
-    worksheet_id = "alert"
+    worksheet_id = "ticket"
     fields = Worksheet.get_fields(worksheet_id)
     fields_clean = {}
 
@@ -22,7 +22,7 @@ if __name__ == "__main__":
 
         fields_clean[field_name] = {
             "type": field.get("type"),
-            "alias": field.get("alias"),
+            "name": field.get("alias"),
             "required": field.get("required"),
 
         }
