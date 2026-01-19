@@ -1,9 +1,9 @@
 import json
 from datetime import datetime, timedelta, timezone
 
-from PLUGINS.SIRP.nocolyapi import Group, Condition, Operator
+from PLUGINS.SIRP.nocolymodel import Condition, Group, Operator
 from PLUGINS.SIRP.sirpapi import Enrichment, Artifact, Alert, Knowledge
-from PLUGINS.SIRP.sirptype import CaseModel, AlertModel, ArtifactModel, EnrichmentModel, TicketModel, KnowledgeModel
+from PLUGINS.SIRP.sirpmodel import CaseModel, AlertModel, ArtifactModel, EnrichmentModel, TicketModel, KnowledgeModel
 
 now = datetime.now(timezone.utc)
 past_10m = now - timedelta(minutes=10)

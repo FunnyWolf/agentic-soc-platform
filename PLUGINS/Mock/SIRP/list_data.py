@@ -7,7 +7,7 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ASP.settings")
 django.setup()
 
 from PLUGINS.SIRP.sirpapi import Alert
-from PLUGINS.SIRP.sirptype import AlertModel
+from PLUGINS.SIRP.sirpmodel import AlertModel
 
 print(time.time())
 if __name__ == "__main__":

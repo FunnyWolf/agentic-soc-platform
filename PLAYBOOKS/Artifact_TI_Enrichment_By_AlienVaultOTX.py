@@ -4,7 +4,7 @@ from Lib.api import is_ipaddress
 from Lib.baseplaybook import BasePlaybook
 from PLUGINS.AlienVaultOTX.alienvaultotx import AlienVaultOTX
 from PLUGINS.SIRP.sirpapi import Artifact
-from PLUGINS.SIRP.sirptype import PlaybookJobStatus
+from PLUGINS.SIRP.sirpmodel import PlaybookJobStatus
 
 
 class Playbook(BasePlaybook):

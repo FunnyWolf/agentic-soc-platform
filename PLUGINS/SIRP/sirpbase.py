@@ -3,8 +3,9 @@ from typing import TypeVar, Generic, Type, List, Dict, Union, Any
 
 from pydantic import BaseModel
 
-from PLUGINS.SIRP.nocolyapi import WorksheetRow, Group, Condition, Operator
-from PLUGINS.SIRP.sirptype import BaseSystemModel
+from PLUGINS.SIRP.nocolyapi import WorksheetRow
+from PLUGINS.SIRP.nocolymodel import Condition, Group, Operator
+from PLUGINS.SIRP.sirpmodel import BaseSystemModel
 
 
 def model_to_fields(model_instance: BaseModel) -> List[Dict[str, Any]]:

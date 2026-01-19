@@ -17,7 +17,7 @@ from Lib.llmapi import AgentState
 from Lib.log import logger
 from PLUGINS.SIRP.sirpapi import Message
 from PLUGINS.SIRP.sirpapi import Playbook, Notice
-from PLUGINS.SIRP.sirptype import PlaybookModel, PlaybookJobStatus, MessageModel
+from PLUGINS.SIRP.sirpmodel import PlaybookModel, PlaybookJobStatus, MessageModel
 
 
 class BasePlaybook(BaseAPI):

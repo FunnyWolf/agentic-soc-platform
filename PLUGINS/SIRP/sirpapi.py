@@ -1,12 +1,12 @@
-from typing import List, Dict, Literal, Union
+from typing import List, Dict, Union
 
 import requests
 
 from PLUGINS.SIRP.CONFIG import SIRP_NOTICE_WEBHOOK
-from PLUGINS.SIRP.base_entity import BaseWorksheetEntity
-from PLUGINS.SIRP.nocolyapi import Group, Condition, Operator
-from PLUGINS.SIRP.sirptype import EnrichmentModel, ArtifactModel, AlertModel, CaseModel, TicketModel, MessageModel, PlaybookModel, PlaybookJobStatus, \
-    AccountModel, KnowledgeAction, KnowledgeModel
+from PLUGINS.SIRP.nocolymodel import AccountModel, Condition, Group, Operator
+from PLUGINS.SIRP.sirpbase import BaseWorksheetEntity
+from PLUGINS.SIRP.sirpmodel import EnrichmentModel, ArtifactModel, AlertModel, CaseModel, TicketModel, MessageModel, PlaybookModel, PlaybookJobStatus, \
+    KnowledgeAction, KnowledgeModel
 
 
 class Enrichment(BaseWorksheetEntity[EnrichmentModel]):
@@ -131,7 +131,6 @@ class Playbook(BaseWorksheetEntity[PlaybookModel]):
     def list_pending_playbooks(cls) -> List[PlaybookModel]:
         """获取待处理的playbooks"""
 
-        # pending_option_value = OptionSet.get_option_key_by_name_and_value("playbook__status", PlaybookJobStatus.PENDING)
         filter_model = Group(
             logic="AND",
             children=[
@@ -144,9 +143,6 @@ class Playbook(BaseWorksheetEntity[PlaybookModel]):
         )
 
         return cls.list(filter_model, lazy_load=True)
-
-
-KnowledgeUsing = Literal[0, 1]
 
 
 class Knowledge(BaseWorksheetEntity[KnowledgeModel]):

@@ -18,7 +18,7 @@ from PLUGINS.Embeddings.embeddings_qdrant import embedding_api_singleton_qdrant,
 from PLUGINS.Mem0.CONFIG import USE as MEM_ZERO_USE
 from PLUGINS.Redis.redis_stream_api import RedisStreamAPI
 from PLUGINS.SIRP.sirpapi import Playbook as SIRPPlaybook, Knowledge
-from PLUGINS.SIRP.sirptype import PlaybookJobStatus, KnowledgeAction
+from PLUGINS.SIRP.sirpmodel import PlaybookJobStatus, KnowledgeAction
 
 if MEM_ZERO_USE:
     from PLUGINS.Mem0.mem_zero import mem_zero_singleton

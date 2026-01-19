@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from Lib.baseplaybook import LanggraphPlaybook
 from PLUGINS.LLM.llmapi import LLMAPI
 from PLUGINS.SIRP.sirpapi import Alert
-from PLUGINS.SIRP.sirptype import PlaybookJobStatus
+from PLUGINS.SIRP.sirpmodel import PlaybookJobStatus
 
 
 class AgentState(BaseModel):

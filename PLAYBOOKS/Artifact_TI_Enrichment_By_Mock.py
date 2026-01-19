@@ -3,7 +3,7 @@ import time
 
 from Lib.baseplaybook import BasePlaybook
 from PLUGINS.SIRP.sirpapi import Artifact
-from PLUGINS.SIRP.sirptype import PlaybookJobStatus
+from PLUGINS.SIRP.sirpmodel import PlaybookJobStatus
 
 
 class Playbook(BasePlaybook):

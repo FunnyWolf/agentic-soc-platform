@@ -7,8 +7,8 @@ from Lib.log import logger
 from PLUGINS.Embeddings.CONFIG import EMBEDDINGS_SIZE
 from PLUGINS.Embeddings.embeddings_qdrant import EmbeddingsAPI
 from PLUGINS.LLM.llmapi import LLMAPI
-from PLUGINS.Qdrant.qdrant import Qdrant
 from PLUGINS.Neo4j.CONFIG import NEO4J_URL, NEO4J_PASSWORD, NEO4J_USER
+from PLUGINS.Qdrant.qdrant import Qdrant
 
 
 class MemZero(object):

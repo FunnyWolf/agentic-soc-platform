@@ -11,7 +11,7 @@ from Lib.baseplaybook import LanggraphPlaybook
 from Lib.llmapi import AgentState
 from PLUGINS.LLM.llmapi import LLMAPI
 from PLUGINS.SIRP.sirpapi import Case
-from PLUGINS.SIRP.sirptype import PlaybookJobStatus
+from PLUGINS.SIRP.sirpmodel import PlaybookJobStatus
 
 
 class ConfidenceLevel(str, Enum):
