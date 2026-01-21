@@ -1,12 +1,38 @@
 import json
+import random
+import string
 from datetime import datetime, timedelta, timezone
 
 from PLUGINS.SIRP.sirpapi import Case
 from PLUGINS.SIRP.sirpmodel import CaseModel, AlertModel, ArtifactModel, EnrichmentModel, TicketModel
 
 now = datetime.now(timezone.utc)
-past_10m = now - timedelta(minutes=10)
 past_5m = now - timedelta(minutes=5)
+past_10m = now - timedelta(minutes=10)
+past_15m = now - timedelta(minutes=15)
+past_30m = now - timedelta(minutes=30)
+past_1h = now - timedelta(hours=1)
+past_2h = now - timedelta(hours=2)
+past_3h = now - timedelta(hours=3)
+past_6h = now - timedelta(hours=6)
+past_12h = now - timedelta(hours=12)
+past_24h = now - timedelta(hours=24)
+past_2d = now - timedelta(days=2)
+past_3d = now - timedelta(days=3)
+past_7d = now - timedelta(days=7)
+
+
+def gen_hash(length=64):
+    return ''.join(random.choices(string.hexdigits[:16], k=length))
+
+
+def gen_uuid():
+    return f"{gen_hash(8)}-{gen_hash(4)}-{gen_hash(4)}-{gen_hash(4)}-{gen_hash(12)}"
+
+
+def gen_ip():
+    return f"{random.randint(1, 255)}.{random.randint(0, 255)}.{random.randint(0, 255)}.{random.randint(1, 255)}"
+
 
 # --- Reusable Enrichment Snippets ---
 enrichment_otx_evil_domain = EnrichmentModel(
@@ -42,6 +68,113 @@ enrichment_otx_8888 = EnrichmentModel(
     desc="This domain is associated with the 'Gootkit' malware family.",
     data=json.dumps({"pulse_count": 42, "tags": ["malware", "c2", "gootkit"]})
 )
+
+enrichment_greynoise_scanner = EnrichmentModel(
+    name="GreyNoise Report for 185.220.101.45",
+    type="Threat Intelligence",
+    provider="GreyNoise",
+    value="185.220.101.45",
+    src_url="https://www.greynoise.io/viz/ip/185.220.101.45",
+    desc="Known mass-scanner. Classification: malicious. Last seen scanning 2 hours ago.",
+    data=json.dumps({"classification": "malicious", "tags": ["SSH Bruteforce", "Mass Scanner"], "last_seen": "2h"})
+)
+
+enrichment_abuseipdb_ransomware = EnrichmentModel(
+    name="AbuseIPDB Report for 103.95.196.78",
+    type="Threat Intelligence",
+    provider="AbuseIPDB",
+    value="103.95.196.78",
+    src_url="https://www.abuseipdb.com/check/103.95.196.78",
+    desc="Abuse confidence score: 98%. Associated with ransomware C2 infrastructure.",
+    data=json.dumps({"confidence_score": 98, "reports": 156, "categories": ["ransomware", "c2"]})
+)
+
+enrichment_urlhaus_malware = EnrichmentModel(
+    name="URLhaus Report for malicious payload",
+    type="Threat Intelligence",
+    provider="URLhaus",
+    value="http://malicious-payload-server.ru/payload.exe",
+    src_url="https://urlhaus.abuse.ch/url/12345678/",
+    desc="Known malware distribution URL. Payload: Emotet. Status: Online.",
+    data=json.dumps({"threat": "Emotet", "status": "online", "first_seen": "2024-01-15"})
+)
+
+enrichment_shodan_exposed_rdp = EnrichmentModel(
+    name="Shodan Scan for exposed RDP",
+    type="Asset Information",
+    provider="Shodan",
+    value="203.0.113.50",
+    src_url="https://www.shodan.io/host/203.0.113.50",
+    desc="Exposed RDP service on port 3389. No encryption. Vulnerable to BlueKeep (CVE-2019-0708).",
+    data=json.dumps({"ports": [3389], "vulns": ["CVE-2019-0708"], "org": "Example Corp"})
+)
+
+enrichment_whois_domain = EnrichmentModel(
+    name="WHOIS for cryptominer-pool.xyz",
+    type="Domain Intelligence",
+    provider="WHOIS",
+    value="cryptominer-pool.xyz",
+    src_url="https://whois.domaintools.com/cryptominer-pool.xyz",
+    desc="Registered 3 days ago. Registrar: NameCheap. Privacy protection enabled.",
+    data=json.dumps({"created": "2024-01-18", "registrar": "NameCheap", "privacy": True})
+)
+
+enrichment_geoip_russia = EnrichmentModel(
+    name="GeoIP Location for 185.220.101.45",
+    type="Geolocation",
+    provider="MaxMind GeoIP",
+    value="185.220.101.45",
+    desc="Location: Moscow, Russia. ASN: AS12345 (SuspiciousHosting LLC)",
+    data=json.dumps({"country": "RU", "city": "Moscow", "asn": "AS12345", "org": "SuspiciousHosting LLC"})
+)
+
+enrichment_virustotal_cryptominer = EnrichmentModel(
+    name="VirusTotal Report for cryptominer binary",
+    type="Threat Intelligence",
+    provider="VirusTotal",
+    value="e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    src_url="https://www.virustotal.com/gui/file/e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    desc="68/72 vendors flagged this as 'CoinMiner.Generic'. XMRig variant detected.",
+    data=json.dumps({"scan_id": "e3b0c442-1678886400", "positives": 68, "total": 72, "malware_family": "XMRig"})
+)
+
+enrichment_crowdstrike_ioc = EnrichmentModel(
+    name="CrowdStrike Threat Intel for Lazarus Group",
+    type="Threat Intelligence",
+    provider="CrowdStrike",
+    value="Lazarus Group",
+    desc="APT38/Lazarus Group TTPs detected. Known for supply chain attacks and ransomware.",
+    data=json.dumps({"apt_group": "Lazarus", "aka": ["APT38", "Hidden Cobra"], "motivation": "Financial"})
+)
+
+enrichment_okta_user = EnrichmentModel(
+    name="Okta User Profile for compromised account",
+    type="Identity Information",
+    provider="Okta",
+    value="bob.contractor@example.com",
+    desc="Contractor account. Department: IT. Privileged access to AWS console.",
+    data=json.dumps({"department": "IT", "role": "contractor", "privileged": True, "mfa_enabled": False})
+)
+
+enrichment_aws_s3_public = EnrichmentModel(
+    name="AWS S3 Bucket Misconfiguration",
+    type="Cloud Security",
+    provider="AWS Security Hub",
+    value="s3://example-customer-data-prod",
+    desc="Public read access enabled. Contains 45,000 files including PII.",
+    data=json.dumps({"public_access": True, "file_count": 45000, "contains_pii": True})
+)
+
+enrichment_cve_detail = EnrichmentModel(
+    name="CVE-2021-44228 (Log4Shell) Details",
+    type="Vulnerability Intelligence",
+    provider="NVD",
+    value="CVE-2021-44228",
+    src_url="https://nvd.nist.gov/vuln/detail/CVE-2021-44228",
+    desc="CVSS Score: 10.0 (Critical). Remote code execution in Log4j. Actively exploited in the wild.",
+    data=json.dumps({"cvss_score": 10.0, "severity": "CRITICAL", "exploited": True})
+)
+
 ticket_jira = TicketModel(
     status='In Progress',
     type='Jira',
@@ -56,6 +189,22 @@ ticket_servicenow = TicketModel(
     title='CRITICAL: Active Lateral Movement Detected',
     uid='INC001002',
     src_url='https://servicenow.example.com/nav_to.do?uri=incident.do?sys_id=INC001002'
+)
+
+ticket_pagerduty = TicketModel(
+    status='Notified',
+    type='PagerDuty',
+    title='P1: Ransomware Encryption Activity Detected',
+    uid='PD-INC-789456',
+    src_url='https://example.pagerduty.com/incidents/PD-INC-789456'
+)
+
+ticket_slack = TicketModel(
+    status='New',
+    type='Slack',
+    title='Security Alert: Suspicious Cloud Activity',
+    uid='SLACK-2024-001',
+    src_url='https://example.slack.com/archives/C01234/p1674567890123456'
 )
 
 # --- Reusable Artifacts ---
@@ -142,6 +291,118 @@ artifact_google_dns = ArtifactModel(
     role="Related",
     value="8.8.8.8",
     enrichments=[enrichment_otx_8888]
+)
+
+artifact_ransomware_ip = ArtifactModel(
+    name="103.95.196.78",
+    type="IP Address",
+    role="Actor",
+    value="103.95.196.78",
+    reputation_provider="AbuseIPDB",
+    reputation_score="Malicious",
+    enrichments=[enrichment_abuseipdb_ransomware, enrichment_geoip_russia]
+)
+
+artifact_ransom_note = ArtifactModel(
+    name="README_DECRYPT.txt",
+    type="File Name",
+    role="Related",
+    value="README_DECRYPT.txt"
+)
+
+artifact_encrypted_file = ArtifactModel(
+    name="financial_report_Q4.xlsx.locked",
+    type="File Name",
+    role="Related",
+    value="C:\\Users\\john.smith\\Documents\\financial_report_Q4.xlsx.locked"
+)
+
+artifact_ransomware_hash = ArtifactModel(
+    name="Ransomware Binary Hash",
+    type="Hash",
+    role="Actor",
+    value="5f4dcc3b5aa765d61d8327deb882cf99b4c2d6e6e6b4e6f6e6e6e6e6e6e6e6e6",
+    reputation_provider="VirusTotal",
+    reputation_score="Malicious",
+    enrichments=[enrichment_virustotal]
+)
+
+artifact_cryptominer_binary = ArtifactModel(
+    name="svchost.exe",
+    type="File Name",
+    role="Actor",
+    value="C:\\Windows\\Temp\\svchost.exe",
+    enrichments=[enrichment_virustotal_cryptominer]
+)
+
+artifact_cryptominer_hash = ArtifactModel(
+    name="Cryptominer Hash",
+    type="Hash",
+    role="Actor",
+    value="e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    reputation_provider="VirusTotal",
+    reputation_score="Malicious",
+    enrichments=[enrichment_virustotal_cryptominer]
+)
+
+artifact_mining_pool = ArtifactModel(
+    name="cryptominer-pool.xyz",
+    type="Hostname",
+    role="Related",
+    value="cryptominer-pool.xyz",
+    reputation_score="Malicious",
+    enrichments=[enrichment_whois_domain]
+)
+
+artifact_insider_user = ArtifactModel(
+    name="bob.contractor@example.com",
+    type="Email Address",
+    role="Actor",
+    value="bob.contractor@example.com",
+    owner="IT Department",
+    enrichments=[enrichment_okta_user]
+)
+
+artifact_s3_bucket = ArtifactModel(
+    name="s3://example-customer-data-prod",
+    type="URL String",
+    role="Target",
+    value="s3://example-customer-data-prod",
+    enrichments=[enrichment_aws_s3_public]
+)
+
+artifact_exfil_destination = ArtifactModel(
+    name="185.220.101.45",
+    type="IP Address",
+    role="Related",
+    value="185.220.101.45",
+    reputation_provider="GreyNoise",
+    reputation_score="Malicious",
+    enrichments=[enrichment_greynoise_scanner, enrichment_geoip_russia]
+)
+
+artifact_log4j_vuln = ArtifactModel(
+    name="CVE-2021-44228",
+    type="CVE",
+    role="Related",
+    value="CVE-2021-44228",
+    enrichments=[enrichment_cve_detail]
+)
+
+artifact_exploit_url = ArtifactModel(
+    name="http://malicious-payload-server.ru/payload.exe",
+    type="URL String",
+    role="Related",
+    value="http://malicious-payload-server.ru/payload.exe",
+    reputation_score="Malicious",
+    enrichments=[enrichment_urlhaus_malware]
+)
+
+artifact_vulnerable_server = ArtifactModel(
+    name="WEB-SERVER-01",
+    type="Hostname",
+    role="Target",
+    value="WEB-SERVER-01"
 )
 
 # --- Reusable Alerts ---

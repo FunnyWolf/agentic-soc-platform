@@ -117,7 +117,8 @@ class EnrichmentModel(BaseSystemModel):
 class TicketModel(BaseSystemModel):
     status: Optional[Literal['Unknown', 'New', 'In Progress', 'Notified', 'On Hold', 'Resolved', 'Closed', 'Canceled', 'Reopened', 'Other', None]] = Field(
         default=None, description="外部工单系统中的状态")
-    type: Optional[Literal['Other', 'Jira', 'ServiceNow', None]] = Field(default=None, description="外部工单系统的类型")
+    type: Optional[Literal['Other', 'Jira', 'ServiceNow', "PagerDuty", "Slack", None]] = Field(default=None, description="外部工单系统的类型",
+                                                                                               json_schema_extra={"type": 2})
     title: Optional[str] = Field(default="", description="工单的标题")
     uid: Optional[str] = Field(default="", description="工单在外部系统中的唯一ID")
     src_url: Optional[str] = Field(default="", description="访问该工单的URL")
