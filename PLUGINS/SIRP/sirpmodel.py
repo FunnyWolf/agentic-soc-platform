@@ -108,7 +108,6 @@ class EnrichmentModel(BaseSystemModel):
     name: Optional[str] = Field(default="", description="富化信息的名称或标题")
     type: Optional[str] = Field(default="Other", description="富化信息的类型", json_schema_extra={"type": 2})
     provider: Optional[str] = Field(default="Other", description="富化信息的提供方，例如威胁情报厂商", json_schema_extra={"type": 2})
-    created_time: Optional[Union[datetime, str]] = Field(default=None, description="富化信息创建的时间")
     value: Optional[str] = Field(default="", description="富化信息的具体值")
     src_url: Optional[str] = Field(default="", description="富化信息的来源URL，方便溯源")
     desc: Optional[str] = Field(default="", description="对富化信息的简要描述")
@@ -159,7 +158,7 @@ class AlertModel(BaseSystemModel):
     confidence: Optional[Literal["Unknown", "Low", "Medium", "High", "Other", None]] = Field(default=None,
                                                                                              description="告警的置信度，表示该告警为真阳性的可能性")
     uid: Optional[str] = Field(default="", description="告警的唯一标识符")
-    labels: Optional[List[str]] = Field(default=[], description="为告警打上的标签")
+    labels: Optional[List[str]] = Field(default=[], description="为告警打上的标签", json_schema_extra={"type": 2})
     desc: Optional[str] = Field(default="", description="对告警的详细描述")
 
     created_time: Optional[Union[datetime, str]] = Field(default=None, description="告警在SIRP平台中创建的时间")
@@ -176,7 +175,6 @@ class AlertModel(BaseSystemModel):
     source_uid: Optional[str] = Field(default="", description="告警在源产品中的唯一ID")
     data_sources: Optional[List[str]] = Field(default=[], description="告警的数据来源，如 'EDR', 'Firewall' 等")
 
-    analytic: Optional[Any] = Field(default="", description="分析引擎的详细信息")
     analytic_name: Optional[str] = Field(default="", description="分析引擎的名称")
     analytic_type: Optional[Literal[
         "Unknown", "Rule", "Behavioral", "Statistical", "Learning (ML/DL)", "Fingerprinting", "Tagging", "Keyword Match", "Regular Expressions", "Exact Data Match", "Partial Data Match", "Indexed Data Match", "Other", None]] = Field(
@@ -191,9 +189,9 @@ class AlertModel(BaseSystemModel):
 
     product_category: Optional[Literal["DLP", "Email", "OT", "Proxy", "UEBA", "TI", "IAM", "EDR", "NDR", "Cloud", "Other", None]] = Field(default=None,
                                                                                                                                           description="产生告警的安全产品类别")
-    product_vendor: Optional[str] = Field(default=None, description="安全产品的厂商")
-    product_name: Optional[str] = Field(default=None, description="安全产品的名称")
-    product_feature: Optional[str] = Field(default=None, description="产生告警的产品具体功能模块")
+    product_vendor: Optional[str] = Field(default=None, description="安全产品的厂商", json_schema_extra={"type": 2})
+    product_name: Optional[str] = Field(default=None, description="安全产品的名称", json_schema_extra={"type": 2})
+    product_feature: Optional[str] = Field(default=None, description="产生告警的产品具体功能模块", json_schema_extra={"type": 2})
 
     policy_name: Optional[str] = Field(default="", description="触发告警的策略名称")
     policy_type: Optional[Literal["Identity Policy", "Resource Policy", "Service Control Policy", "Other", None]] = Field(default=None,
@@ -223,8 +221,8 @@ class AlertModel(BaseSystemModel):
     case: Optional[List[Union[CaseModel, str]]] = Field(default=None, description="此告警关联到的安全事件（Case）(只保留rowid,避免循环引用)")
 
     # 关联表
-    artifacts: Optional[List[Union[ArtifactModel, str]]] = Field(default=[], description="从告警中提取出的实体（Artifact）列表")
-    enrichments: Optional[List[Union[EnrichmentModel, str]]] = Field(default=[], description="对整个告警进行的富化结果")
+    artifacts: Optional[List[Union[ArtifactModel, str]]] = Field(default=None, description="从告警中提取出的实体（Artifact）列表")
+    enrichments: Optional[List[Union[EnrichmentModel, str]]] = Field(default=None, description="对整个告警进行的富化结果")
 
     # playbooks: Optional[Any] = "" # 内部字段
     # playbook: Optional[Literal["Alert Analysis Agent", None]] = None # 内部字段
@@ -243,8 +241,7 @@ class CaseModel(BaseSystemModel):
 
     category: Optional[Literal["DLP", "Email", "OT", "Proxy", "UEBA", "TI", "IAM", "EDR", "NDR", "Cloud", "Other", None]] = Field(default=None,
                                                                                                                                   description="安全事件的分类，通常与主要告警源的产品类别一致")
-    tags: Optional[List[str]] = Field(default=[], description="为事件打上的一系列标签")
-    created_time: Optional[Union[datetime, str]] = Field(default=None, description="事件在SIRP中创建的时间")
+    tags: Optional[List[str]] = Field(default=[], description="为事件打上的一系列标签", json_schema_extra={"type": 2})
 
     status: Optional[Literal["Unknown", "New", "In Progress", "On Hold", "Resolved", "Closed", "Other", None]] = Field(default=None,
                                                                                                                        description="安全事件的处理状态")
@@ -283,9 +280,9 @@ class CaseModel(BaseSystemModel):
     respond_time: Optional[Any] = Field(default=None, description="事件处置完成时间(closed_time), 用于计算MTTR")
 
     # 关联表
-    tickets: Optional[List[Union[TicketModel, str]]] = Field(default=[], description="与此事件关联的外部工单列表")
-    enrichments: Optional[List[Union[EnrichmentModel, str]]] = Field(default=[], description="对整个事件进行的富化结果")
-    alerts: Optional[List[Union[AlertModel, str]]] = Field(default=[], description="合并到此事件中的告警列表")
+    tickets: Optional[List[Union[TicketModel, str]]] = Field(default=None, description="与此事件关联的外部工单列表")
+    enrichments: Optional[List[Union[EnrichmentModel, str]]] = Field(default=None, description="对整个事件进行的富化结果")
+    alerts: Optional[List[Union[AlertModel, str]]] = Field(default=None, description="合并到此事件中的告警列表")
 
     # playbooks: Optional[Any] = "" # 内部字段
     # playbook: Optional[Literal["Threat Hunting Agent", "L3 SOC Analyst Agent", "L3 SOC Analyst Agent With Tools", None]] = None # 内部字段

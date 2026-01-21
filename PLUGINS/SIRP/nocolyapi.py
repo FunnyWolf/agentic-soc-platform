@@ -136,25 +136,17 @@ class WorksheetRow(object):
         for field in fields:
             field_key = field.get("id")
             field_config = fields_config.get(field_key)
-            if not field_config:
-                for f in fields_config.values():
-                    if f.get("id") == field_key:
-                        field_config = f
-                        break
-            if not field_config:
-                continue
+            if field_config is None:
+                raise Exception(f"field {field_key} not found in fields_config")
 
             field_type = field_config.get("type")
             sub_type = field_config.get("subType")
             value = field.get("value")
 
             if field_type in ['Checkbox']:
-                fields_new.append({
-                    "id": field_key,
-                    "value": 1 if value else 0
-                })
-            else:
-                fields_new.append(field)
+                field["value"] = 1 if value else 0
+
+            fields_new.append(field)
         return fields_new
 
     @staticmethod

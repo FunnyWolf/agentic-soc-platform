@@ -39,7 +39,8 @@ class Artifact(BaseWorksheetEntity[ArtifactModel]):
     @classmethod
     def _prepare_for_save(cls, model: ArtifactModel) -> ArtifactModel:
         """保存前处理关联数据"""
-        model.enrichments = Enrichment.batch_update(model.enrichments)
+        if model.enrichments is not None:
+            model.enrichments = Enrichment.batch_update(model.enrichments)
         return model
 
 
@@ -66,8 +67,12 @@ class Alert(BaseWorksheetEntity[AlertModel]):
     @classmethod
     def _prepare_for_save(cls, model: AlertModel) -> AlertModel:
         """保存前处理关联数据"""
-        model.artifacts = Artifact.batch_update(model.artifacts)
-        model.enrichments = Enrichment.batch_update(model.enrichments)
+        if model.artifacts is not None:
+            model.artifacts = Artifact.batch_update(model.artifacts)
+
+        if model.enrichments is not None:
+            model.enrichments = Enrichment.batch_update(model.enrichments)
+
         return model
 
 
@@ -99,9 +104,14 @@ class Case(BaseWorksheetEntity[CaseModel]):
     @classmethod
     def _prepare_for_save(cls, model: CaseModel) -> CaseModel:
         """保存前处理关联数据"""
-        model.alerts = Alert.batch_update(model.alerts)
-        model.enrichments = Enrichment.batch_update(model.enrichments)
-        model.tickets = Ticket.batch_update(model.tickets)
+        if model.alerts is not None:
+            model.alerts = Alert.batch_update(model.alerts)
+
+        if model.enrichments is not None:
+            model.enrichments = Enrichment.batch_update(model.enrichments)
+
+        if model.tickets is not None:
+            model.tickets = Ticket.batch_update(model.tickets)
         return model
 
     @classmethod
