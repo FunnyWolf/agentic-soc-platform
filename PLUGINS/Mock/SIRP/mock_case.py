@@ -1,26 +1,26 @@
 import json
 from datetime import datetime, timedelta, timezone
+from typing import List
 
-from PLUGINS.SIRP.nocolymodel import Condition, Group, Operator
-from PLUGINS.SIRP.sirpapi import Enrichment, Artifact, Alert, Knowledge
-from PLUGINS.SIRP.sirpmodel import CaseModel, AlertModel, ArtifactModel, EnrichmentModel, TicketModel, KnowledgeModel
+from PLUGINS.SIRP.sirpapi import Case
+from PLUGINS.SIRP.sirpmodel import CaseModel, AlertModel, ArtifactModel, EnrichmentModel, TicketModel
 
 now = datetime.now(timezone.utc)
 past_10m = now - timedelta(minutes=10)
 past_5m = now - timedelta(minutes=5)
 
 
-def generate_test_cases():
+def generate_test_cases() -> List[CaseModel]:
     """
     Generates three distinct and meticulously detailed test cases for security incidents,
     ensuring 100% field coverage for all specified models as per user's strict requirements.
     """
 
     # --- Reusable Enrichment Snippets ---
-    enrichment_otx = EnrichmentModel(
+    enrichment_otx_evil_domain = EnrichmentModel(
         name="OTX Pulse for evil-domain.com",
-        type="Other",
-        provider="Other",
+        type="Threat Intelligence",
+        provider="OTX",
         created_time=now,
         value="evil-domain.com",
         src_url="https://otx.alienvault.com/indicator/domain/evil-domain.com",
@@ -30,15 +30,45 @@ def generate_test_cases():
 
     enrichment_virustotal = EnrichmentModel(
         name="VirusTotal Report for Hash 'a1b2c3d4...'",
-        type="Other",
-        provider="Other",
+        type="Threat Intelligence",
+        provider="VirusTotal",
         created_time=now,
         value="a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
         src_url="https://www.virustotal.com/gui/file/a1b2c3d4e5f6.../detection",
         desc="72/75 vendors flagged this as malicious 'Trojan.Generic'.",
         data=json.dumps({"scan_id": "a1b2c3d4e5f6-1678886400", "positives": 72, "total": 75})
     )
+    enrichment_business = EnrichmentModel(
+        name="Affected Business Unit", type="Asset Information", provider="CMDB",
+        value="Finance Department", desc="Internal CMDB Information: High-value target.",
+        created_time=now,
+        data=json.dumps({"scan_id": "a1b2c3d4e5f6-1678886400", "positives": 72, "total": 75})
+    )
+    enrichment_otx_8888 = EnrichmentModel(
+        name="OTX Pulse for 8.8.8.8",
+        type="TI",
+        provider="OTX",
+        created_time=now,
+        value="8.8.8.8",
+        src_url="https://otx.alienvault.com/indicator/domain/8.8.8.8",
+        desc="This domain is associated with the 'Gootkit' malware family.",
+        data=json.dumps({"pulse_count": 42, "tags": ["malware", "c2", "gootkit"]})
+    )
+    ticket_jira = TicketModel(
+        status='In Progress',
+        type='Jira',
+        title='[Security] Investigate Phishing Campaign SEC-1234',
+        uid='SEC-1234',
+        src_url='https://jira.example.com/browse/SEC-1234'
+    )
 
+    ticket_servicenow = TicketModel(
+        status='Resolved',
+        type='ServiceNow',
+        title='CRITICAL: Active Lateral Movement Detected',
+        uid='INC001002',
+        src_url='https://servicenow.example.com/nav_to.do?uri=incident.do?sys_id=INC001002'
+    )
     # === Case 1: Phishing Email Attack (100% Coverage) ===
     case1_phishing = CaseModel(
         title="Phishing Campaign Detected - 'Urgent Payroll Update'",
@@ -71,27 +101,14 @@ def generate_test_cases():
         detect_time=past_5m.isoformat(),
         acknowledge_time=now.isoformat(),
         respond_time=None,
-        tickets=[
-            TicketModel(
-                status='In Progress',
-                type='Jira',
-                title='[Security] Investigate Phishing Campaign SEC-1234',
-                uid='SEC-1234',
-                src_url='https://jira.example.com/browse/SEC-1234'
-            )
-        ],
-        enrichments=[
-            EnrichmentModel(
-                name="Affected Business Unit", type="Other", provider="Other",
-                value="Finance Department", desc="Internal CMDB Information: High-value target."
-            )
-        ],
+        tickets=[ticket_jira],
+        enrichments=[enrichment_business],
         alerts=[
             AlertModel(
                 title="User Reported Phishing Email via Outlook Plugin",
                 severity="Medium",
                 impact="Low",
-                disposition="Notified",
+                disposition="Allowed",
                 action="Observed",
                 confidence="High",
                 uid="ALERT-USER-001",
@@ -143,7 +160,7 @@ def generate_test_cases():
                         value="no-reply@evil-domain.com",
                         reputation_provider="Internal Blocklist",
                         reputation_score="Malicious",
-                        enrichments=[enrichment_otx]
+                        enrichments=[enrichment_otx_evil_domain]
                     ),
                     ArtifactModel(
                         name="http://fake-payroll-login.com",
@@ -252,16 +269,7 @@ def generate_test_cases():
         detect_time=past_5m.isoformat(),
         acknowledge_time=past_5m.isoformat(),
         respond_time=now.isoformat(),
-        tickets=[
-            TicketModel(
-                status='Resolved',
-                type='ServiceNow',
-                title='CRITICAL: Active Lateral Movement Detected',
-                uid='INC001002',
-                src_url='https://servicenow.example.com/nav_to.do?uri=incident.do?sys_id=INC001002'
-            )
-        ],
-        enrichments=[],
+        tickets=[ticket_servicenow],
         alerts=[
             AlertModel(
                 title="Suspicious Service Installation (PSEXESVC) on WS-FINANCE-05",
@@ -324,7 +332,6 @@ def generate_test_cases():
                         type="Hostname",
                         role="Actor",
                         value="DC01",
-                        description="Source of lateral movement."
                     )
                 ]
             ),
@@ -389,7 +396,6 @@ def generate_test_cases():
                         type="Process Name",
                         role="Actor",
                         value="mimikatz.exe",
-                        description="Anomalous process accessing LSASS."
                     )
                 ]
             )
@@ -475,7 +481,7 @@ def generate_test_cases():
                 raw_data=json.dumps({"query_count": 245, "domain": "c2.bad-actor-infra.net"}),
                 summary_ai="High volume of DNS TXT queries suggests a DNS tunnel.",
                 case=None,
-                enrichments=[enrichment_otx],
+                enrichments=[enrichment_otx_evil_domain],
                 artifacts=[
                     ArtifactModel(
                         name="10.1.1.5",
@@ -497,7 +503,7 @@ def generate_test_cases():
                 title="Firewall Detected Unusually Long DNS Query",
                 severity="Low",
                 impact="Low",
-                action="Logged",
+                action="Denied",
                 disposition="Allowed",
                 confidence="Low",
                 uid="ALERT-FW-905",
@@ -540,7 +546,7 @@ def generate_test_cases():
                 raw_data=json.dumps({"qname": "verylonglabelthatmightbeencodeddata.c2.bad-actor-infra.net"}),
                 summary_ai="An unusually long DNS query was detected by the firewall.",
                 case=None,
-                enrichments=[],
+                enrichments=[enrichment_otx_evil_domain, enrichment_virustotal],
                 artifacts=[
                     ArtifactModel(
                         name="UDP-53",
@@ -553,98 +559,14 @@ def generate_test_cases():
                         type="IP Address",
                         role="Related",
                         value="8.8.8.8",
-                        description="Public DNS Resolver"
+                        enrichments=[enrichment_otx_8888]
                     )
                 ]
             )
         ]
     )
 
-    return case1_phishing, case2_lateral_movement, case3_dns_tunnel
-
-
-def test_generate_cases():
-    """
-    Prints the generated test cases to the console in JSON format.
-    """
-    test_cases = generate_test_cases()
-    for i, case in enumerate(test_cases, 1):
-        print(f"--- Test Case {i}: {case.title} ---")
-        print(case.model_dump_json(indent=2))
-        print("\n\n")
-
-
-def test_enrichment():
-    enrichment_to_convert = EnrichmentModel(
-        name="OTX Pulse for evil-domain.com",
-        type="Other",
-        provider="Other",
-        created_time=now,
-        value="evil-domain.com",
-        src_url="https://otx.alienvault.com/indicator/domain/evil-domain.com",
-        desc="This domain is associated with the 'Gootkit' malware family.",
-        data=json.dumps({"pulse_count": 42, "tags": ["malware", "c2", "gootkit"]})
-    )
-    #
-    # rowid = Enrichment.create(enrichment_to_convert)
-    # enrichment_to_convert.rowid = rowid
-    # Enrichment.get(rowid="761bf560-15d9-4137-8a18-62e243cb1ee9")
-
-    filter_model = Group(
-        logic="AND",
-        children=[
-            Condition(
-                field="type",
-                operator=Operator.IN,
-                value=["Other"]
-            )
-        ]
-    )
-
-    Enrichment.list(filter_model)
-
-
-def test_alert():
-    alert = Alert.get("ae83212e-5064-42dd-9e3f-f95b0aeded2d")
-
-    artifact = Artifact.get("0e4527f9-a0b9-4d71-a805-95a7d8d3267e")
-
-    artifact_model = ArtifactModel(
-        rowid="0e4527f9-a0b9-4d71-a805-95a7d8d3267e",
-        name="http://fake-payroll-login.com1",
-        type="URL String",
-        role="Related",
-        owner="admin",
-        value="http://fake-payroll-login.com",
-        reputation_provider="OTX",
-        reputation_score="Suspicious/Risky",
-        enrichments=[
-            EnrichmentModel(
-                rowid="761bf560-15d9-4137-8a18-62e243cb1ee9",
-                name="OTX Pulse for evil-domain.com update",
-                type="TI",
-                provider="OTX",
-                created_time=now,
-                value="evil-domain.com",
-                src_url="https://otx.alienvault.com/indicator/domain/evil-domain.com",
-                desc="This domain is associated with the 'Gootkit' malware family.",
-                data=json.dumps({"pulse_count": 42, "tags": ["malware", "c2", "gootkit"]})
-            ),
-            EnrichmentModel(
-                name="OTX Pulse for fake-payroll-login.com",
-                type="Other",
-                provider="Other",
-                created_time=now,
-                value="fake-payroll-login.com",
-                src_url="https://otx.alienvault.com/indicator/domain/fake-payroll-login.com",
-                desc="This domain is associated with the 'Gootkit' malware family.",
-                data=json.dumps({"pulse_count": 42, "tags": ["malware", "c2", "gootkit"]})
-            )
-
-        ]
-    )
-    rowid = Artifact.update_or_create(artifact_model)
-    print(rowid)
+    return [case1_phishing, case2_lateral_movement, case3_dns_tunnel]
 
 
 if __name__ == "__main__":
@@ -653,10 +575,6 @@ if __name__ == "__main__":
 
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ASP.settings")
     django.setup()
-    # models = Knowledge.list_undone_actions()
-    model = KnowledgeModel()
-    model.rowid = "32284c3d-e4c1-40b1-b4a3-1bf2daa0b6c5"
-    model.using = False
-    model.source = "Case"
-    model.tags = ["test", "updated"]
-    Knowledge.update_or_create(model)
+    case_list = generate_test_cases()
+    for case in case_list:
+        Case.update_or_create(case)
