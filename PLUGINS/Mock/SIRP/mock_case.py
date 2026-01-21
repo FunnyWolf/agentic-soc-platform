@@ -69,6 +69,251 @@ def generate_test_cases() -> List[CaseModel]:
         uid='INC001002',
         src_url='https://servicenow.example.com/nav_to.do?uri=incident.do?sys_id=INC001002'
     )
+
+    # === Artifacts Definitions ===
+    # --- Case 1 Artifacts ---
+    artifact_case1_email_sender = ArtifactModel(
+        name="no-reply@evil-domain.com",
+        type="Email Address",
+        role="Actor",
+        value="no-reply@evil-domain.com",
+        reputation_provider="Internal Blocklist",
+        reputation_score="Malicious",
+        enrichments=[enrichment_otx_evil_domain]
+    )
+    artifact_case1_phishing_url = ArtifactModel(
+        name="http://fake-payroll-login.com",
+        type="URL String",
+        role="Related",
+        value="http://fake-payroll-login.com",
+        reputation_score="Suspicious/Risky"
+    )
+    artifact_case1_malware_zip = ArtifactModel(
+        name="payroll_update.zip",
+        type="File Name",
+        role="Related",
+        value="payroll_update.zip"
+    )
+    artifact_case1_malware_hash = ArtifactModel(
+        name="a1b2c3d4e5f6...",
+        type="Hash",
+        role="Related",
+        value="a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+        reputation_provider="VirusTotal",
+        reputation_score="Malicious",
+        enrichments=[enrichment_virustotal]
+    )
+    # --- Case 2 Artifacts ---
+    artifact_case2_psexesvc = ArtifactModel(
+        name="PSEXESVC.exe",
+        type="Process Name",
+        role="Related",
+        value="PSEXESVC.exe",
+        owner="System"
+    )
+    artifact_case2_dc01 = ArtifactModel(
+        name="DC01",
+        type="Hostname",
+        role="Actor",
+        value="DC01",
+    )
+    artifact_case2_lsass = ArtifactModel(
+        name="lsass.exe",
+        type="Process Name",
+        role="Target",
+        value="lsass.exe",
+        owner="System"
+    )
+    artifact_case2_mimikatz = ArtifactModel(
+        name="mimikatz.exe",
+        type="Process Name",
+        role="Actor",
+        value="mimikatz.exe",
+    )
+    # --- Case 3 Artifacts ---
+    artifact_case3_workstation_ip = ArtifactModel(
+        name="10.1.1.5",
+        type="IP Address",
+        role="Actor",
+        value="10.1.1.5",
+        owner="Workstation-Pool-DHCP"
+    )
+    artifact_case3_c2_domain = ArtifactModel(
+        name="c2.bad-actor-infra.net",
+        type="Hostname",
+        role="Related",
+        value="c2.bad-actor-infra.net",
+        reputation_score="Suspicious/Risky"
+    )
+    artifact_case3_udp_port = ArtifactModel(
+        name="UDP-53",
+        type="Port",
+        role="Related",
+        value="53",
+    )
+    artifact_case3_dns_server_ip = ArtifactModel(
+        name="8.8.8.8",
+        type="IP Address",
+        role="Related",
+        value="8.8.8.8",
+        enrichments=[enrichment_otx_8888]
+    )
+
+    # === Alerts Definitions ===
+    # --- Case 1 Alerts ---
+    alert_case1_user_report = AlertModel(
+        title="User Reported Phishing Email via Outlook Plugin",
+        severity="Medium", impact="Low", disposition="Allowed", action="Observed", confidence="High",
+        uid="ALERT-USER-001", labels=["user-reported", "phishing"],
+        desc="User 'john.doe' reported a suspicious email with subject 'Urgent Payroll Update'.",
+        created_time=past_5m, modified_time=now, first_seen_time=past_10m, last_seen_time=past_10m,
+        rule_id="USER-REPORT-01", rule_name="User Reported Phishing", correlation_uid="CORR-PHISH-XYZ-123",
+        count=1, src_url="https://exchange.example.com/messages/msg-id-12345", source_uid="MSG-ID-12345",
+        data_sources=["MS Exchange", "Outlook Plugin"], analytic=json.dumps({"plugin_version": "1.2.3"}),
+        analytic_name="Phishing Report Plugin", analytic_type="Tagging", analytic_state="Active",
+        analytic_desc="Identifies emails reported by users.",
+        tactic="Reconnaissance", technique="T1598.003", sub_technique="",
+        mitigation="User Training, Email Filtering", product_category="Email", product_vendor="Microsoft",
+        product_name="Outlook", product_feature="Phishing Report Add-in", policy_name="",
+        policy_type=None, policy_desc="", risk_level="Medium",
+        risk_details="Potential for credential theft.", status="New", status_detail="Awaiting analyst review.",
+        remediation="", comment="Initial report from user.",
+        unmapped=json.dumps({"x-original-ip": "123.123.123.123"}),
+        raw_data=json.dumps(
+            {"subject": "Urgent Payroll Update", "from": "no-reply@evil-domain.com", "to": "john.doe@example.com"}),
+        summary_ai="A user reported a suspicious email with urgent language regarding payroll.",
+        case=None, enrichments=[],
+        artifacts=[artifact_case1_email_sender, artifact_case1_phishing_url]
+    )
+    alert_case1_malware_blocked = AlertModel(
+        title="Malicious Attachment Blocked by Email Gateway",
+        severity="High", impact="Medium", disposition="Blocked", action="Denied", confidence="High",
+        uid="ALERT-GW-002", labels=["malware", "email-gateway", "trojan"],
+        desc="Email Gateway blocked an attachment 'payroll_update.zip' containing known malware 'Trojan.Generic'.",
+        created_time=past_5m, modified_time=now, first_seen_time=past_10m, last_seen_time=past_10m,
+        rule_id="MAL-ATTACH-101", rule_name="BlockKnownMalwareAttachment.VirusTotal",
+        correlation_uid="CORR-PHISH-XYZ-123", count=5,
+        src_url="https://gateway.example.com/logs/log-id-abcdef", source_uid="log-id-abcdef",
+        data_sources=["Email Gateway", "VirusTotal API"], analytic=json.dumps({"engine": "sig-matcher-v3"}),
+        analytic_name="Gateway Malware Scanner", analytic_type="Rule", analytic_state="Active",
+        analytic_desc="Blocks attachments with hashes matching high-confidence threat feeds.",
+        tactic="Execution", technique="T1204.002", sub_technique="",
+        mitigation="Email Attachment Sandboxing, Threat Intelligence Feed Integration",
+        product_category="Email", product_vendor="SecureMail Inc.", product_name="SecureMail Gateway",
+        product_feature="AV-Scan-Module", policy_name="Inbound-Malware-Policy", policy_type=None,
+        policy_desc="Blocks all inbound attachments with a VT score > 50.",
+        risk_level="High", risk_details="Malware could lead to endpoint compromise.",
+        status="Resolved", status_detail="File was quarantined successfully.",
+        remediation="File quarantined. No user impact.",
+        comment="Blocked 5 attempts to deliver this file to different users.",
+        unmapped="", raw_data=json.dumps({"attachment_hash": "a1b2c3d4e5f6...", "recipient_count": 5}),
+        summary_ai="The email gateway blocked a malicious attachment identified by its hash.",
+        case=None, enrichments=[enrichment_virustotal],
+        artifacts=[artifact_case1_malware_zip, artifact_case1_malware_hash]
+    )
+    # --- Case 2 Alerts ---
+    alert_case2_psexec = AlertModel(
+        title="Suspicious Service Installation (PSEXESVC) on WS-FINANCE-05",
+        severity="High", impact="High", disposition="Detected", action="Observed", confidence="High",
+        uid="ALERT-EDR-101", labels=["psexec", "lateral-movement"],
+        desc="PsExec service (PSEXESVC.exe) was created and started on WS-FINANCE-05, originating from DC01.",
+        created_time=past_5m, modified_time=now, first_seen_time=past_5m, last_seen_time=past_5m,
+        rule_id="EDR-RULE-LM-001", rule_name="PsExec Service Execution", correlation_uid="CORR-LAT-MOV-456",
+        count=1, src_url="https://edr.example.com/alerts/ALERT-EDR-101",
+        source_uid="be7a2f3a-8b1d-4a8a-9b1a-5d1e3e0f1e1a",
+        data_sources=["EDR", "Windows Security Events"], analytic=json.dumps({"SysmonEventID": 7}),
+        analytic_name="Sysmon Behavioral Detection", analytic_type="Behavioral", analytic_state="Active",
+        analytic_desc="Detects the creation of the PsExec service executable.",
+        tactic="Lateral Movement", technique="T1569.002", sub_technique="",
+        mitigation="Restrict Service Creation, Network Segmentation", product_category="EDR",
+        product_vendor="CrowdStrike", product_name="Falcon",
+        product_feature="Behavioral-Detection-Engine", policy_name="Default Workstation Policy",
+        policy_type="Identity Policy", policy_desc="Monitors for suspicious service installations.",
+        risk_level="High", risk_details="Indicates an attacker is moving through the network.",
+        status="Archived", status_detail="Alert has been correlated into Case-2.",
+        remediation="Host was isolated by SOAR playbook.", comment="Clear indicator of lateral movement.",
+        unmapped="", raw_data=json.dumps({"event_id": 4697, "service_name": "PSEXESVC", "source_host": "DC01"}),
+        summary_ai="PsExec was used to move from DC01 to a finance workstation.",
+        case=None, enrichments=[],
+        artifacts=[artifact_case2_psexesvc, artifact_case2_dc01]
+    )
+    alert_case2_credential_dump = AlertModel(
+        title="Credential Dumping via LSASS Memory Access on DC01",
+        severity="Critical", impact="Critical", disposition="Alert", action="Observed", confidence="High",
+        uid="ALERT-EDR-100", labels=["credential-dumping", "mimikatz", "lsass"],
+        desc="An untrusted process 'mimikatz.exe' accessed the memory of lsass.exe, indicating credential dumping.",
+        created_time=past_10m, modified_time=now, first_seen_time=past_10m, last_seen_time=past_10m,
+        rule_id="EDR-RULE-CD-005", rule_name="LSASS Memory Access by Untrusted Process",
+        correlation_uid="CORR-LAT-MOV-456", count=1,
+        src_url="https://edr.example.com/alerts/ALERT-EDR-100",
+        source_uid="aa1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d",
+        data_sources=["EDR"], analytic=json.dumps({"target_process": "lsass.exe"}),
+        analytic_name="Credential Access Detection", analytic_type="Behavioral", analytic_state="Active",
+        analytic_desc="Monitors for processes reading memory from LSASS.",
+        tactic="Credential Access", technique="T1003.001", sub_technique="",
+        mitigation="Credential Guard, LSA Protection", product_category="EDR",
+        product_vendor="CrowdStrike", product_name="Falcon",
+        product_feature="Credential-Theft-Protection", policy_name="Domain Controller Policy",
+        policy_type=None, policy_desc="", risk_level="Critical",
+        risk_details="Domain credentials may be compromised.",
+        status="Archived", status_detail="Alert has been correlated into Case-2.",
+        remediation="", comment="This was likely the initial point of credential theft enabling lateral movement.",
+        unmapped="", raw_data=json.dumps({"source_process": "mimikatz.exe", "target_process": "lsass.exe"}),
+        summary_ai="Credential dumping tool Mimikatz was detected on the domain controller.",
+        case=None, enrichments=[],
+        artifacts=[artifact_case2_lsass, artifact_case2_mimikatz]
+    )
+    # --- Case 3 Alerts ---
+    alert_case3_dns_volume = AlertModel(
+        title="Anomalous DNS Query Volume (TXT Records)",
+        severity="Medium", impact="Low", action="Observed", disposition="Logged", confidence="Medium",
+        uid="ALERT-NDR-301", labels=["dns-tunneling", "ndr"],
+        desc="Endpoint 10.1.1.5 (WS-MARKETING-12) made an unusually high number of DNS TXT queries to a single domain, c2.bad-actor-infra.net.",
+        created_time=now, modified_time=now, first_seen_time=past_10m, last_seen_time=now,
+        rule_id="NDR-DNS-007", rule_name="High Volume of DNS TXT Queries to Single Domain",
+        correlation_uid="CORR-DNS-TUN-789", count=245,
+        src_url="https://ndr.example.com/alerts/ALERT-NDR-301", source_uid="ndr-flow-98765",
+        data_sources=["NDR", "DNS Logs"],
+        analytic=json.dumps({"query_type": "TXT", "threshold": 50, "time_window": "5m"}),
+        analytic_name="DNS Exfiltration Detector", analytic_type="Behavioral", analytic_state="Active",
+        analytic_desc="Flags high-frequency TXT/NULL queries.",
+        tactic="Command and Control", technique="T1071.004", sub_technique="",
+        mitigation="DNS Sinkholing, Egress Traffic Filtering", product_category="NDR",
+        product_vendor="Vectra", product_name="Cognito", product_feature="DNS-Analytics",
+        policy_name="", policy_type=None, policy_desc="",
+        risk_level="Medium", risk_details="Potential for covert C2 channel or data exfiltration.",
+        status="New", status_detail="", remediation="", comment="", unmapped="",
+        raw_data=json.dumps({"query_count": 245, "domain": "c2.bad-actor-infra.net"}),
+        summary_ai="High volume of DNS TXT queries suggests a DNS tunnel.",
+        case=None, enrichments=[enrichment_otx_evil_domain],
+        artifacts=[artifact_case3_workstation_ip, artifact_case3_c2_domain]
+    )
+    alert_case3_long_dns_query = AlertModel(
+        title="Firewall Detected Unusually Long DNS Query",
+        severity="Low", impact="Low", action="Denied", disposition="Allowed", confidence="Low",
+        uid="ALERT-FW-905", labels=["dns", "firewall"],
+        desc="A DNS query with an unusually long label (>63 chars) was observed, which can be an indicator of tunneling.",
+        created_time=past_5m, modified_time=now, first_seen_time=past_5m, last_seen_time=past_5m,
+        rule_id="FW-DNS-002", rule_name="Long DNS Label Detected", correlation_uid="CORR-DNS-TUN-789",
+        count=1, src_url="https://fw.example.com/logs/log-id-54321", source_uid="log-id-54321",
+        data_sources=["Firewall"], analytic=json.dumps({"label_length": 85}),
+        analytic_name="Firewall DNS Protocol Anomaly", analytic_type="Rule", analytic_state="Experimental",
+        analytic_desc="Flags DNS queries that violate standard label length.",
+        tactic="Command and Control", technique="T1071.004", sub_technique="",
+        mitigation="Egress DNS Filtering", product_category="Cloud", product_vendor="Palo Alto",
+        product_name="PA-Series Firewall", product_feature="DNS-Security",
+        policy_name="Default-DNS-Allow", policy_type="Service Control Policy",
+        policy_desc="Default policy allowing outbound DNS traffic.",
+        risk_level="Low", risk_details="Suspicious but could be a false positive from non-standard software.",
+        status="New", status_detail="", remediation="",
+        comment="Correlates with the NDR alert, increasing confidence.",
+        unmapped=json.dumps({"dns_flags": "RD"}),
+        raw_data=json.dumps({"qname": "verylonglabelthatmightbeencodeddata.c2.bad-actor-infra.net"}),
+        summary_ai="An unusually long DNS query was detected by the firewall.",
+        case=None, enrichments=[enrichment_otx_evil_domain, enrichment_virustotal],
+        artifacts=[artifact_case3_udp_port, artifact_case3_dns_server_ip]
+    )
+
     # === Case 1: Phishing Email Attack (100% Coverage) ===
     case1_phishing = CaseModel(
         title="Phishing Campaign Detected - 'Urgent Payroll Update'",
@@ -103,141 +348,7 @@ def generate_test_cases() -> List[CaseModel]:
         respond_time=None,
         tickets=[ticket_jira],
         enrichments=[enrichment_business],
-        alerts=[
-            AlertModel(
-                title="User Reported Phishing Email via Outlook Plugin",
-                severity="Medium",
-                impact="Low",
-                disposition="Allowed",
-                action="Observed",
-                confidence="High",
-                uid="ALERT-USER-001",
-                labels=["user-reported", "phishing"],
-                desc="User 'john.doe' reported a suspicious email with subject 'Urgent Payroll Update'.",
-                created_time=past_5m,
-                modified_time=now,
-                first_seen_time=past_10m,
-                last_seen_time=past_10m,
-                rule_id="USER-REPORT-01",
-                rule_name="User Reported Phishing",
-                correlation_uid="CORR-PHISH-XYZ-123",
-                count=1,
-                src_url="https://exchange.example.com/messages/msg-id-12345",
-                source_uid="MSG-ID-12345",
-                data_sources=["MS Exchange", "Outlook Plugin"],
-                analytic=json.dumps({"plugin_version": "1.2.3"}),
-                analytic_name="Phishing Report Plugin",
-                analytic_type="Tagging",
-                analytic_state="Active",
-                analytic_desc="Identifies emails reported by users.",
-                tactic="Reconnaissance",
-                technique="T1598.003",
-                sub_technique="",
-                mitigation="User Training, Email Filtering",
-                product_category="Email",
-                product_vendor="Microsoft",
-                product_name="Outlook",
-                product_feature="Phishing Report Add-in",
-                policy_name="",
-                policy_type=None,
-                policy_desc="",
-                risk_level="Medium",
-                risk_details="Potential for credential theft.",
-                status="New",
-                status_detail="Awaiting analyst review.",
-                remediation="",
-                comment="Initial report from user.",
-                unmapped=json.dumps({"x-original-ip": "123.123.123.123"}),
-                raw_data=json.dumps({"subject": "Urgent Payroll Update", "from": "no-reply@evil-domain.com", "to": "john.doe@example.com"}),
-                summary_ai="A user reported a suspicious email with urgent language regarding payroll.",
-                case=None,
-                enrichments=[],
-                artifacts=[
-                    ArtifactModel(
-                        name="no-reply@evil-domain.com",
-                        type="Email Address",
-                        role="Actor",
-                        value="no-reply@evil-domain.com",
-                        reputation_provider="Internal Blocklist",
-                        reputation_score="Malicious",
-                        enrichments=[enrichment_otx_evil_domain]
-                    ),
-                    ArtifactModel(
-                        name="http://fake-payroll-login.com",
-                        type="URL String",
-                        role="Related",
-                        value="http://fake-payroll-login.com",
-                        reputation_score="Suspicious/Risky"
-                    )
-                ]
-            ),
-            AlertModel(
-                title="Malicious Attachment Blocked by Email Gateway",
-                severity="High",
-                impact="Medium",
-                disposition="Blocked",
-                action="Denied",
-                confidence="High",
-                uid="ALERT-GW-002",
-                labels=["malware", "email-gateway", "trojan"],
-                desc="Email Gateway blocked an attachment 'payroll_update.zip' containing known malware 'Trojan.Generic'.",
-                created_time=past_5m,
-                modified_time=now,
-                first_seen_time=past_10m,
-                last_seen_time=past_10m,
-                rule_id="MAL-ATTACH-101",
-                rule_name="BlockKnownMalwareAttachment.VirusTotal",
-                correlation_uid="CORR-PHISH-XYZ-123",
-                count=5,
-                src_url="https://gateway.example.com/logs/log-id-abcdef",
-                source_uid="log-id-abcdef",
-                data_sources=["Email Gateway", "VirusTotal API"],
-                analytic=json.dumps({"engine": "sig-matcher-v3"}),
-                analytic_name="Gateway Malware Scanner",
-                analytic_type="Rule",
-                analytic_state="Active",
-                analytic_desc="Blocks attachments with hashes matching high-confidence threat feeds.",
-                tactic="Execution",
-                technique="T1204.002",
-                sub_technique="",
-                mitigation="Email Attachment Sandboxing, Threat Intelligence Feed Integration",
-                product_category="Email",
-                product_vendor="SecureMail Inc.",
-                product_name="SecureMail Gateway",
-                product_feature="AV-Scan-Module",
-                policy_name="Inbound-Malware-Policy",
-                policy_type=None,
-                policy_desc="Blocks all inbound attachments with a VT score > 50.",
-                risk_level="High",
-                risk_details="Malware could lead to endpoint compromise.",
-                status="Resolved",
-                status_detail="File was quarantined successfully.",
-                remediation="File quarantined. No user impact.",
-                comment="Blocked 5 attempts to deliver this file to different users.",
-                unmapped="",
-                raw_data=json.dumps({"attachment_hash": "a1b2c3d4e5f6...", "recipient_count": 5}),
-                summary_ai="The email gateway blocked a malicious attachment identified by its hash.",
-                case=None,
-                enrichments=[enrichment_virustotal],
-                artifacts=[
-                    ArtifactModel(
-                        name="payroll_update.zip",
-                        type="File Name",
-                        role="Related",
-                        value="payroll_update.zip"
-                    ),
-                    ArtifactModel(
-                        name="a1b2c3d4e5f6...",
-                        type="Hash",
-                        role="Related",
-                        value="a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
-                        reputation_provider="VirusTotal",
-                        reputation_score="Malicious",
-                        enrichments=[enrichment_virustotal]
-                    )
-                ]
-            )
-        ]
+        alerts=[alert_case1_user_report, alert_case1_malware_blocked]
     )
 
     # === Case 2: Endpoint Lateral Movement (100% Coverage) ===
@@ -270,136 +381,7 @@ def generate_test_cases() -> List[CaseModel]:
         acknowledge_time=past_5m.isoformat(),
         respond_time=now.isoformat(),
         tickets=[ticket_servicenow],
-        alerts=[
-            AlertModel(
-                title="Suspicious Service Installation (PSEXESVC) on WS-FINANCE-05",
-                severity="High",
-                impact="High",
-                disposition="Detected",
-                action="Observed",
-                confidence="High",
-                uid="ALERT-EDR-101",
-                labels=["psexec", "lateral-movement"],
-                desc="PsExec service (PSEXESVC.exe) was created and started on WS-FINANCE-05, originating from DC01.",
-                created_time=past_5m,
-                modified_time=now,
-                first_seen_time=past_5m,
-                last_seen_time=past_5m,
-                rule_id="EDR-RULE-LM-001",
-                rule_name="PsExec Service Execution",
-                correlation_uid="CORR-LAT-MOV-456",
-                count=1,
-                src_url="https://edr.example.com/alerts/ALERT-EDR-101",
-                source_uid="be7a2f3a-8b1d-4a8a-9b1a-5d1e3e0f1e1a",
-                data_sources=["EDR", "Windows Security Events"],
-                analytic=json.dumps({"SysmonEventID": 7}),
-                analytic_name="Sysmon Behavioral Detection",
-                analytic_type="Behavioral",
-                analytic_state="Active",
-                analytic_desc="Detects the creation of the PsExec service executable.",
-                tactic="Lateral Movement",
-                technique="T1569.002",
-                sub_technique="",
-                mitigation="Restrict Service Creation, Network Segmentation",
-                product_category="EDR",
-                product_vendor="CrowdStrike",
-                product_name="Falcon",
-                product_feature="Behavioral-Detection-Engine",
-                policy_name="Default Workstation Policy",
-                policy_type="Identity Policy",
-                policy_desc="Monitors for suspicious service installations.",
-                risk_level="High",
-                risk_details="Indicates an attacker is moving through the network.",
-                status="Archived",
-                status_detail="Alert has been correlated into Case-2.",
-                remediation="Host was isolated by SOAR playbook.",
-                comment="Clear indicator of lateral movement.",
-                unmapped="",
-                raw_data=json.dumps({"event_id": 4697, "service_name": "PSEXESVC", "source_host": "DC01"}),
-                summary_ai="PsExec was used to move from DC01 to a finance workstation.",
-                case=None,
-                enrichments=[],
-                artifacts=[
-                    ArtifactModel(
-                        name="PSEXESVC.exe",
-                        type="Process Name",
-                        role="Related",
-                        value="PSEXESVC.exe",
-                        owner="System"
-                    ),
-                    ArtifactModel(
-                        name="DC01",
-                        type="Hostname",
-                        role="Actor",
-                        value="DC01",
-                    )
-                ]
-            ),
-            AlertModel(
-                title="Credential Dumping via LSASS Memory Access on DC01",
-                severity="Critical",
-                impact="Critical",
-                disposition="Alert",
-                action="Observed",
-                confidence="High",
-                uid="ALERT-EDR-100",
-                labels=["credential-dumping", "mimikatz", "lsass"],
-                desc="An untrusted process 'mimikatz.exe' accessed the memory of lsass.exe, indicating credential dumping.",
-                created_time=past_10m,
-                modified_time=now,
-                first_seen_time=past_10m,
-                last_seen_time=past_10m,
-                rule_id="EDR-RULE-CD-005",
-                rule_name="LSASS Memory Access by Untrusted Process",
-                correlation_uid="CORR-LAT-MOV-456",
-                count=1,
-                src_url="https://edr.example.com/alerts/ALERT-EDR-100",
-                source_uid="aa1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d",
-                data_sources=["EDR"],
-                analytic=json.dumps({"target_process": "lsass.exe"}),
-                analytic_name="Credential Access Detection",
-                analytic_type="Behavioral",
-                analytic_state="Active",
-                analytic_desc="Monitors for processes reading memory from LSASS.",
-                tactic="Credential Access",
-                technique="T1003.001",
-                sub_technique="",
-                mitigation="Credential Guard, LSA Protection",
-                product_category="EDR",
-                product_vendor="CrowdStrike",
-                product_name="Falcon",
-                product_feature="Credential-Theft-Protection",
-                policy_name="Domain Controller Policy",
-                policy_type=None,
-                policy_desc="",
-                risk_level="Critical",
-                risk_details="Domain credentials may be compromised.",
-                status="Archived",
-                status_detail="Alert has been correlated into Case-2.",
-                remediation="",
-                comment="This was likely the initial point of credential theft enabling lateral movement.",
-                unmapped="",
-                raw_data=json.dumps({"source_process": "mimikatz.exe", "target_process": "lsass.exe"}),
-                summary_ai="Credential dumping tool Mimikatz was detected on the domain controller.",
-                case=None,
-                enrichments=[],
-                artifacts=[
-                    ArtifactModel(
-                        name="lsass.exe",
-                        type="Process Name",
-                        role="Target",
-                        value="lsass.exe",
-                        owner="System"
-                    ),
-                    ArtifactModel(
-                        name="mimikatz.exe",
-                        type="Process Name",
-                        role="Actor",
-                        value="mimikatz.exe",
-                    )
-                ]
-            )
-        ]
+        alerts=[alert_case2_psexec, alert_case2_credential_dump]
     )
 
     # === Case 3: DNS Tunneling C2 (100% Coverage) ===
@@ -433,137 +415,7 @@ def generate_test_cases() -> List[CaseModel]:
         respond_time=None,
         tickets=[],
         enrichments=[],
-        alerts=[
-            AlertModel(
-                title="Anomalous DNS Query Volume (TXT Records)",
-                severity="Medium",
-                impact="Low",
-                action="Observed",
-                disposition="Logged",
-                confidence="Medium",
-                uid="ALERT-NDR-301",
-                labels=["dns-tunneling", "ndr"],
-                desc="Endpoint 10.1.1.5 (WS-MARKETING-12) made an unusually high number of DNS TXT queries to a single domain, c2.bad-actor-infra.net.",
-                created_time=now,
-                modified_time=now,
-                first_seen_time=past_10m,
-                last_seen_time=now,
-                rule_id="NDR-DNS-007",
-                rule_name="High Volume of DNS TXT Queries to Single Domain",
-                correlation_uid="CORR-DNS-TUN-789",
-                count=245,
-                src_url="https://ndr.example.com/alerts/ALERT-NDR-301",
-                source_uid="ndr-flow-98765",
-                data_sources=["NDR", "DNS Logs"],
-                analytic=json.dumps({"query_type": "TXT", "threshold": 50, "time_window": "5m"}),
-                analytic_name="DNS Exfiltration Detector",
-                analytic_type="Behavioral",
-                analytic_state="Active",
-                analytic_desc="Flags high-frequency TXT/NULL queries.",
-                tactic="Command and Control",
-                technique="T1071.004",
-                sub_technique="",
-                mitigation="DNS Sinkholing, Egress Traffic Filtering",
-                product_category="NDR",
-                product_vendor="Vectra",
-                product_name="Cognito",
-                product_feature="DNS-Analytics",
-                policy_name="",
-                policy_type=None,
-                policy_desc="",
-                risk_level="Medium",
-                risk_details="Potential for covert C2 channel or data exfiltration.",
-                status="New",
-                status_detail="",
-                remediation="",
-                comment="",
-                unmapped="",
-                raw_data=json.dumps({"query_count": 245, "domain": "c2.bad-actor-infra.net"}),
-                summary_ai="High volume of DNS TXT queries suggests a DNS tunnel.",
-                case=None,
-                enrichments=[enrichment_otx_evil_domain],
-                artifacts=[
-                    ArtifactModel(
-                        name="10.1.1.5",
-                        type="IP Address",
-                        role="Actor",
-                        value="10.1.1.5",
-                        owner="Workstation-Pool-DHCP"
-                    ),
-                    ArtifactModel(
-                        name="c2.bad-actor-infra.net",
-                        type="Hostname",
-                        role="Related",
-                        value="c2.bad-actor-infra.net",
-                        reputation_score="Suspicious/Risky"
-                    )
-                ]
-            ),
-            AlertModel(
-                title="Firewall Detected Unusually Long DNS Query",
-                severity="Low",
-                impact="Low",
-                action="Denied",
-                disposition="Allowed",
-                confidence="Low",
-                uid="ALERT-FW-905",
-                labels=["dns", "firewall"],
-                desc="A DNS query with an unusually long label (>63 chars) was observed, which can be an indicator of tunneling.",
-                created_time=past_5m,
-                modified_time=now,
-                first_seen_time=past_5m,
-                last_seen_time=past_5m,
-                rule_id="FW-DNS-002",
-                rule_name="Long DNS Label Detected",
-                correlation_uid="CORR-DNS-TUN-789",
-                count=1,
-                src_url="https://fw.example.com/logs/log-id-54321",
-                source_uid="log-id-54321",
-                data_sources=["Firewall"],
-                analytic=json.dumps({"label_length": 85}),
-                analytic_name="Firewall DNS Protocol Anomaly",
-                analytic_type="Rule",
-                analytic_state="Experimental",
-                analytic_desc="Flags DNS queries that violate standard label length.",
-                tactic="Command and Control",
-                technique="T1071.004",
-                sub_technique="",
-                mitigation="Egress DNS Filtering",
-                product_category="Cloud",
-                product_vendor="Palo Alto",
-                product_name="PA-Series Firewall",
-                product_feature="DNS-Security",
-                policy_name="Default-DNS-Allow",
-                policy_type="Service Control Policy",
-                policy_desc="Default policy allowing outbound DNS traffic.",
-                risk_level="Low",
-                risk_details="Suspicious but could be a false positive from non-standard software.",
-                status="New",
-                status_detail="",
-                remediation="",
-                comment="Correlates with the NDR alert, increasing confidence.",
-                unmapped=json.dumps({"dns_flags": "RD"}),
-                raw_data=json.dumps({"qname": "verylonglabelthatmightbeencodeddata.c2.bad-actor-infra.net"}),
-                summary_ai="An unusually long DNS query was detected by the firewall.",
-                case=None,
-                enrichments=[enrichment_otx_evil_domain, enrichment_virustotal],
-                artifacts=[
-                    ArtifactModel(
-                        name="UDP-53",
-                        type="Port",
-                        role="Related",
-                        value="53",
-                    ),
-                    ArtifactModel(
-                        name="8.8.8.8",
-                        type="IP Address",
-                        role="Related",
-                        value="8.8.8.8",
-                        enrichments=[enrichment_otx_8888]
-                    )
-                ]
-            )
-        ]
+        alerts=[alert_case3_dns_volume, alert_case3_long_dns_query]
     )
 
     return [case1_phishing, case2_lateral_movement, case3_dns_tunnel]
