@@ -31,11 +31,6 @@ class BasePlaybook(BaseAPI):
         # noinspection PyTypeChecker
         self._playbook_model: PlaybookModel = None
 
-    # 定义内部参数
-    @property
-    def param_rowid(self):
-        return self._playbook_model.rowid
-
     @property
     def param_source_rowid(self):
         return self._playbook_model.source_rowid
@@ -43,10 +38,6 @@ class BasePlaybook(BaseAPI):
     @property
     def param_source_worksheet(self):
         return self._playbook_model.source_worksheet
-
-    @property
-    def param_user(self):
-        return self._playbook_model.user
 
     @property
     def param_user_input(self):
@@ -58,8 +49,8 @@ class BasePlaybook(BaseAPI):
         rowid = Playbook.update_or_create(self._playbook_model)
         return rowid
 
-    def send_notice(self, title: str, body: str):
-        result = Notice.send(self.param_user, title, body)
+    def send_notice(self, title: str, body: str) -> bool:
+        result = Notice.send(self._playbook_model.user, title, body)
         return result
 
 

@@ -16,12 +16,12 @@ class Playbook(BasePlaybook):
     def run(self):
         try:
             artifact = Artifact.get(self.param_source_rowid)
-            self.logger.info(f"Querying threat intelligence for : {artifact}")
 
             # Simulate querying a threat intelligence database. In a real application, this should call an external API or database.
-            time.sleep(5)
-            if artifact.get("type") not in ["ip", "domain", "hash", "vm_ip"]:
-                ti_result = {"error": "Unsupported type. Please use 'ip', 'domain', or 'hash'."}
+            time.sleep(1)
+
+            if artifact.type not in ["IP Address", "Hash"]:
+                self.update_playbook_status(PlaybookJobStatus.FAILED, "Unsupported type. Please use 'IP Address', 'Hash'.")
             else:
                 ti_result = {"malicious": True, "score": 85, "description": "This IP is associated with known malicious activities.", "source": "ThreatIntelDB",
                              "last_seen": "2024-10-01T12:34:56Z"}

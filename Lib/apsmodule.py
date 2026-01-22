@@ -67,7 +67,6 @@ class APSModule(object):
         elif event.code == EVENT_JOB_EXECUTED:  # 执行完成
             flag = self.store_executed_result(event.job_id)
         elif event.code == EVENT_JOB_ERROR:
-            pass
             flag = self.store_error_result(event.job_id, event.exception)
         elif event.code == EVENT_JOB_MISSED:
             pass
