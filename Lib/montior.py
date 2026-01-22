@@ -8,11 +8,11 @@ from typing import Callable
 from apscheduler.schedulers.background import BackgroundScheduler
 from django.contrib.auth.models import User
 
-from Lib.apsmodule import aps_module
 from Lib.baseplaybook import BasePlaybook
 from Lib.engine import Engine
 from Lib.log import logger
 from Lib.playbookloader import PlaybookLoader
+from Lib.threadmodulemanager import thread_module_manager
 from Lib.xcache import Xcache
 from PLUGINS.Embeddings.embeddings_qdrant import embedding_api_singleton_qdrant, SIRP_KNOWLEDGE_COLLECTION
 from PLUGINS.Mem0.CONFIG import USE as MEM_ZERO_USE
@@ -133,7 +133,7 @@ class MainMonitor(object):
                 SIRPPlaybook.update_or_create(model)
                 continue
 
-            job_id = aps_module.putin_post_python_module_queue(playbook_intent)
+            job_id = thread_module_manager.start_task(playbook_intent)
             if not job_id:
                 model.job_status = PlaybookJobStatus.FAILED
                 model.remark = "Failed to create playbook job."

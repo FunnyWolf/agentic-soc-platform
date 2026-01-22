@@ -43,15 +43,24 @@ class BasePlaybook(BaseAPI):
     def param_user_input(self):
         return self._playbook_model.user_input
 
-    def update_playbook_status(self, status: PlaybookJobStatus, remark: str):
-        self._playbook_model.job_status = status
-        self._playbook_model.remark = remark
-        rowid = Playbook.update_or_create(self._playbook_model)
+    def update_playbook_status(self, job_status: PlaybookJobStatus, remark: str):
+        playbook_model_tmp = PlaybookModel()
+        playbook_model_tmp.rowid = self._playbook_model.rowid
+        playbook_model_tmp.job_status = job_status
+        playbook_model_tmp.remark = remark
+
+        rowid = Playbook.update_or_create(playbook_model_tmp)
         return rowid
 
     def send_notice(self, title: str, body: str) -> bool:
         result = Notice.send(self._playbook_model.user, title, body)
         return result
+
+    def execute(self):
+        try:
+            self.run()
+        except Exception as e:
+            self.update_playbook_status(PlaybookJobStatus.FAILED, f"{e}")
 
 
 class LanggraphPlaybook(BasePlaybook):

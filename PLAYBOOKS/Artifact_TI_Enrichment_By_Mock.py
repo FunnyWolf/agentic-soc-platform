@@ -3,7 +3,7 @@ import time
 
 from Lib.baseplaybook import BasePlaybook
 from PLUGINS.SIRP.sirpapi import Artifact
-from PLUGINS.SIRP.sirpmodel import PlaybookJobStatus
+from PLUGINS.SIRP.sirpmodel import PlaybookJobStatus, PlaybookModel
 
 
 class Playbook(BasePlaybook):
@@ -14,29 +14,24 @@ class Playbook(BasePlaybook):
         super().__init__()  # do not delete this code
 
     def run(self):
-        try:
-            artifact = Artifact.get(self.param_source_rowid)
+        artifact = Artifact.get(self.param_source_rowid)
 
-            # Simulate querying a threat intelligence database. In a real application, this should call an external API or database.
-            time.sleep(1)
+        # Simulate querying a threat intelligence database. In a real application, this should call an external API or database.
+        time.sleep(1)
 
-            if artifact.type not in ["IP Address", "Hash"]:
-                self.update_playbook_status(PlaybookJobStatus.FAILED, "Unsupported type. Please use 'IP Address', 'Hash'.")
-            else:
-                ti_result = {"malicious": True, "score": 85, "description": "This IP is associated with known malicious activities.", "source": "ThreatIntelDB",
-                             "last_seen": "2024-10-01T12:34:56Z"}
+        if artifact.type not in ["IP Address", "Hash"]:
+            self.update_playbook_status(PlaybookJobStatus.FAILED, "Unsupported type. Please use 'IP Address', 'Hash'.")
+        else:
+            ti_result = {"malicious": True, "score": 85, "description": "This IP is associated with known malicious activities.", "source": "ThreatIntelDB",
+                         "last_seen": "2024-10-01T12:34:56Z"}
 
-            fields = [{"id": "enrichment", "value": json.dumps(ti_result)}]
-            Artifact.update(self.param_source_rowid, fields)
-            self.update_playbook_status(PlaybookJobStatus.SUCCESS, "Threat intelligence enrichment completed.")
-        except Exception as e:
-            self.logger.exception(e)
-            self.update_playbook_status(PlaybookJobStatus.FAILED, f"Error during TI enrichment: {e}")
+        fields = [{"id": "enrichment", "value": json.dumps(ti_result)}]
+        # Artifact.update(self.param_source_rowid, fields)
+        self.update_playbook_status(PlaybookJobStatus.SUCCESS, "Threat intelligence enrichment completed.")
         return
 
 
 if __name__ == "__main__":
-    params_debug = {'source_rowid': 'a966036e-b29e-4449-be48-23293bacac5d', 'source_worksheet': 'Artifact'}
+    PlaybookModel(source_worksheet='Artifact', source_rowid='a966036e-b29e-4449-be48-23293bacac5d')
     module = Playbook()
-    # module._params = params_debug
     module.run()

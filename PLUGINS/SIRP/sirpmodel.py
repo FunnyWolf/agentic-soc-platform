@@ -13,7 +13,7 @@ class BaseSystemModel(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     rowid: Optional[str] = Field(default=None, description="数据的唯一行ID")
-    ownerid: Optional[AccountModel] = Field(default=None, description="数据的所有者/创建者")
+    ownerid: Optional[Union[List[AccountModel], AccountModel]] = Field(default=None, description="数据的所有者/创建者")
     caid: Optional[AccountModel] = Field(default=None, description="当前处理人/负责人")
     ctime: Optional[Union[datetime, str]] = Field(default=None, description="创建时间")
     utime: Optional[Union[datetime, str]] = Field(default=None, description="最后更新时间")

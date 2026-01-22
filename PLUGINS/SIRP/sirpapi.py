@@ -168,8 +168,8 @@ class Knowledge(BaseWorksheetEntity[KnowledgeModel]):
             children=[
                 Condition(
                     field="action",
-                    operator=Operator.NOT_IN,
-                    value=[KnowledgeAction.DONE]
+                    operator=Operator.IN,
+                    value=[KnowledgeAction.STORE, KnowledgeAction.REMOVE]
                 )
             ]
         )

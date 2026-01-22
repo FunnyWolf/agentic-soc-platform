@@ -60,7 +60,7 @@ class Operator(str, Enum):
     LT = "lt"  # 小于 20
     LE = "le"  # 小于等于 100
     IN = "in"  # 是其中一个 ["value1", "value2"]
-    NOT_IN = "notin"  # 不是任意一个 ["value1", "value2"]
+    # NOT_IN = "notin"  # 不是任意一个 ["value1", "value2"] # TODO BUG
     CONTAINS = "contains"  # 包含 "Ch" 或 ["销售部", "市场部"]
     NOT_CONTAINS = "notcontains"  # 不包含 "Ch" 或 ["销售部", "市场部"]
     CONCURRENT = "concurrent"  # 同时包含 ["<id1>", "<id2>"]
