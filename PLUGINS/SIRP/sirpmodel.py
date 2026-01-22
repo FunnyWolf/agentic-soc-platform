@@ -83,7 +83,7 @@ class PlaybookModel(BaseSystemModel):
     name: Optional[str] = Field(default="", description="执行的Playbook的名称")
 
     user_input: Optional[str] = Field(default="", description="用户对Playbook的初始输入或后续指令")
-    user: Optional[List[AccountModel]] = Field(default=None, description="发起Playbook的用户")
+    user: Optional[Union[List[AccountModel], AccountModel]] = Field(default=None, description="发起Playbook的用户")
 
     # 关联表
     messages: Optional[List[Union[MessageModel, str]]] = Field(default=None, description="Playbook执行过程中的所有消息记录，构成对话历史")

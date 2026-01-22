@@ -145,7 +145,12 @@ class WorksheetRow(object):
 
             if field_type in ['Checkbox']:
                 field["value"] = 1 if value else 0
-
+            if field_type in ['Collaborator']:
+                if value:
+                    if isinstance(value, list):
+                        field["value"] = value[0].get('accountId')
+                    else:
+                        field["value"] = value.get('accountId')
             fields_new.append(field)
         return fields_new
 

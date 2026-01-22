@@ -3,7 +3,7 @@ import time
 
 from Lib.baseplaybook import BasePlaybook
 from PLUGINS.SIRP.sirpapi import Artifact
-from PLUGINS.SIRP.sirpmodel import PlaybookJobStatus, PlaybookModel
+from PLUGINS.SIRP.sirpmodel import PlaybookModel
 
 
 class Playbook(BasePlaybook):
@@ -17,17 +17,18 @@ class Playbook(BasePlaybook):
         artifact = Artifact.get(self.param_source_rowid)
 
         # Simulate querying a threat intelligence database. In a real application, this should call an external API or database.
-        time.sleep(1)
+        time.sleep(5)
 
         if artifact.type not in ["IP Address", "Hash"]:
-            self.update_playbook_status(PlaybookJobStatus.FAILED, "Unsupported type. Please use 'IP Address', 'Hash'.")
+            pass
+            # self.update_playbook_status(PlaybookJobStatus.FAILED, "Unsupported type. Please use 'IP Address', 'Hash'.")
         else:
             ti_result = {"malicious": True, "score": 85, "description": "This IP is associated with known malicious activities.", "source": "ThreatIntelDB",
                          "last_seen": "2024-10-01T12:34:56Z"}
 
         fields = [{"id": "enrichment", "value": json.dumps(ti_result)}]
         # Artifact.update(self.param_source_rowid, fields)
-        self.update_playbook_status(PlaybookJobStatus.SUCCESS, "Threat intelligence enrichment completed.")
+        # self.update_playbook_status(PlaybookJobStatus.SUCCESS, "Threat intelligence enrichment completed.")
         return
 
 
