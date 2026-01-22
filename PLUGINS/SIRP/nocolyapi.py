@@ -176,7 +176,7 @@ class WorksheetRow(object):
             raise Exception(f"error_code: {response_data.get('error_code')} error_msg: {response_data.get('error_msg')}")
 
     @staticmethod
-    def list(worksheet_id: str, filter: dict, include_system_fields=True) -> List:
+    def list(worksheet_id: str, filter: dict, fields=[], include_system_fields=True) -> List:
         url = f"{SIRP_URL}/api/v3/app/worksheets/{worksheet_id}/rows/list"
         all_rows = []
         page_index = 1
@@ -186,6 +186,7 @@ class WorksheetRow(object):
         while True:
             data = {
                 "filter": filter,
+                "fields": fields,
                 "sorts": [
                     {
                         "field": "utime",
@@ -306,7 +307,7 @@ class WorksheetRow(object):
 
     @staticmethod
     def batch_update(worksheet_id: str,
-                     row_ids: List[str],
+                     rowids: List[str],
                      fields: List[Dict],
                      trigger_workflow: bool = True) -> Dict:
 
@@ -316,7 +317,7 @@ class WorksheetRow(object):
         fields = WorksheetRow._format_output_value(fields_config, fields)
 
         data = {
-            "rowIds": row_ids,
+            "rowIds": rowids,
             "fields": fields,
             "triggerWorkflow": trigger_workflow
         }

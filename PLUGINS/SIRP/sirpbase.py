@@ -96,6 +96,28 @@ class BaseWorksheetEntity(ABC, Generic[T]):
         return model_list
 
     @classmethod
+    def update_by_filter(cls,
+                         filter_model: Group,
+                         model: T,
+                         include_system_fields: bool = True) -> dict:
+        filter_dict = filter_model.model_dump()
+        result = WorksheetRow.list(
+            cls.WORKSHEET_ID,
+            filter_dict,
+            fields=["rowid"],
+            include_system_fields=include_system_fields
+        )
+        rowids = []
+        for item in result:
+            rowids.append(item["rowid"])
+
+        model = cls._prepare_for_save(model)
+
+        fields = model_to_fields(model)
+        result = WorksheetRow.batch_update(cls.WORKSHEET_ID, rowids, fields)
+        return result
+
+    @classmethod
     def list_by_rowids(
             cls,
             rowids: Union[List[str], None],
@@ -185,7 +207,7 @@ class BaseWorksheetEntity(ABC, Generic[T]):
         return rowid
 
     @classmethod
-    def batch_update(cls, model_list: List[Union[T, str]]) -> Union[List[str], None]:
+    def batch_update_or_create(cls, model_list: List[Union[T, str]]) -> Union[List[str], None]:
         """批量更新
 
         Args:
