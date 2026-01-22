@@ -1,5 +1,5 @@
 import json
-from typing import Dict, Any, Annotated, List
+from typing import Any, Annotated, List
 
 from langchain_core.messages import HumanMessage
 from langgraph.graph import StateGraph, add_messages
@@ -9,13 +9,13 @@ from pydantic import BaseModel
 from Lib.baseplaybook import LanggraphPlaybook
 from PLUGINS.LLM.llmapi import LLMAPI
 from PLUGINS.SIRP.sirpapi import Alert
-from PLUGINS.SIRP.sirpmodel import PlaybookJobStatus
+from PLUGINS.SIRP.sirpmodel import PlaybookJobStatus, AlertModel
 
 
 class AgentState(BaseModel):
     messages: Annotated[List[Any], add_messages]
 
-    alert: Dict
+    alert: AlertModel
     suggestion: str
 
 
@@ -31,8 +31,7 @@ class Playbook(LanggraphPlaybook):
         def preprocess_node(state: AgentState):
             """Preprocess data"""
             alert = Alert.get(self.param_source_rowid)
-            state.alert = alert
-            return state
+            return {"alert": alert}
 
         # Define node
         def analyze_node(state: AgentState):
