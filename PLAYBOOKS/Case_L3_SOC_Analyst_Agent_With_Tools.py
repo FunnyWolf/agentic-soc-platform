@@ -11,13 +11,13 @@ from AGENTS.agent_knowledge import AgentKnowledge
 from Lib.baseplaybook import LanggraphPlaybook
 from PLUGINS.LLM.llmapi import LLMAPI
 from PLUGINS.SIRP.sirpapi import Case
-from PLUGINS.SIRP.sirpmodel import PlaybookJobStatus, CaseModel
+from PLUGINS.SIRP.sirpmodel import PlaybookJobStatus, CaseModel, PlaybookModel
 from PLUGINS.SIRP.sirpmodel import Severity, Confidence
 
 
 class AgentState(BaseModel):
     messages: Annotated[List[Any], add_messages] = []
-    case: Dict[str, Any] = {}
+    case: CaseModel = None
     loop_count: int = 0
 
 
@@ -79,6 +79,27 @@ class Playbook(LanggraphPlaybook):
         super().__init__()
         self.init()
 
+    def _get_tool_call_by_name(self, message: Any, tool_name: str) -> Dict[str, Any] | None:
+        """获取指定名称的工具调用"""
+        if not hasattr(message, 'tool_calls'):
+            return None
+        for tool_call in message.tool_calls:
+            if tool_call.get("name") == tool_name:
+                return tool_call
+        return None
+
+    def _has_final_tool_call(self, message: Any) -> bool:
+        """检查是否调用了最终工具"""
+        return self._get_tool_call_by_name(message, FINAL_TOOL_NAME) is not None
+
+    def _has_any_tool_call(self, message: Any) -> bool:
+        """检查是否有工具调用"""
+        return hasattr(message, 'tool_calls') and len(message.tool_calls) > 0
+
+    def _is_reached_max_iterations(self, loop_count: int) -> bool:
+        """检查是否达到最大迭代次数"""
+        return loop_count >= MAX_ITERATIONS
+
     def init(self):
         def preprocess_node(state: AgentState):
             case = Case.get(self.param_source_rowid)
@@ -91,13 +112,11 @@ class Playbook(LanggraphPlaybook):
 
             llm_api = LLMAPI()
             llm = llm_api.get_model(tag=["structured_output", "function_calling"])
-
             llm_with_tools = llm.bind_tools([AgentKnowledge.internal_knowledge_base_search, AnalyzeResult])
 
             messages = [system_message] + state.messages
 
-            # 熔断处理
-            if state.loop_count >= MAX_ITERATIONS:
+            if self._is_reached_max_iterations(state.loop_count):
                 messages.append(HumanMessage(
                     content="You have reached the maximum iterations limit. Based on all the information collected above, provide your final analysis using the AnalyzeResult tool immediately."))
 
@@ -107,32 +126,28 @@ class Playbook(LanggraphPlaybook):
         def should_continue(state: AgentState):
             last_message = state.messages[-1]
 
-            # 只要模型调用了最终报告工具，就去 output
-            for tool_call in last_message.tool_calls:
-                if tool_call["name"] == FINAL_TOOL_NAME:
-                    return NODE_OUTPUT
+            if self._has_final_tool_call(last_message):
+                return NODE_OUTPUT
 
-            # 只有在还没到上限且模型想搜索时，才去 tools
-            if state.loop_count < MAX_ITERATIONS:
-                if last_message.tool_calls:
-                    return NODE_TOOLS
+            if self._is_reached_max_iterations(state.loop_count):
+                return NODE_ANALYZE
 
-            # 其他情况（包括达到上限后模型给出的非工具回复），重新回到分析节点由强制指令处理
+            if self._has_any_tool_call(last_message):
+                return NODE_TOOLS
+
             return NODE_ANALYZE
 
         def output_node(state: AgentState):
             last_message = state.messages[-1]
 
-            analyze_call = next(
-                tc for tc in last_message.tool_calls if tc["name"] == FINAL_TOOL_NAME
-            )
+            analyze_call = self._get_tool_call_by_name(last_message, FINAL_TOOL_NAME)
             result_data = analyze_call["args"]
             analyze_result = AnalyzeResult(**result_data)
 
             case_new = CaseModel(rowid=self.param_source_rowid,
                                  severity_ai=analyze_result.new_severity,
                                  confidence_ai=analyze_result.confidence,
-                                 analysis_rationale_ai=analyze_result.attack_stage,
+                                 analysis_rationale_ai=analyze_result.analysis_rationale,
                                  attack_stage_ai=analyze_result.attack_stage,
                                  recommended_actions_ai=analyze_result.recommended_actions,
                                  )
