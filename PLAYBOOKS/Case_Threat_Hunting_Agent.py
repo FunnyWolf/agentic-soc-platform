@@ -17,7 +17,7 @@ from Lib.api import get_current_time_str
 from Lib.baseplaybook import LanggraphPlaybook
 from PLUGINS.LLM.llmapi import LLMAPI
 from PLUGINS.SIRP.sirpapi import Case
-from PLUGINS.SIRP.sirpmodel import PlaybookJobStatus
+from PLUGINS.SIRP.sirpmodel import PlaybookJobStatus, PlaybookModel, CaseModel
 
 MAX_ITERATIONS = 3
 PROMPT_LANG = None
@@ -91,8 +91,7 @@ class AnalystState(BaseModel):
     )
 
     # Input: Context
-    case: Dict = Field(
-        default_factory=dict,
+    case: CaseModel = Field(
         description="External context or additional data provided for this investigation task."
     )
 
@@ -130,7 +129,7 @@ class MainState(BaseModel):
         arbitrary_types_allowed=True
     )
     # Original case/global context
-    case: Dict = Field(
+    case: CaseModel = Field(
         default_factory=dict,
         description="Original case or global context data."
     )
@@ -346,7 +345,7 @@ class Playbook(LanggraphPlaybook):
             self.logger.debug("Intent Node Invoked")
 
             # Get Case data
-            case = Case.get_ai_friendly_data(rowid=self.param_source_rowid)
+            case: CaseModel = Case.get(rowid=self.param_source_rowid)
 
             # User intent
             user_intent = self.param_user_input
@@ -358,7 +357,7 @@ class Playbook(LanggraphPlaybook):
             system_prompt_template = self.load_system_prompt_template("Intent_System", lang=PROMPT_LANG)
             system_message = system_prompt_template.format()
 
-            human_message = self.load_human_prompt_template("Intent_Human", lang=PROMPT_LANG).format(case=case, user_intent=user_intent)
+            human_message = self.load_human_prompt_template("Intent_Human", lang=PROMPT_LANG).format(case=case.model_dump_for_ai(), user_intent=user_intent)
 
             # Construct few-shot examples
             few_shot_examples = [
@@ -520,12 +519,11 @@ class Playbook(LanggraphPlaybook):
             planning_history_str = "\n".join(history_md_list)
 
             # findings
-            total_tool_calls = []
+
             history_md_list = []
             for record in findings:
                 record: Finding
                 history_md_list.append(record.to_markdown())
-                total_tool_calls.extend(record.tool_calls)
 
             findings_str = "\n".join(history_md_list)
 
@@ -552,12 +550,8 @@ class Playbook(LanggraphPlaybook):
             llm = llm_api.get_model(tag=["powerful"])
             response = llm.invoke(messages)
 
-            case_field = [
-                {"id": "threat_hunting_report", "value": response.content},
-                {"id": "threat_hunting_tool_calls", "value": json.dumps(total_tool_calls)},
-            ]
-
-            Case.update(self.param_source_rowid, case_field)
+            case_new = CaseModel(rowid=self.param_source_rowid, threat_hunting_report_ai=response.content)
+            Case.update(case_new)
 
             # update record
             for message in messages:
@@ -610,13 +604,11 @@ if __name__ == "__main__":
 
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ASP.settings")
     django.setup()
-
-    params_debug = {
-        'source_rowid': '47da1d00-c9bf-4b5f-8ab8-8877ec292b98',
-        'source_worksheet': 'case',
-        "user_input": "Has the host in the case been infected",
-        "playbook_rowid": "9fb4a3e1-6ae7-47b2-9b15-95264272dff5"
-    }
+    model = PlaybookModel(source_worksheet='case',
+                          source_rowid='141a4bd0-f3cf-4e0c-91b6-f8d9fff6f653',
+                          user_input="Has the host in the case been infected",
+                          rowid="401ca83c-4579-4e6f-8329-2e61a6c3405a")
     module = Playbook()
-    # module._params = params_debug
+    module._playbook_model = model
+
     module.run()

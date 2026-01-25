@@ -121,6 +121,9 @@ class Playbook(LanggraphPlaybook):
                     content="You have reached the maximum iterations limit. Based on all the information collected above, provide your final analysis using the AnalyzeResult tool immediately."))
 
             response = llm_with_tools.invoke(messages)
+            for message in messages:
+                self.add_message_to_playbook(message, node="analyze_node")
+            self.add_message_to_playbook(response, node="analyze_node")
             return {"loop_count": state.loop_count + 1, "messages": [response]}
 
         def should_continue(state: AgentState):
