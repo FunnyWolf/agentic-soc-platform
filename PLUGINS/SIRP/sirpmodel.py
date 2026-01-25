@@ -213,7 +213,7 @@ class AlertModel(BaseSystemModel):
 
     raw_data: Optional[str] = Field(default="", description="原始告警日志，通常为JSON格式的字符串")
 
-    attachments: Optional[List[Union[AttachmentModel, str]]] = Field(default=[], description="告警的附件")
+    attachments: Optional[Union[List[AttachmentModel], str]] = Field(default=[], description="告警的附件")
 
     # AI字段
     summary_ai: Optional[str] = Field(default="", description="AI提供的汇总摘要")

@@ -1,4 +1,3 @@
-import json
 from typing import Any, Annotated, List
 
 from langchain_core.messages import HumanMessage
@@ -9,7 +8,7 @@ from pydantic import BaseModel
 from Lib.baseplaybook import LanggraphPlaybook
 from PLUGINS.LLM.llmapi import LLMAPI
 from PLUGINS.SIRP.sirpapi import Alert
-from PLUGINS.SIRP.sirpmodel import PlaybookJobStatus, AlertModel
+from PLUGINS.SIRP.sirpmodel import PlaybookJobStatus, AlertModel, PlaybookModel
 
 
 class AgentState(BaseModel):
@@ -36,7 +35,7 @@ class Playbook(LanggraphPlaybook):
         # Define node
         def analyze_node(state: AgentState):
             """AI analyzes alert data"""
-
+            alert: AlertModel = state.alert
             # Load system prompt
             system_prompt_template = self.load_system_prompt_template("L3_SOC_Analyst")
 
@@ -44,16 +43,6 @@ class Playbook(LanggraphPlaybook):
 
             # Construct few-shot examples
             few_shot_examples = [
-                # HumanMessage(
-                #     content=json.dumps({
-                #         "requirement": ".",
-                #     })
-                # ),
-                # AIMessage(
-                #     content=json.dumps({
-                #         "function": "the amount of pneumothorax",
-                #     })
-                # ),
             ]
 
             # Run
@@ -65,20 +54,17 @@ class Playbook(LanggraphPlaybook):
             messages = [
                 system_message,
                 *few_shot_examples,
-                HumanMessage(content=json.dumps(state.alert))
+                HumanMessage(content=alert.model_dump_json())
             ]
             response = llm.invoke(messages)
-            response = LLMAPI.extract_think(response)  # Temporary solution for langchain chatollama bug
-            state.suggestion = response.content
-            return state
+            # response = LLMAPI.extract_think(response)  # Temporary solution for langchain chatollama bug
+            return {"suggestion": response.content}
 
         def output_node(state: AgentState):
             """Process analysis results"""
             suggestion = state.suggestion
-            fields = [
-                {"id": "suggestion_ai", "value": suggestion},
-            ]
-            Alert.update(self.param_source_rowid, fields)
+            model = AlertModel(rowid=self.param_source_rowid, summary_ai=suggestion)
+            Alert.update(model)
 
             self.send_notice("Alert_Suggestion_Gen_By_LLM output_node Finish", f"rowid:{self.param_source_rowid}")
             self.update_playbook_status(PlaybookJobStatus.SUCCESS, "Get suggestion by ai agent completed.")
@@ -97,7 +83,8 @@ class Playbook(LanggraphPlaybook):
         workflow.add_edge("preprocess_node", "analyze_node")
         workflow.add_edge("analyze_node", "output_node")
         workflow.set_finish_point("output_node")
-        self.agent_state = AgentState(messages=[], alert={}, suggestion="")
+        model = AlertModel()
+        self.agent_state = AgentState(messages=[], alert=model, suggestion="")
         self.graph: CompiledStateGraph = workflow.compile(checkpointer=self.get_checkpointer())
         return True
 
@@ -107,7 +94,13 @@ class Playbook(LanggraphPlaybook):
 
 
 if __name__ == "__main__":
-    params_debug = {'source_rowid': '13782e0a-2423-4fc3-9b16-7f2eb15ae83f', 'source_worksheet': 'alert'}
+    import os
+    import django
+
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ASP.settings")
+    django.setup()
+    model = PlaybookModel(source_worksheet='alert', source_rowid='89f83414-a0fc-43bf-a15d-afab4309153a')
     module = Playbook()
-    # module._params = params_debug
+    module._playbook_model = model
+
     module.run()
