@@ -146,7 +146,7 @@ class ImpactLevel(StrEnum):
     OTHER = "Other"
 
 
-class AlertDisposition(StrEnum):
+class Disposition(StrEnum):
     UNKNOWN = "Unknown"
     ALLOWED = "Allowed"
     BLOCKED = "Blocked"
@@ -573,7 +573,7 @@ class AlertModel(BaseSystemModel):
                                          description="告警的严重性，由源安全产品定义")
     title: Optional[str] = Field(default="", description="告警的标题")
     impact: Optional[ImpactLevel] = Field(default=None, description="告警可能造成的影响范围")
-    disposition: Optional[AlertDisposition] = Field(
+    disposition: Optional[Disposition] = Field(
         default=None, description="安全产品对该活动的处置结果, 如'Blocked', 'Allowed等")
     action: Optional[AlertAction] = Field(default=None,
                                           description="检测到的原始行为, 如'Allowed', 'Denied等")
