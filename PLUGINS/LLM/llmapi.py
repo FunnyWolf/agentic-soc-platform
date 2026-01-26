@@ -74,7 +74,8 @@ class LLMAPI(object):
 
         if selected_config is None:
             raise ValueError(f"No LLM configuration found matching tag(s): '{tag}'")
-        logger.debug(f"Using LLM configuration: {selected_config}")
+
+        logger.debug(f"Using LLM configuration, base_url: {selected_config.get("base_url")} model: {selected_config.get("model")}")
         # Prepare model parameters
         params = {
             "temperature": self.temperature,

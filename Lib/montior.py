@@ -118,7 +118,7 @@ class MainMonitor(object):
                 logger.error(f"PlaybookLoader module config not found: {model.type} - {model.name}")
                 model_tmp.job_status = PlaybookJobStatus.FAILED
                 model_tmp.remark = f"PlaybookLoader module config not found: {model.type} - {model.name}"
-                Playbook.update_or_create(model_tmp)
+                Playbook.update(model_tmp)
                 continue
 
             load_path = module_config.get("load_path")
@@ -131,20 +131,20 @@ class MainMonitor(object):
                 logger.exception(E)
                 model_tmp.job_status = PlaybookJobStatus.FAILED
                 model_tmp.remark = str(E)
-                Playbook.update_or_create(model_tmp)
+                Playbook.update(model_tmp)
                 continue
 
             job_id = thread_module_manager.start_task(playbook_intent)
             if not job_id:
                 model_tmp.job_status = PlaybookJobStatus.FAILED
                 model_tmp.remark = "Failed to create playbook job."
-                Playbook.update_or_create(model_tmp)
+                Playbook.update(model_tmp)
                 continue
             else:
                 logger.info(f"Create playbook job success: {job_id}")
                 model_tmp.job_status = PlaybookJobStatus.RUNNING
                 model_tmp.job_id = job_id
-                Playbook.update_or_create(model_tmp)
+                Playbook.update(model_tmp)
 
     @staticmethod
     def subscribe_knowledge_action():

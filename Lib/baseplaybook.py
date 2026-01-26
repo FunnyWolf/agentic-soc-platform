@@ -59,7 +59,8 @@ class BasePlaybook(BaseAPI):
         try:
             self.run()
         except Exception as e:
-            self.update_playbook_status(PlaybookJobStatus.FAILED, f"{e}")
+            self.logger.exception(e)
+            self.update_playbook_status(PlaybookJobStatus.FAILED, str(e))
 
 
 class LanggraphPlaybook(BasePlaybook):

@@ -20,6 +20,7 @@ from PLUGINS.SIRP.sirpapi import Case
 from PLUGINS.SIRP.sirpmodel import PlaybookJobStatus, PlaybookModel, CaseModel
 
 MAX_ITERATIONS = 3
+MAX_ITERATIONS_OF_FUNCTIONS_CALL = 2
 PROMPT_LANG = None
 
 
@@ -63,9 +64,6 @@ class Finding(BaseModel):
                 f"**Answer:** {self.answer}\n"
                 f"\n\n\n"
                 )
-
-
-MAX_ITERATIONS_OF_FUNCTIONS_CALL = 10
 
 
 class AnalystState(BaseModel):
@@ -405,7 +403,7 @@ class Playbook(LanggraphPlaybook):
             iteration_count = iteration_count + 1
 
             # Forced exit mechanism
-            if iteration_count > self.max_iterations:
+            if iteration_count > MAX_ITERATIONS:
                 self.logger.debug("Max iterations reached, terminating planning.")
                 node_out = {"current_plan": []}
                 return node_out
@@ -422,7 +420,7 @@ class Playbook(LanggraphPlaybook):
                 history_md_list.append(record.to_markdown())
 
             findings_str = "\n".join(history_md_list)
-            additional_info = f"Report Time: {get_current_time_str()} \n Reporter: ASF CSIRT Team"
+            additional_info = f"Time Now: {get_current_time_str()}"
             human_message = self.load_human_prompt_template("Planner_Human", lang=PROMPT_LANG).format(case=state.case, hunting_objective=hunting_objective,
                                                                                                       findings=findings_str, iteration_count=iteration_count,
                                                                                                       additional_info=additional_info)
@@ -531,9 +529,11 @@ class Playbook(LanggraphPlaybook):
             system_prompt_template = self.load_system_prompt_template("Report_System", lang=PROMPT_LANG)
 
             system_message = system_prompt_template.format()
+            additional_info = f"Report Time: {get_current_time_str()} \n Reporter: ASF CSIRT Team"
             human_message = self.load_human_prompt_template("Report_Human", lang=PROMPT_LANG).format(hunting_objective=hunting_objective,
                                                                                                      findings=findings_str,
-                                                                                                     planning_history=planning_history_str)
+                                                                                                     planning_history=planning_history_str,
+                                                                                                     additional_info=additional_info)
             # Construct few-shot examples
             few_shot_examples = [
             ]

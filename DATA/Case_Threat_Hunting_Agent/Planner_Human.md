@@ -20,6 +20,12 @@
 
 <findings>{findings}</findings>
 
+### 其他信息
+
+<additional_info>
+{additional_info}
+</additional_info>
+
 ---
 
 **核心任务**:

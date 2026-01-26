@@ -1,10 +1,9 @@
 import json
-import os
 from typing import Annotated, List, Literal, Any
 
 import yaml
 from langchain.agents import create_agent
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, AIMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, StateGraph, add_messages
 from langgraph.graph.state import CompiledStateGraph
@@ -21,11 +20,13 @@ from PLUGINS.Mock.SIEM_Splunk import splunk_search_tool
 # Define constants for graph nodes
 AGENT_NODE = "AGENT"
 TOOL_NODE = "TOOL_NODE"
+MAX_ITERATIONS = 2
 
 
 # Define the state for the graph
 class AgentState(BaseModel):
     messages: Annotated[List[Any], add_messages] = Field(default_factory=list)
+    loop_count: int = Field(default=0, description="Count of agent iterations")
 
 
 # Main class for the SIEM Agent, serving as the public interface
@@ -62,11 +63,16 @@ class GraphAgent(LanggraphPlaybook):
 
         def route_after_agent(state: AgentState) -> Literal["TOOL_NODE", "__end__"]:
             last_message = state.messages[-1]
+            if state.loop_count >= MAX_ITERATIONS:
+                self.logger.debug(f"Max iterations ({MAX_ITERATIONS}) reached, ending agent.")
+                return END
             if last_message.tool_calls:
                 return TOOL_NODE
             return END
 
         def agent_node(state: AgentState):
+            self.logger.debug(f"Agent Node Invoked (Loop: {state.loop_count})")
+
             schema_json = json.dumps(self.splunk_schemas(), indent=2)
 
             system_prompt_template = self.load_system_prompt_template(f"system_prompt")
@@ -74,12 +80,31 @@ class GraphAgent(LanggraphPlaybook):
 
             messages = [system_message, *state.messages]
 
-            llm_api = LLMAPI()
-            llm = llm_api.get_model(tag=["fast", "function_calling"])
-            llm_with_tools = llm.bind_tools(tools)
+            if state.loop_count >= MAX_ITERATIONS - 1:
+                self.logger.warning("Approaching max iterations, forcing agent to provide final answer.")
 
-            response = llm_with_tools.invoke(messages)
-            return {"messages": [response]}
+                stop_instruction = (
+                    "\n\n[SYSTEM NOTICE]: You have reached the search limit. "
+                    "Do not call any more tools. Please provide your final conclusion "
+                    "based ONLY on the information gathered above."
+                )
+                messages.append(HumanMessage(content=stop_instruction))
+
+                llm_api = LLMAPI()
+                base_llm = llm_api.get_model(tag=["fast"])
+                response: AIMessage = base_llm.invoke(messages)
+            else:
+                llm_api = LLMAPI()
+                llm = llm_api.get_model(tag=["fast", "function_calling"])
+                llm_with_tools = llm.bind_tools(tools)
+                response: AIMessage = llm_with_tools.invoke(messages)
+
+            if state.loop_count >= MAX_ITERATIONS - 1:
+                if response.tool_calls:
+                    self.logger.info("Stripping hallucinated tool calls in final round.")
+                    response.tool_calls = []
+
+            return {"messages": [response], "loop_count": state.loop_count + 1}
 
         workflow = StateGraph(AgentState)
         workflow.add_node(AGENT_NODE, agent_node)
@@ -96,11 +121,10 @@ class GraphAgent(LanggraphPlaybook):
         self.graph.checkpointer.delete_thread(self.module_name)
         config = RunnableConfig(configurable={"thread_id": self.module_name})
 
-        initial_state = AgentState(messages=[HumanMessage(content=query)])
+        initial_state = AgentState(messages=[HumanMessage(content=query)], loop_count=0)
 
         final_state = self.graph.invoke(initial_state, config)
 
-        # Return the last message from the agent, which should be the summarized answer
         return final_state['messages'][-1].content
 
 

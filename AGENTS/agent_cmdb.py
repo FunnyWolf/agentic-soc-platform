@@ -2,7 +2,7 @@ import os
 from typing import Annotated, List, Literal, Any
 
 from langchain.agents import create_agent
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, AIMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, StateGraph, add_messages
 from langgraph.graph.state import CompiledStateGraph
@@ -17,6 +17,15 @@ from PLUGINS.LLM.llmapi import LLMAPI
 from PLUGINS.Mock.CMDB import get_ci_context_tool, fuzzy_search_ci_tool, get_cis_by_software_tool, get_cis_by_port_tool, get_cis_by_service_tool, \
     get_cis_by_user_tool
 
+AGENT_NODE = "AGENT_NODE"
+TOOL_NODE = "TOOL_NODE"
+MAX_ITERATIONS = 2
+
+
+class AgentState(BaseModel):
+    messages: Annotated[List[Any], add_messages] = Field(default_factory=list)
+    loop_count: int = Field(default=0, description="Count of agent iterations")
+
 
 class AgentCMDB(object):
 
@@ -27,21 +36,9 @@ class AgentCMDB(object):
         """
         Query internal asset information from CMDB.
         """
-        # You can also use the simpler create_agent method to create an agent
-        # result = cmdb_query(query)
-        # return result
-
         agent = AgentGraphCMDB()
         result = agent.cmdb_query(query)
         return result
-
-
-AGENT_NODE = "AGENT_NODE"
-TOOL_NODE = "TOOL_NODE"
-
-
-class AgentState(BaseModel):
-    messages: Annotated[List[Any], add_messages] = Field(default_factory=list)
 
 
 # Use langgraph to create a CMDB query agent for finer-grained control
@@ -64,13 +61,17 @@ class AgentGraphCMDB(LanggraphPlaybook):
         tool_node = ToolNode(tools, name=TOOL_NODE)
 
         def route_after_agent(state: AgentState) -> Literal[TOOL_NODE, END]:
-            messages = state.messages
-            last_message = messages[-1]
+            if state.loop_count >= MAX_ITERATIONS:
+                self.logger.debug(f"Max iterations ({MAX_ITERATIONS}) reached, ending agent.")
+                return END
+            last_message = state.messages[-1]
             if last_message.tool_calls:
                 return TOOL_NODE
             return END
 
         def agent_node(state: AgentState):
+            self.logger.debug(f"Agent Node Invoked (Loop: {state.loop_count})")
+
             system_prompt_template = self.load_system_prompt_template(f"system")
             system_message = system_prompt_template.format()
 
@@ -79,14 +80,31 @@ class AgentGraphCMDB(LanggraphPlaybook):
                 *state.messages
             ]
 
-            llm_api = LLMAPI()
+            if state.loop_count >= MAX_ITERATIONS - 1:
+                self.logger.warning("Approaching max iterations, forcing agent to provide final answer.")
 
-            llm = llm_api.get_model(tag=["fast", "function_calling"])
+                stop_instruction = (
+                    "\n\n[SYSTEM NOTICE]: You have reached the search limit. "
+                    "Do not call any more tools. Please provide your final conclusion "
+                    "based ONLY on the information gathered above."
+                )
+                messages.append(HumanMessage(content=stop_instruction))
 
-            llm_with_tools = llm.bind_tools(tools)
-            response = llm_with_tools.invoke(messages)
+                llm_api = LLMAPI()
+                base_llm = llm_api.get_model(tag=["fast"])
+                response: AIMessage = base_llm.invoke(messages)
+            else:
+                llm_api = LLMAPI()
+                llm = llm_api.get_model(tag=["fast", "function_calling"])
+                llm_with_tools = llm.bind_tools(tools)
+                response: AIMessage = llm_with_tools.invoke(messages)
 
-            return {"messages": [response]}
+            if state.loop_count >= MAX_ITERATIONS - 1:
+                if response.tool_calls:
+                    self.logger.info("Stripping hallucinated tool calls in final round.")
+                    response.tool_calls = []
+
+            return {"messages": [response], "loop_count": state.loop_count + 1}
 
         workflow = StateGraph(AgentState)
 
@@ -103,7 +121,7 @@ class AgentGraphCMDB(LanggraphPlaybook):
         self.graph.checkpointer.delete_thread(self.module_name)
         config = RunnableConfig()
         config["configurable"] = {"thread_id": self.module_name}
-        self.agent_state = AgentState(messages=[HumanMessage(content=query)])
+        self.agent_state = AgentState(messages=[HumanMessage(content=query)], loop_count=0)
         response = self.graph.invoke(self.agent_state, config)
         return response['messages'][-1].content
 
