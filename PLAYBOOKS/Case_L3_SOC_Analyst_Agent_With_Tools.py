@@ -1,22 +1,21 @@
-from typing import Annotated, Any, Dict, List
+from typing import Any, Dict
 
 from langchain_core.messages import HumanMessage
-from langgraph.graph import StateGraph, START, END, add_messages
+from langgraph.graph import StateGraph, START, END
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.prebuilt import ToolNode
 from pydantic import BaseModel, Field, ConfigDict
 
 from AGENTS.agent_knowledge import AgentKnowledge
 from Lib.baseplaybook import LanggraphPlaybook
+from Lib.llmapi import BaseAgentState
 from PLUGINS.LLM.llmapi import LLMAPI
 from PLUGINS.SIRP.sirpapi import Case
 from PLUGINS.SIRP.sirpmodel import PlaybookJobStatus, CaseModel, PlaybookModel
 from PLUGINS.SIRP.sirpmodel import Severity, Confidence
 
 
-class AgentState(BaseModel):
-    messages: Annotated[List[Any], add_messages] = []
-    case: CaseModel = None
+class AgentState(BaseAgentState):
     loop_count: int = 0
 
 

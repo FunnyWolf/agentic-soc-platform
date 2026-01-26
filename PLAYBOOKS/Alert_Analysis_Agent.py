@@ -1,21 +1,16 @@
-from typing import Any, Annotated, List
-
 from langchain_core.messages import HumanMessage
-from langgraph.graph import StateGraph, add_messages
+from langgraph.graph import StateGraph
 from langgraph.graph.state import CompiledStateGraph
-from pydantic import BaseModel
 
 from Lib.baseplaybook import LanggraphPlaybook
+from Lib.llmapi import BaseAgentState
 from PLUGINS.LLM.llmapi import LLMAPI
 from PLUGINS.SIRP.sirpapi import Alert
 from PLUGINS.SIRP.sirpmodel import PlaybookJobStatus, AlertModel, PlaybookModel
 
 
-class AgentState(BaseModel):
-    messages: Annotated[List[Any], add_messages]
-
-    alert: AlertModel
-    suggestion: str
+class AgentState(BaseAgentState):
+    suggestion: str = None
 
 
 class Playbook(LanggraphPlaybook):
