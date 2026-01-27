@@ -734,12 +734,6 @@ case1_phishing = CaseModel(
     severity_ai=Severity.HIGH,
     confidence_ai=Confidence.HIGH,
     threat_hunting_report_ai="Threat hunting query initiated to find other emails from the same sender IP or with similar subject lines across the organization.",
-    # Time-based fields for metrics
-    start_time=past_10m.isoformat(),
-    end_time=None,
-    detect_time=past_5m.isoformat(),
-    acknowledge_time=now.isoformat(),
-    respond_time=None,
     tickets=[ticket_jira],
     enrichments=[enrichment_business],
     alerts=[alert_user_reported_phishing, alert_malware_blocked]
@@ -769,11 +763,6 @@ case2_lateral_movement = CaseModel(
     severity_ai=Severity.CRITICAL,
     confidence_ai=Confidence.HIGH,
     threat_hunting_report_ai="",
-    start_time=past_10m.isoformat(),
-    end_time=now.isoformat(),
-    detect_time=past_5m.isoformat(),
-    acknowledge_time=past_5m.isoformat(),
-    respond_time=now.isoformat(),
     tickets=[ticket_servicenow],
     alerts=[alert_psexec_lateral, alert_credential_dumping]
 )
@@ -802,11 +791,6 @@ case3_dns_tunnel = CaseModel(
     severity_ai=Severity.MEDIUM,
     confidence_ai=Confidence.MEDIUM,
     threat_hunting_report_ai="",
-    start_time=past_10m.isoformat(),
-    end_time=None,
-    detect_time=now.isoformat(),
-    acknowledge_time=now.isoformat(),
-    respond_time=None,
     tickets=[],
     enrichments=[],
     alerts=[alert_dns_tunnel_volume, alert_dns_long_query]
@@ -821,9 +805,3 @@ if __name__ == "__main__":
 
     for case in [case1_phishing, case2_lateral_movement, case3_dns_tunnel]:
         Case.update_or_create(case)
-
-    # Alert.update_or_create(alert_malware_blocked)
-    # alert_model = AlertModel()
-    # alert_model.rowid = "aec8cdf3-6e40-4768-8f2b-be589eb3fff4"
-    # alert_model.product_vendor = "Test"
-    # Alert.update_or_create(alert_model)

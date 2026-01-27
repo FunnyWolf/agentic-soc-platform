@@ -693,11 +693,11 @@ class CaseModel(BaseSystemModel):
     threat_hunting_report_ai: Optional[str] = Field(default="", description="AI生成的与此事件相关的威胁狩猎报告")
 
     # 公式计算字段
-    start_time: Optional[Any] = Field(default=None, description="事件开始时间(通常是关联告警的最早first_seen_time), 用于计算MTTD")
-    end_time: Optional[Any] = Field(default=None, description="事件结束时间(通常是closed_time), 用于计算MTTR")
-    detect_time: Optional[Any] = Field(default=None, description="事件检测时间(通常是关联告警的最早created_time), 用于计算MTTD")
-    acknowledge_time: Optional[Any] = Field(default=None, description="事件响应时间(acknowledged_time), 用于计算MTTA")
-    respond_time: Optional[Any] = Field(default=None, description="事件处置完成时间(closed_time), 用于计算MTTR")
+    start_time_calc: Optional[Any] = Field(default=None, description="事件开始时间,根据挂载到alert计算,无需手动赋值")
+    end_time_calc: Optional[Any] = Field(default=None, description="事件结束时间,根据挂载到alert计算,无需手动赋值")
+    detect_time_calc: Optional[Any] = Field(default=None, description="事件检测用时,用于计算MTTD,无需手动赋值")
+    acknowledge_time_calc: Optional[Any] = Field(default=None, description="事件确认用时, 用于计算MTTA,无需手动赋值")
+    respond_time_calc: Optional[Any] = Field(default=None, description="事件处置用时,用于计算MTTR,无需手动赋值")
 
     # 关联表
     tickets: Optional[List[Union[TicketModel, str]]] = Field(default=None, description="与此事件关联的外部工单列表")
