@@ -99,6 +99,7 @@ class ArtifactType(StrEnum):
     ADVISORY = 'Advisory'
     FILE_PATH = 'File Path'
     DEVICE = 'Device'
+    REGISTRY_PATH = "Registry Path"
     OTHER = 'Other'
 
 
@@ -583,8 +584,6 @@ class AlertModel(BaseSystemModel):
     labels: Optional[List[str]] = Field(default=[], description="为告警打上的标签", json_schema_extra={"type": 2})
     desc: Optional[str] = Field(default="", description="对告警的详细描述")
 
-    created_time: Optional[Union[datetime, str]] = Field(default=None, description="告警在SIRP平台中创建的时间")
-    modified_time: Optional[Union[datetime, str]] = Field(default=None, description="告警在SIRP平台中最后修改的时间")
     first_seen_time: Optional[Union[datetime, str]] = Field(default=None, description="首次观测到该活动的时间")
     last_seen_time: Optional[Union[datetime, str]] = Field(default=None, description="最后一次观测到该活动的时间")
 

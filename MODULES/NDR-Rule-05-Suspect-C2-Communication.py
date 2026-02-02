@@ -98,7 +98,6 @@ class Module(LanggraphModule):
                 product_category=ProductCategory.NDR,
                 product_name="Network Detection & Response",
                 first_seen_time=alert_date_formatted,
-                created_time=get_current_time_str(),
                 desc=description,
                 data_sources=["NDR"],
                 labels=tags + ["c2-communication"],

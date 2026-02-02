@@ -72,7 +72,6 @@ class Module(LanggraphModule):
                 product_category=ProductCategory.EMAIL,
                 product_name="Email Security",
                 first_seen_time=alert_date,
-                created_time=get_current_time_str(),
                 desc=f"Subject: {mail_subject}\nFrom: {mail_from}\nTo: {mail_to}",
                 data_sources=["Email"],
                 labels=["phishing", "user-report"],
