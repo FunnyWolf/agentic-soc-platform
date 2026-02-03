@@ -181,6 +181,7 @@ dependencies = [
     { name = "djangorestframework-stubs" },
     { name = "dnslib" },
     { name = "dnspython" },
+    { name = "elasticsearch" },
     { name = "fastapi" },
     { name = "fastembed" },
     { name = "jinja2" },
@@ -223,6 +224,7 @@ requires-dist = [
     { name = "djangorestframework-stubs", specifier = ">=3.16.6" },
     { name = "dnslib", specifier = ">=0.9.26" },
     { name = "dnspython", specifier = ">=2.8.0" },
+    { name = "elasticsearch", specifier = ">=9.3.0" },
     { name = "fastapi", specifier = ">=0.128.0" },
     { name = "fastembed", specifier = ">=0.7.4" },
     { name = "jinja2", specifier = ">=3.1.6" },
@@ -813,6 +815,36 @@ source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/9d/a4/e44218c2b394e31a6dd0d6b095c4e1f32d0be54c2a4b250032d717647bab/durationpy-0.10.tar.gz", hash = "sha256:1fa6893409a6e739c9c72334fc65cca1f355dbdd93405d30f726deb5bde42fba" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/b0/0d/9feae160378a3553fa9a339b0e9c1a048e147a4127210e286ef18b730f03/durationpy-0.10-py3-none-any.whl", hash = "sha256:3b41e1b601234296b4fb368338fdcd3e13e0b4fb5b67345948f4f2bf9868b286" },
+]
+
+[[package]]
+name = "elastic-transport"
+version = "9.2.1"
+source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+dependencies = [
+    { name = "certifi" },
+    { name = "sniffio" },
+    { name = "urllib3" },
+]
+sdist = { url = "https://mirrors.aliyun.com/pypi/packages/23/0a/a92140b666afdcb9862a16e4d80873b3c887c1b7e3f17e945fc3460edf1b/elastic_transport-9.2.1.tar.gz", hash = "sha256:97d9abd638ba8aa90faa4ca1bf1a18bde0fe2088fbc8757f2eb7b299f205773d" }
+wheels = [
+    { url = "https://mirrors.aliyun.com/pypi/packages/2c/e6/a42b600ae8b808371f740381f6c32050cad93f870d36cc697b8b7006bf7c/elastic_transport-9.2.1-py3-none-any.whl", hash = "sha256:39e1a25e486af34ce7aa1bc9005d1c736f1b6fb04c9b64ea0604ded5a61fc1d4" },
+]
+
+[[package]]
+name = "elasticsearch"
+version = "9.3.0"
+source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+dependencies = [
+    { name = "anyio" },
+    { name = "elastic-transport" },
+    { name = "python-dateutil" },
+    { name = "sniffio" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://mirrors.aliyun.com/pypi/packages/0d/15/283459c9299d412ffa2aaab69b082857631c519233f5491d6c567e3320ca/elasticsearch-9.3.0.tar.gz", hash = "sha256:f76e149c0a22d5ccbba58bdc30c9f51cf894231b359ef4fd7e839b558b59f856" }
+wheels = [
+    { url = "https://mirrors.aliyun.com/pypi/packages/05/37/3a196f8918743f2104cb66b1f56218079ecac6e128c061de7df7f4faef02/elasticsearch-9.3.0-py3-none-any.whl", hash = "sha256:67bd2bb4f0800f58c2847d29cd57d6e7bf5bc273483b4f17421f93e75ba09f39" },
 ]
 
 [[package]]
