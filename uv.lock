@@ -206,6 +206,7 @@ dependencies = [
     { name = "requests" },
     { name = "rsa" },
     { name = "sentence-transformers" },
+    { name = "splunk-sdk" },
     { name = "tldextract" },
     { name = "torch" },
     { name = "transformers" },
@@ -249,6 +250,7 @@ requires-dist = [
     { name = "requests", specifier = ">=2.32.5" },
     { name = "rsa", specifier = ">=4.9.1" },
     { name = "sentence-transformers", specifier = ">=5.2.0" },
+    { name = "splunk-sdk", specifier = ">=2.1.1" },
     { name = "tldextract", specifier = ">=5.3.0" },
     { name = "torch", specifier = ">=2.9.1" },
     { name = "transformers", specifier = ">=4.57.3" },
@@ -687,6 +689,18 @@ dependencies = [
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/64/a4/f71d9cf3a5ac257c993b5ca3f93df5f7fb395c725e7f1e6479d2514173c3/dataclasses_json-0.6.7.tar.gz", hash = "sha256:b6b3e528266ea45b9535223bc53ca645f5208833c29229e847b3f26a1cc55fc0" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/c3/be/d0d44e092656fe7a06b55e6103cbce807cdbdee17884a5367c68c9860853/dataclasses_json-0.6.7-py3-none-any.whl", hash = "sha256:0dbf33f26c8d5305befd61b39d2b3414e8a407bedc2834dea9b8d642666fb40a" },
+]
+
+[[package]]
+name = "deprecation"
+version = "2.1.0"
+source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+dependencies = [
+    { name = "packaging" },
+]
+sdist = { url = "https://mirrors.aliyun.com/pypi/packages/5a/d3/8ae2869247df154b64c1884d7346d412fed0c49df84db635aab2d1c40e62/deprecation-2.1.0.tar.gz", hash = "sha256:72b3bde64e5d778694b0cf68178aed03d15e15477116add3fb773e581f9518ff" }
+wheels = [
+    { url = "https://mirrors.aliyun.com/pypi/packages/02/c3/253a89ee03fc9b9682f1541728eb66db7db22148cd94f89ab22528cd1e1b/deprecation-2.1.0-py2.py3-none-any.whl", hash = "sha256:a10811591210e1fb0e768a8c25517cabeabcba6f0bf96564f8ff45189f90b14a" },
 ]
 
 [[package]]
@@ -4128,6 +4142,15 @@ sdist = { url = "https://mirrors.aliyun.com/pypi/packages/87/ed/11167ae7c3eb80e7
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/1a/c9/b9ce2eaacaf75d94a5ee5b809bb2be351f1c9cda5c14316cc53b1aea0650/sphinxcontrib_websupport-2.0.0-py3-none-any.whl", hash = "sha256:365b4da67e03cc163dc4752ed44b3c4bc334172c8198102135a7eb7945111229" },
 ]
+
+[[package]]
+name = "splunk-sdk"
+version = "2.1.1"
+source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+dependencies = [
+    { name = "deprecation" },
+]
+sdist = { url = "https://mirrors.aliyun.com/pypi/packages/16/c8/c54008fdb14c081fa4c60ed363b3dff9a2104ee77eb1717d717767486493/splunk-sdk-2.1.1.tar.gz", hash = "sha256:46300d52f09e0aed7e5962ce2ba08ef54421ffb3a538c6af6164dcbf9f075faa" }
 
 [[package]]
 name = "sqlalchemy"

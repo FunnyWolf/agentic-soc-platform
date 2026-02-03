@@ -30,6 +30,22 @@ def main():
     except Exception as e:
         print(f"Error: {str(e)}")
 
+    query_input = AdaptiveQueryInput(
+        index_name="siem-network-traffic",
+        time_range_start="2026-02-03T06:00:00Z",
+        time_range_end="2026-02-05T07:00:00Z",
+        filters={"event.dataset": "network"}
+    )
+
+    result = toolkit.execute_adaptive_query(query_input)
+    print(f"Using time field: {query_input.time_field}")
+    print(f"Status: {result.status}")
+    print(f"Total Hits: {result.total_hits}")
+
+    if result.records:
+        # 验证返回数据
+        print(f"Sample Timestamp: {result.records[0].get('@timestamp')}")
+
 
 if __name__ == "__main__":
     main()
