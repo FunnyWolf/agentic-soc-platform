@@ -77,13 +77,20 @@ def get_current_timestamp() -> int:
 def get_current_time_str(format_str: str = "%Y-%m-%dT%H:%M:%SZ") -> str:
     """
     # 示例
-    # 默认格式
+    # 默认格式（UTC时间）
     current_time_str = get_current_time_str()
 
-    # 自定义格式：年-月-日
+    # 自定义格式：年-月-日（本地时间，无Z标记）
     current_date_str = get_current_time_str("%Y-%m-%d")
+
+    # 自定义格式：本地时间
+    local_time_str = get_current_time_str("%Y-%m-%d %H:%M:%S")
     """
-    return datetime.datetime.now().strftime(format_str)
+    use_utc = 'Z' in format_str
+    if use_utc:
+        return datetime.datetime.now(datetime.timezone.utc).strftime(format_str)
+    else:
+        return datetime.datetime.now().strftime(format_str)
 
 
 def exec_system(cmd, **kwargs):

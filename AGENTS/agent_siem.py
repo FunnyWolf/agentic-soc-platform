@@ -1,7 +1,5 @@
-import json
 from typing import Annotated, List, Literal, Any
 
-import yaml
 from langchain.agents import create_agent
 from langchain_core.messages import HumanMessage, AIMessage
 from langchain_core.runnables import RunnableConfig
@@ -10,17 +8,18 @@ from langgraph.graph.state import CompiledStateGraph
 from langgraph.prebuilt import ToolNode
 from pydantic import BaseModel, Field
 
+from Lib.api import get_current_time_str
 from Lib.baseplaybook import LanggraphPlaybook
 from Lib.configs import DATA_DIR
 from Lib.llmapi import load_system_prompt_template
+from Lib.log import logger
 from PLUGINS.LLM.llmapi import LLMAPI
-# change this to your actual Splunk api
-from PLUGINS.Mock.SIEM_Splunk import splunk_search_tool
+from PLUGINS.SIEM.tools import SIEMToolKit
 
 # Define constants for graph nodes
 AGENT_NODE = "AGENT"
 TOOL_NODE = "TOOL_NODE"
-MAX_ITERATIONS = 2
+MAX_ITERATIONS = 10
 
 
 # Define the state for the graph
@@ -44,6 +43,9 @@ class AgentSIEM:
         return result
 
 
+tools = [SIEMToolKit.explore_schema, SIEMToolKit.execute_adaptive_query]
+
+
 # LangGraph-based agent for complex, stateful queries
 class GraphAgent(LanggraphPlaybook):
 
@@ -51,14 +53,8 @@ class GraphAgent(LanggraphPlaybook):
         super().__init__()
         self.graph = self._build_graph()
 
-    def splunk_schemas(self) -> dict:
-        """Loads Splunk data models from the YAML config file."""
-        with open(self._get_file_path("splunk_datamodels.yml"), 'r', encoding='utf-8') as f:
-            return yaml.safe_load(f)
-
     def _build_graph(self) -> CompiledStateGraph:
         """Constructs the LangGraph agent graph."""
-        tools = [splunk_search_tool]
         tool_node = ToolNode(tools)
 
         def route_after_agent(state: AgentState) -> Literal["TOOL_NODE", "__end__"]:
@@ -67,18 +63,21 @@ class GraphAgent(LanggraphPlaybook):
                 self.logger.debug(f"Max iterations ({MAX_ITERATIONS}) reached, ending agent.")
                 return END
             if last_message.tool_calls:
+                tool_info = "\n".join([f"  [{idx}] Name: {tc.get('name', 'N/A')}, ID: {tc.get('id', 'N/A')}, Args: {tc.get('args', {})}" for idx, tc in
+                                       enumerate(last_message.tool_calls, 1)])
+                self.logger.debug(f"Tool calls detected: {len(last_message.tool_calls)} tool(s)\n{tool_info}\nRouting to TOOL_NODE for execution")
                 return TOOL_NODE
+            self.logger.debug(f"No tool calls detected, ending agent execution")
             return END
 
         def agent_node(state: AgentState):
             self.logger.debug(f"Agent Node Invoked (Loop: {state.loop_count})")
+            self.logger.debug(f"Current messages count: {len(state.messages)}")
 
-            schema_json = json.dumps(self.splunk_schemas(), indent=2)
-
-            system_prompt_template = self.load_system_prompt_template(f"system_prompt")
-            system_message = system_prompt_template.format(splunk_schema_json=schema_json)
+            system_message = self.load_system_prompt_template(f"system_prompt").format(CURRENT_UTC_TIME=get_current_time_str())
 
             messages = [system_message, *state.messages]
+            self.logger.debug(f"Total messages to send to LLM: {len(messages)}")
 
             if state.loop_count >= MAX_ITERATIONS - 1:
                 self.logger.warning("Approaching max iterations, forcing agent to provide final answer.")
@@ -89,15 +88,20 @@ class GraphAgent(LanggraphPlaybook):
                     "based ONLY on the information gathered above."
                 )
                 messages.append(HumanMessage(content=stop_instruction))
+                self.logger.debug("Stop instruction appended to messages")
 
                 llm_api = LLMAPI()
                 base_llm = llm_api.get_model(tag=["fast"])
+                self.logger.debug(f"Using base LLM model (no tool binding) for final response")
                 response: AIMessage = base_llm.invoke(messages)
+                self.logger.debug(f"Final response generated, tool_calls count: {len(response.tool_calls) if response.tool_calls else 0}")
             else:
                 llm_api = LLMAPI()
                 llm = llm_api.get_model(tag=["fast", "function_calling"])
                 llm_with_tools = llm.bind_tools(tools)
+                self.logger.debug(f"Using LLM with tools binding, available tools: {len(tools)}")
                 response: AIMessage = llm_with_tools.invoke(messages)
+                self.logger.debug(f"Response generated, tool_calls count: {len(response.tool_calls) if response.tool_calls else 0}")
 
             if state.loop_count >= MAX_ITERATIONS - 1:
                 if response.tool_calls:
@@ -114,18 +118,29 @@ class GraphAgent(LanggraphPlaybook):
         workflow.add_conditional_edges(AGENT_NODE, route_after_agent)
         workflow.add_edge(TOOL_NODE, AGENT_NODE)
 
-        return workflow.compile(checkpointer=self.get_checkpointer())
+        compiled_graph = workflow.compile(checkpointer=self.get_checkpointer())
+        self.logger.debug(f"LangGraph workflow compiled successfully")
+        return compiled_graph
 
     def siem_query(self, query: str) -> str:
         """Executes a query against the graph."""
+        self.logger.info(f"SIEM Query started: {query[:100]}...")
         self.graph.checkpointer.delete_thread(self.module_name)
+        self.logger.debug(f"Deleted previous thread state for module: {self.module_name}")
+
         config = RunnableConfig(configurable={"thread_id": self.module_name})
+        self.logger.debug(f"RunnableConfig created with thread_id: {self.module_name}")
 
         initial_state = AgentState(messages=[HumanMessage(content=query)], loop_count=0)
+        self.logger.debug(f"Initial state created")
 
+        self.logger.info(f"Starting graph invocation...")
         final_state = self.graph.invoke(initial_state, config)
+        self.logger.info(f"Graph invocation completed")
 
-        return final_state['messages'][-1].content
+        result = final_state['messages'][-1].content
+        self.logger.info(f"Query result extracted, result length: {len(result)} characters")
+        return result
 
 
 # Alternative, simpler agent implementation using create_agent
@@ -135,25 +150,28 @@ def create_siem_agent(
     """
 a simpler, stateless agent created using the create_agent factory function from langchain.agents.
     """
-    # Load schemas and prompt template
-    schema_path = os.path.join(DATA_DIR, "Agent_SIEM", "splunk_datamodels.yml")
-    with open(schema_path, 'r', encoding='utf-8') as f:
-        splunk_schemas = yaml.safe_load(f)
-    schema_json = json.dumps(splunk_schemas, indent=2)
 
+    logger.info(f"Creating SIEM agent with query: {query[:100]}...")
     prompt_path = os.path.join(DATA_DIR, "Agent_SIEM", "system_prompt.md")
-    system_prompt_template = load_system_prompt_template(prompt_path)
+    logger.debug(f"Loading system prompt from: {prompt_path}")
+    system_prompt = load_system_prompt_template(prompt_path).format(CURRENT_UTC_TIME=get_current_time_str())
+    logger.debug(f"System prompt loaded successfully")
 
     llm_api = LLMAPI()
     llm = llm_api.get_model(tag=["fast", "function_calling"])
+    logger.debug(f"LLM model obtained with tags: ['fast', 'function_calling']")
 
-    tools = [splunk_search_tool]
+    logger.debug(f"Creating agent with {len(tools)} tools")
+    agent = create_agent(llm, tools, system_prompt=system_prompt)
+    logger.debug(f"Agent created successfully")
 
-    agent = create_agent(llm, tools, system_prompt=system_prompt_template.format(splunk_schema_json=schema_json))
-
+    logger.info(f"Invoking agent...")
     response = agent.invoke({"messages": [HumanMessage(content=query)]})
+    logger.info(f"Agent invocation completed")
 
-    return response['messages'][-1].content
+    result = response['messages'][-1].content
+    logger.info(f"Agent result extracted, result length: {len(result)} characters")
+    return result
 
 
 # Test code
@@ -164,8 +182,12 @@ if __name__ == "__main__":
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ASP.settings")
     django.setup()
 
-    # # You can also test the simpler agent directly
+    # print("\n--- Using create_agent for Query ---")
+    # test_query = "Have there been any suspicious logins for the user 'admin' on Windows machines?"
+    # result_simple = create_siem_agent(test_query)
+    # print(result_simple)
+
     print("\n--- Using create_agent for Query ---")
-    test_query = "Have there been any suspicious logins for the user 'admin' on Windows machines?"
-    result_simple = create_siem_agent(test_query)
+    test_query = "最近5分钟192.168.1.150使用ssh访问了哪些内网主机?"
+    result_simple = AgentSIEM.siem_search_by_natural_language(test_query)
     print(result_simple)

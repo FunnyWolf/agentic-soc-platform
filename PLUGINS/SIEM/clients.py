@@ -1,7 +1,7 @@
 import splunklib.client
 from elasticsearch import Elasticsearch
 
-from CONFIG import ELK_HOST, ELK_USER, ELK_PASS, SPLUNK_HOST, SPLUNK_PORT, SPLUNK_USER, SPLUNK_PASS
+from PLUGINS.SIEM.CONFIG import ELK_HOST, ELK_USER, ELK_PASS, SPLUNK_HOST, SPLUNK_PORT, SPLUNK_USER, SPLUNK_PASS
 
 
 class ELKClient:

@@ -5,16 +5,15 @@ from datetime import datetime, timezone
 from splunklib.results import JSONResultsReader
 
 from PLUGINS.SIEM.clients import ELKClient, SplunkClient
-from models import (
+from PLUGINS.SIEM.models import (
     SchemaExplorerInput,
     AdaptiveQueryInput,
     AdaptiveQueryOutput,
-    FieldStat
+    FieldStat,
+    SUMMARY_THRESHOLD,
+    SAMPLE_THRESHOLD
 )
-from registry import STATIC_SCHEMA_REGISTRY, get_default_agg_fields, get_backend_type
-
-SUMMARY_THRESHOLD = 1000
-SAMPLE_THRESHOLD = 20
+from PLUGINS.SIEM.registry import STATIC_SCHEMA_REGISTRY, get_default_agg_fields, get_backend_type
 
 
 class SIEMToolKit(object):
@@ -41,22 +40,20 @@ class SIEMToolKit(object):
             # Get details on "logs-security" index
             explore_schema(SchemaExplorerInput(target_index="logs-security"))
         """
-        try:
-            if not input_data.target_index:
-                # Agent 看到的是统一的列表，不关心 Backend
-                return [
-                    {"name": k, "description": v.description}
-                    for k, v in STATIC_SCHEMA_REGISTRY.items()
-                ]
+        if not input_data.target_index:
+            # Agent 看到的是统一的列表，不关心 Backend
+            result = [
+                {"name": k, "description": v.description}
+                for k, v in STATIC_SCHEMA_REGISTRY.items()
+            ]
+            return result
 
-            if input_data.target_index not in STATIC_SCHEMA_REGISTRY:
-                raise ValueError(f"Index {input_data.target_index} not found.")
+        if input_data.target_index not in STATIC_SCHEMA_REGISTRY:
+            raise ValueError(f"Index {input_data.target_index} not found.")
 
-            idx_info = STATIC_SCHEMA_REGISTRY[input_data.target_index]
-            return [f.model_dump() for f in idx_info.fields]
-
-        except Exception as e:
-            raise e
+        idx_info = STATIC_SCHEMA_REGISTRY[input_data.target_index]
+        result = [f.model_dump() for f in idx_info.fields]
+        return result
 
     @classmethod
     def execute_adaptive_query(cls, input_data: AdaptiveQueryInput) -> AdaptiveQueryOutput:
@@ -93,9 +90,11 @@ class SIEMToolKit(object):
         backend = get_backend_type(input_data.index_name)
 
         if backend == "ELK":
-            return cls._execute_elk(input_data)
+            result = cls._execute_elk(input_data)
+            return result
         elif backend == "Splunk":
-            return cls._execute_splunk(input_data)
+            result = cls._execute_splunk(input_data)
+            return result
         else:
             raise ValueError(f"Unsupported backend: {backend}")
 

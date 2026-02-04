@@ -3,6 +3,9 @@ from typing import List, Dict, Any, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
+SUMMARY_THRESHOLD = 1000
+SAMPLE_THRESHOLD = 20
+
 
 # --- Input Models ---
 class SchemaExplorerInput(BaseModel):
@@ -85,9 +88,9 @@ class AdaptiveQueryOutput(BaseModel):
         ...,
         description=(
             "Response type indicator based on result volume. "
-            "Possible values: 'full' (complete logs, < 20 results), "
-            "'sample' (statistics + sample records, 20-1000 results), "
-            "'summary' (statistics only, > 1000 results)"
+            f"Possible values: 'full' (complete logs, < {SAMPLE_THRESHOLD} results), "
+            f"'sample' (statistics + sample records, {SAMPLE_THRESHOLD}-{SUMMARY_THRESHOLD} results), "
+            f"'summary' (statistics only, > {SUMMARY_THRESHOLD} results)"
         )
     )
     total_hits: int = Field(
