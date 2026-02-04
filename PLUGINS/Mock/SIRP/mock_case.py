@@ -1210,6 +1210,257 @@ alert_cloud_config_change = AlertModel(
     artifacts=[artifact_aws_role, artifact_cloudtrail_event]
 )
 
+# === Artifacts and Alerts from SIEM Scenarios ===
+# Artifact for Brute Force Attack
+artifact_brute_force_ip = ArtifactModel(
+    name="45.95.11.22",
+    type=ArtifactType.IP_ADDRESS,
+    role=ArtifactRole.ACTOR,
+    value="45.95.11.22",
+    reputation_provider="AbuseIPDB",
+    reputation_score=ArtifactReputationScore.MALICIOUS,
+    enrichments=[enrichment_greynoise_scanner, enrichment_geoip_russia]
+)
+
+artifact_target_user_brute = ArtifactModel(
+    name="admin@example.com",
+    type=ArtifactType.EMAIL_ADDRESS,
+    role=ArtifactRole.TARGET,
+    value="admin@example.com",
+    owner="System"
+)
+
+artifact_target_host_brute = ArtifactModel(
+    name="srv-web-prod-01",
+    type=ArtifactType.HOSTNAME,
+    role=ArtifactRole.TARGET,
+    value="srv-web-prod-01",
+    owner="Operations"
+)
+
+# Alert for Brute Force Attack
+alert_brute_force_siem = AlertModel(
+    title="Brute Force Attack: Multiple Failed Login Attempts Followed by Success",
+    severity=Severity.CRITICAL,
+    impact=ImpactLevel.HIGH,
+    action=AlertAction.OBSERVED,
+    disposition=Disposition.ALERT,
+    confidence=Confidence.HIGH,
+    uid="ALERT-BRUTE-FORCE-001",
+    labels=["brute-force", "authentication", "ssh", "credential-attack"],
+    desc="External IP 45.95.11.22 (China) made 5-10 failed authentication attempts to user 'admin' on srv-web-prod-01, followed by a successful login. Pattern suggests brute force attack.",
+    first_seen_time=past_1h,
+    last_seen_time=past_1h,
+    rule_id="AUTH-RULE-BF-001",
+    rule_name="Brute Force Attack Detection",
+    correlation_uid="CORR-BRUTE-FORCE-001",
+    count=6,
+    src_url="https://siem.example.com/alerts/ALERT-BRUTE-FORCE-001",
+    source_uid="siem-bf-001",
+    data_sources=["SSH Logs", "Syslog", "SIEM"],
+    analytic_name="Brute Force Detection Engine",
+    analytic_type=AlertAnalyticType.BEHAVIORAL,
+    analytic_state=AlertAnalyticState.ACTIVE,
+    analytic_desc="Detects multiple failed login attempts from same source IP followed by success.",
+    tactic="Credential Access",
+    technique="T1110.001",
+    sub_technique="",
+    mitigation="Account Lockout Policy, Rate Limiting, MFA",
+    product_category=ProductCategory.SIEM,
+    product_vendor="Elasticsearch",
+    product_name="ELK Stack",
+    product_feature="Authentication-Monitoring",
+    policy_name="Access Control Policy",
+    policy_type=AlertPolicyType.ACCESS_CONTROL_POLICY,
+    policy_desc="Detect and prevent brute force attacks.",
+    risk_level=AlertRiskLevel.CRITICAL,
+    risk_details="Successful compromise of admin account could lead to full system control. Account from high-risk geographic location (China).",
+    status=AlertStatus.NEW,
+    status_detail="Immediate investigation required. Account may be compromised.",
+    remediation="1. Immediately force password change for admin account. 2. Review all commands executed by admin since last_seen_time. 3. Block source IP 45.95.11.22 at firewall. 4. Enable MFA for admin account. 5. Review login history for other successful attempts from this IP.",
+    comment="Risk Score: 85/100. Successful login after multiple failures is strong indicator of compromise.",
+    unmapped="",
+    raw_data=json.dumps(
+        {"failed_attempts": 7, "source_ip": "45.95.11.22", "source_country": "CN", "target_user": "admin", "target_host": "srv-web-prod-01", "protocol": "ssh",
+         "port": 22}),
+    summary_ai="Brute force attack successfully compromised admin account on production web server. Attacker origin: China. Immediate containment action required.",
+    case=None,
+    enrichments=[enrichment_greynoise_scanner, enrichment_geoip_russia],
+    artifacts=[artifact_brute_force_ip, artifact_target_user_brute, artifact_target_host_brute]
+)
+
+# Artifacts for SQL Injection Attack
+artifact_malicious_url_sqli = ArtifactModel(
+    name="https://web-3.example.com/api/user?id=1' OR '1'='1",
+    type=ArtifactType.URL_STRING,
+    role=ArtifactRole.RELATED,
+    value="https://web-3.example.com/api/user?id=1' OR '1'='1",
+    reputation_score=ArtifactReputationScore.MALICIOUS
+)
+
+artifact_sqlmap_tool = ArtifactModel(
+    name="sqlmap/1.5.2",
+    type=ArtifactType.URL_STRING,
+    role=ArtifactRole.ACTOR,
+    value="sqlmap/1.5.2 (SQL Injection Scanner)"
+)
+
+artifact_waf_server = ArtifactModel(
+    name="web-3.example.com",
+    type=ArtifactType.HOSTNAME,
+    role=ArtifactRole.TARGET,
+    value="web-3.example.com",
+    owner="Web Operations"
+)
+
+# Alert for SQL Injection Attack
+alert_sql_injection_siem = AlertModel(
+    title="SQL Injection Attack Attempt Detected and Blocked by WAF",
+    severity=Severity.HIGH,
+    impact=ImpactLevel.MEDIUM,
+    action=AlertAction.DENIED,
+    disposition=Disposition.BLOCKED,
+    confidence=Confidence.HIGH,
+    uid="ALERT-SQL-INJ-001",
+    labels=["sql-injection", "web-attack", "waf", "owasp-injection"],
+    desc="Web Application Firewall detected and blocked SQL injection attack from external IP (Russia). Attacker used sqlmap scanner with multiple SQL injection payloads.",
+    first_seen_time=past_30m,
+    last_seen_time=past_30m,
+    rule_id="WAF-RULE-SQLI-001",
+    rule_name="SQL Injection Detection Rule",
+    correlation_uid="CORR-SQL-INJ-001",
+    count=1,
+    src_url="https://waf.example.com/alerts/ALERT-SQL-INJ-001",
+    source_uid="waf-sqli-001",
+    data_sources=["WAF", "HTTP Traffic Analysis"],
+    analytic_name="SQL Injection Detector",
+    analytic_type=AlertAnalyticType.RULE,
+    analytic_state=AlertAnalyticState.ACTIVE,
+    analytic_desc="Detects SQL injection patterns in HTTP requests.",
+    tactic="Exploitation",
+    technique="T1190",
+    sub_technique="",
+    mitigation="WAF Rules, Input Validation, Parameterized Queries",
+    product_category=ProductCategory.WAF,
+    product_vendor="Palo Alto Networks",
+    product_name="Advanced URL Filtering",
+    product_feature="SQL-Injection-Detection",
+    policy_name="Web Security Policy",
+    policy_type=AlertPolicyType.SERVICE_CONTROL_POLICY,
+    policy_desc="Block SQL injection attacks at the WAF.",
+    risk_level=AlertRiskLevel.HIGH,
+    risk_details="SQL injection could allow attacker to read/modify database contents, affecting all application data.",
+    status=AlertStatus.NEW,
+    status_detail="Attack was successfully blocked. No damage detected. Source IP monitoring enabled.",
+    remediation="1. Add source IP to block list. 2. Review WAF logs for other attack attempts. 3. Audit application code for SQL injection vulnerabilities. 4. Implement parameterized queries in application. 5. Consider implementing request rate limiting.",
+    comment="Attack method: sqlmap automated SQL injection scanner. Multiple injection vectors attempted including boolean blind, time-based, and UNION-based.",
+    unmapped="",
+    raw_data=json.dumps({"payload": "id=1' OR '1'='1", "waf_rule_id": "WAF-12345", "blocked_count": 1, "http_status": 403, "user_agent": "sqlmap/1.5.2"}),
+    summary_ai="SQL injection attack from Russia was detected and blocked by WAF. Attacker used automated sqlmap tool. No database compromise detected.",
+    case=None,
+    enrichments=[enrichment_urlhaus_malware],
+    artifacts=[artifact_malicious_url_sqli, artifact_sqlmap_tool, artifact_waf_server]
+)
+
+# Artifacts for Ransomware Attack
+artifact_vssadmin_process = ArtifactModel(
+    name="vssadmin.exe",
+    type=ArtifactType.PROCESS_NAME,
+    role=ArtifactRole.ACTOR,
+    value="vssadmin.exe delete shadows /all /quiet"
+)
+
+artifact_decryptor_malware = ArtifactModel(
+    name="decryptor.exe",
+    type=ArtifactType.FILE_NAME,
+    role=ArtifactRole.ACTOR,
+    value="decryptor.exe",
+    reputation_provider="VirusTotal",
+    reputation_score=ArtifactReputationScore.MALICIOUS
+)
+
+artifact_ransom_note_file = ArtifactModel(
+    name="README_TO_DECRYPT.txt",
+    type=ArtifactType.FILE_NAME,
+    role=ArtifactRole.RELATED,
+    value="README_TO_DECRYPT.txt"
+)
+
+artifact_encrypted_files = ArtifactModel(
+    name="*.encrypted",
+    type=ArtifactType.FILE_NAME,
+    role=ArtifactRole.RELATED,
+    value="Multiple encrypted files (docx, pdf, xlsx, jpg)"
+)
+
+artifact_ransomware_host = ArtifactModel(
+    name="srv-db-master",
+    type=ArtifactType.HOSTNAME,
+    role=ArtifactRole.TARGET,
+    value="srv-db-master",
+    owner="Database Team"
+)
+
+artifact_ransomware_user = ArtifactModel(
+    name="dbadmin@example.com",
+    type=ArtifactType.EMAIL_ADDRESS,
+    role=ArtifactRole.TARGET,
+    value="dbadmin@example.com",
+    owner="Database Team"
+)
+
+# Alert for Ransomware Attack
+alert_ransomware_siem = AlertModel(
+    title="Ransomware Execution Detected: Shadow Copy Deletion, File Encryption, Ransom Note",
+    severity=Severity.CRITICAL,
+    impact=ImpactLevel.CRITICAL,
+    action=AlertAction.OBSERVED,
+    disposition=Disposition.ALERT,
+    confidence=Confidence.CRITICAL,
+    uid="ALERT-RANSOMWARE-001",
+    labels=["ransomware", "file-encryption", "shadow-copy-deletion", "critical"],
+    desc="Multiple critical indicators of ransomware detected on srv-db-master: 1) vssadmin.exe deleted volume shadow copies 2) 20 files renamed to .encrypted extension 3) README_TO_DECRYPT.txt ransom note created. Immediate isolation required.",
+    first_seen_time=past_2h,
+    last_seen_time=past_2h,
+    rule_id="EDR-RULE-RANSOMWARE-001",
+    rule_name="Ransomware Multi-Indicator Detection",
+    correlation_uid="CORR-RANSOMWARE-ACTIVE-001",
+    count=22,
+    src_url="https://edr.example.com/alerts/ALERT-RANSOMWARE-001",
+    source_uid="edr-ransomware-001",
+    data_sources=["EDR", "Process Monitoring", "File System Monitoring"],
+    analytic_name="Ransomware Behavioral Detector",
+    analytic_type=AlertAnalyticType.BEHAVIORAL,
+    analytic_state=AlertAnalyticState.ACTIVE,
+    analytic_desc="Detects three-stage ransomware attack: shadow copy deletion + file encryption + ransom note.",
+    tactic="Impact",
+    technique="T1486",
+    sub_technique="",
+    mitigation="EDR, Immutable Backups, Air-Gapped Recovery",
+    product_category=ProductCategory.EDR,
+    product_vendor="CrowdStrike",
+    product_name="Falcon",
+    product_feature="Ransomware-Prevention",
+    policy_name="Ransomware Prevention Policy",
+    policy_type=AlertPolicyType.SERVICE_CONTROL_POLICY,
+    policy_desc="Immediate blocking of all ransomware indicators.",
+    risk_level=AlertRiskLevel.CRITICAL,
+    risk_details="Database server encryption would impact all database users. Potential data loss and extended downtime. Estimated impact: $100K+ per hour of downtime.",
+    status=AlertStatus.NEW,
+    status_detail="CRITICAL: Immediate action required. Automatic host isolation has been triggered.",
+    remediation="IMMEDIATE ACTIONS: 1. Verify host isolation is complete (confirmed). 2. Do NOT power off infected host (may prevent recovery). 3. Disconnect all network cables. 4. Capture forensic image of storage drives. 5. Begin restore from clean backup prior to incident date. 6. Notify business stakeholders of estimated recovery time. INVESTIGATION: 1. Analyze attack entry point (email, SMB, RDP, etc.). 2. Check for lateral movement to other hosts. 3. Review backup integrity to ensure clean restore available. 4. Implement EDR hunting query to find similar patterns.",
+    comment="This is a confirmed active ransomware attack. CRITICAL priority. Finance and Executive team notified. Legal/Compliance briefing initiated. Do NOT attempt to contact attacker or pay ransom without consulting law enforcement.",
+    unmapped="",
+    raw_data=json.dumps(
+        {"shadow_copy_deleted": True, "encrypted_file_count": 20, "ransom_note_created": True, "process_execution": "vssadmin.exe delete shadows /all /quiet",
+         "malware_hash": "5d41402abc4b2a76b9719d911017c592", "host": "srv-db-master", "user": "dbadmin", "time_elapsed": "120 seconds"}),
+    summary_ai="CRITICAL: Active ransomware execution detected on production database server. All three indicators of ransomware present: shadow copy deletion, bulk file encryption, ransom note. Estimated 20 files already encrypted. Immediate isolation and recovery activation required.",
+    case=None,
+    enrichments=[enrichment_carbonblack_execution],
+    artifacts=[artifact_vssadmin_process, artifact_decryptor_malware, artifact_ransom_note_file, artifact_encrypted_files, artifact_ransomware_host,
+               artifact_ransomware_user]
+)
+
 # === Case 1: Phishing Email Attack (100% Coverage) ===
 case1_phishing = CaseModel(
     title="Phishing Campaign Detected - 'Urgent Payroll Update'",
@@ -1493,6 +1744,93 @@ case10_cloud_misconfig = CaseModel(
     alerts=[alert_cloud_config_change]
 )
 
+# === Case 11: Brute Force SSH Attack (From SIEM Scenario) ===
+case11_brute_force = CaseModel(
+    title="Brute Force Attack: Multiple Failed Login Attempts Followed by Successful Compromise",
+    severity=Severity.CRITICAL,
+    impact=ImpactLevel.HIGH,
+    priority=CasePriority.CRITICAL,
+    confidence=Confidence.HIGH,
+    description="External attacker from China (IP: 45.95.11.22) conducted a brute force attack against production web server admin account. After 7 failed attempts, attacker successfully compromised the admin account.",
+    category=ProductCategory.SIEM,
+    tags=["brute-force", "ssh", "credential-attack", "account-compromise", "china", "high-risk"],
+    status=CaseStatus.IN_PROGRESS,
+    acknowledged_time=past_1h,
+    comment="L2 Analyst: Admin account is confirmed compromised. Immediate password reset, session termination, and command audit in progress. Source IP blocked at firewall.",
+    closed_time=None,
+    verdict=None,
+    summary="",
+    correlation_uid="CORR-BRUTE-FORCE-001",
+    workbook="### Brute Force Attack Response\n1. Confirm account compromise (`done`)\n2. Reset admin password (`done`)\n3. Terminate all admin sessions (`done`)\n4. Review command history (`in-progress`)\n5. Check for lateral movement (`in-progress`)\n6. Block source IP globally (`done`)\n7. Enable MFA for admin (`pending`)",
+    analysis_rationale_ai="Attack pattern clearly indicates brute force: consistent failed auth attempts from single IP followed by immediate success. Source IP reputation is MALICIOUS. Geographic origin (China) is high-risk for admin account.",
+    recommended_actions_ai="- IMMEDIATE: Force password reset for admin account. 2. Review all commands executed by admin since last_seen_time. 3. Block source IP 45.95.11.22 at firewall. 4. Enable MFA for admin account. 5. Review login history for other successful attempts from this IP.",
+    attack_stage_ai="Credential Access",
+    severity_ai=Severity.CRITICAL,
+    confidence_ai=Confidence.HIGH,
+    threat_hunting_report_ai="Query: Show all failed login attempts from external IPs in last 7 days | Show all successful logins from 45.95.11.22 in last 7 days | Check for similar brute force patterns from other IP ranges",
+    tickets=[ticket_pagerduty],
+    enrichments=[enrichment_greynoise_scanner, enrichment_geoip_russia],
+    alerts=[alert_brute_force_siem]
+)
+
+# === Case 12: SQL Injection Web Attack (From SIEM Scenario) ===
+case12_sql_injection = CaseModel(
+    title="SQL Injection Attack: Automated Scanner Detected and Blocked by WAF",
+    severity=Severity.HIGH,
+    impact=ImpactLevel.MEDIUM,
+    priority=CasePriority.HIGH,
+    confidence=Confidence.HIGH,
+    description="Web Application Firewall detected SQL injection attack from Russia using automated sqlmap tool. Attacker attempted multiple SQL injection vectors against the user API endpoint. All attacks were successfully blocked.",
+    category=ProductCategory.WAF,
+    tags=["sql-injection", "web-attack", "waf", "automated-scanner", "owasp-top-10"],
+    status=CaseStatus.RESOLVED,
+    acknowledged_time=past_30m,
+    comment="L3 Security Engineer: Attack was fully contained by WAF rules. No database compromise detected. Recommended code review to identify and fix potential SQL injection vulnerabilities.",
+    closed_time=now,
+    verdict=CaseVerdict.TRUE_POSITIVE,
+    summary="SQL injection attack was detected and blocked by WAF. No application or database compromise occurred. Attacker IP has been blocked and monitoring is ongoing.",
+    correlation_uid="CORR-SQL-INJ-001",
+    workbook="### SQL Injection Response\n1. Block attacker IP (`done`)\n2. Review WAF logs for patterns (`done`)\n3. Audit application code for injection vulnerabilities (`done`)\n4. Deploy parameterized query fixes (`pending`)\n5. Conduct SAST scan of codebase (`pending`)",
+    analysis_rationale_ai="SQL injection attempt with multiple payloads (boolean blind, time-based, UNION-based) indicates automated tool usage (sqlmap). However, WAF successfully blocked all attempts. No evidence of database access or compromise.",
+    recommended_actions_ai="- Update WAF rules with new detection patterns (COMPLETED)\n- Review application code for SQL injection vulnerabilities\n- Implement parameterized queries in API endpoint /api/user\n- Add request rate limiting\n- Conduct security code review of all database interactions\n- Plan penetration test after fixes are deployed",
+    attack_stage_ai="Exploitation",
+    severity_ai=Severity.HIGH,
+    confidence_ai=Confidence.HIGH,
+    threat_hunting_report_ai="",
+    tickets=[ticket_jira],
+    enrichments=[enrichment_urlhaus_malware],
+    alerts=[alert_sql_injection_siem]
+)
+
+# === Case 13: Active Ransomware Encryption (From SIEM Scenario) ===
+case13_ransomware = CaseModel(
+    title="CRITICAL: Active Ransomware Execution on Production Database Server",
+    severity=Severity.CRITICAL,
+    impact=ImpactLevel.CRITICAL,
+    priority=CasePriority.CRITICAL,
+    confidence=Confidence.CRITICAL,
+    description="CRITICAL INCIDENT: Ransomware malware detected executing on production database server 'srv-db-master' with three confirmed attack indicators: 1) Shadow Copy deletion via vssadmin.exe 2) Bulk file encryption (20+ files renamed to .encrypted) 3) Ransom note creation. Immediate response required.",
+    category=ProductCategory.EDR,
+    tags=["ransomware", "file-encryption", "critical-incident", "active-threat", "recovery-required"],
+    status=CaseStatus.IN_PROGRESS,
+    acknowledged_time=past_2h,
+    comment="INCIDENT COMMANDER: All-hands-on-deck response initiated. Host isolated. Crisis management team assembled. Legal/Law Enforcement notifications pending. Do NOT negotiate with attacker. Do NOT shutdown infected system. Prepare for potential multi-day recovery.",
+    closed_time=None,
+    verdict=None,
+    summary="",
+    correlation_uid="CORR-RANSOMWARE-ACTIVE-001",
+    workbook="### CRITICAL: Ransomware Response Playbook\n**IMMEDIATE ACTIONS (0-15 min):**\n- [x] Isolate infected host from network\n- [x] Preserve forensic evidence (disk/memory dumps initiated)\n- [x] Notify incident response team\n- [x] Activate disaster recovery plan\n\n**SHORT TERM (15 min - 2 hours):**\n- [x] Assess backup integrity\n- [ ] Identify attack vector (email, RDP, SMB, supply chain)\n- [ ] Hunt for lateral movement indicators\n- [ ] Review EDR logs for persistence mechanisms\n- [ ] Activate clean backup restoration\n\n**MEDIUM TERM (2-24 hours):**\n- [ ] Complete system restore from clean backup\n- [ ] Verify restored system integrity\n- [ ] Analyze forensic artifacts\n- [ ] Identify and patch vulnerability used for initial compromise\n- [ ] Review all privileged account activity\n\n**LONG TERM:**\n- [ ] Incident report and lessons learned\n- [ ] Security control improvements\n- [ ] Backup and recovery procedures review",
+    analysis_rationale_ai="Three concurrent indicators confirm active ransomware: (1) vssadmin.exe shadow copy deletion removes backup recovery options, (2) Bulk file encryption of business-critical files with .encrypted extension, (3) Ransom note creation indicates attacker demand. This is NOT a false positive. This is a confirmed active attack requiring full incident response activation.",
+    recommended_actions_ai="CRITICAL ACTIONS - EXECUTE IMMEDIATELY:\n1. ✓ NETWORK ISOLATION: Disconnect infected host from all networks (COMPLETED)\n2. ✓ PRESERVE EVIDENCE: Initiate forensic disk/memory capture (COMPLETED)\n3. ✓ DO NOT SHUTDOWN: Risk unrecoverable data if malware not fully executed\n4. BACKUP ASSESSMENT: Verify clean backup exists before infection date\n5. RECOVERY ACTIVATION: Prepare clean backup for immediate restoration\n6. ATTACK VECTOR IDENTIFICATION: Determine compromise method (email, RDP, SMB, web shell)\n7. LATERAL MOVEMENT CHECK: Hunt for infection spread to other systems\n8. PERSISTENCE SEARCH: Look for scheduled tasks, registry modifications, services\n9. STAKEHOLDER NOTIFICATION: Inform affected business units, customers, regulators\n10. LAW ENFORCEMENT: Contact FBI/local authorities for APT attribution and coordination",
+    attack_stage_ai="Impact / Ransomware Execution",
+    severity_ai=Severity.CRITICAL,
+    confidence_ai=Confidence.CRITICAL,
+    threat_hunting_report_ai="URGENT HUNTS:\n- Find all processes executed by user 'dbadmin' in last 2 hours\n- Identify all processes accessing files with .encrypted extension\n- Check for vssadmin.exe execution on all hosts (indicates lateral movement)\n- Review all RDP/SMB connections to this host in last 24 hours\n- Search for similar encrypted file extensions across file shares\n- Check for ransom notes on network shares (indicates spread)\n- Monitor command/control traffic patterns from isolated host\n- Identify initial entry point: email attachment, RDP brute force, SMB exploit, web shell",
+    tickets=[ticket_servicenow, ticket_pagerduty],
+    enrichments=[enrichment_carbonblack_execution],
+    alerts=[alert_ransomware_siem]
+)
+
 if __name__ == "__main__":
     import os
     import django
@@ -1510,6 +1848,9 @@ if __name__ == "__main__":
         case7_data_exfil,
         case8_email_campaign,
         case9_priv_esc,
-        case10_cloud_misconfig
+        case10_cloud_misconfig,
+        case11_brute_force,
+        case12_sql_injection,
+        case13_ransomware
     ]:
         Case.update_or_create(case)

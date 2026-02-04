@@ -1,6 +1,6 @@
 import json
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 
 from splunklib.results import JSONResultsReader
 
@@ -13,7 +13,7 @@ from models import (
 )
 from registry import STATIC_SCHEMA_REGISTRY, get_default_agg_fields, get_backend_type
 
-SUMMARY_THRESHOLD = 100
+SUMMARY_THRESHOLD = 1000
 SAMPLE_THRESHOLD = 20
 
 
@@ -93,8 +93,12 @@ class SIEMToolKit(object):
         service = SplunkClient.get_service()
 
         try:
-            t_start = datetime.strptime(input_data.time_range_start, "%Y-%m-%dT%H:%M:%SZ").timestamp()
-            t_end = datetime.strptime(input_data.time_range_end, "%Y-%m-%dT%H:%M:%SZ").timestamp()
+            utc_format = "%Y-%m-%dT%H:%M:%SZ"
+            dt_start_utc = datetime.strptime(input_data.time_range_start, utc_format).replace(tzinfo=timezone.utc)
+            dt_end_utc = datetime.strptime(input_data.time_range_end, utc_format).replace(tzinfo=timezone.utc)
+
+            t_start = dt_start_utc.timestamp()
+            t_end = dt_end_utc.timestamp()
         except ValueError:
             raise ValueError("Invalid UTC format.")
 

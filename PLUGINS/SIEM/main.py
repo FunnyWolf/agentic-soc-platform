@@ -1,5 +1,14 @@
+from datetime import datetime, timedelta
+
 from models import AdaptiveQueryInput, SchemaExplorerInput
 from tools import SIEMToolKit
+
+
+def get_recent_time_range(minutes=5):
+    """获取最近N分钟的时间范围，返回ISO 8601格式的字符串"""
+    end_time = datetime.utcnow()
+    start_time = end_time - timedelta(minutes=minutes)
+    return start_time.strftime("%Y-%m-%dT%H:%M:%SZ"), end_time.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def main():
@@ -9,12 +18,18 @@ def main():
     all = toolkit.explore_schema(SchemaExplorerInput(target_index="siem-aws-cloudtrail"))
     print(all)
 
+    # 获取最近5分钟的时间范围
+    time_range_start, time_range_end = get_recent_time_range(5)
+
     query_input = AdaptiveQueryInput(
         index_name="siem-aws-cloudtrail",
         time_field="@timestamp",  # 这里可以改成任意 Date 类型字段，如 "event.created"
-        time_range_start="2026-02-05T02:41:00Z",
-        time_range_end="2026-02-05T02:41:10Z",
-        filters={"event.outcome": "success", "source.ip": "45.33.22.11", "user.name": "github-actions-role"}
+        time_range_start=time_range_start,
+        time_range_end=time_range_end,
+        filters={
+            "event.outcome": "success",
+            "user.name": "user_002"
+        }
     )
 
     result = toolkit.execute_adaptive_query(query_input)
@@ -28,9 +43,13 @@ def main():
 
     query_input = AdaptiveQueryInput(
         index_name="siem-network-traffic",
-        time_range_start="2026-02-05T02:40:00Z",
-        time_range_end="2026-02-05T02:45:10Z",
-        filters={"event.dataset": "network", "destination.ip": "104.21.11.22"}
+        time_range_start=time_range_start,
+        time_range_end=time_range_end,
+        filters={
+            "event.dataset": "network",
+            "destination.ip": "104.21.11.22",
+            "event.action": "deny"
+        }
     )
 
     result = toolkit.execute_adaptive_query(query_input)
