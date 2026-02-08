@@ -212,3 +212,7 @@ class KeywordSearchOutput(BaseModel):
             "'summary' status returns empty list"
         )
     )
+    backend: str = Field(
+        default="",
+        description="Backend type: 'ELK' or 'Splunk'. Empty when searching a specific index."
+    )

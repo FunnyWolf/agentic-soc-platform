@@ -1,6 +1,7 @@
 import json
 import time
 from datetime import datetime, timezone
+from typing import List
 
 import splunklib.client
 from elasticsearch import Elasticsearch
@@ -18,6 +19,15 @@ from PLUGINS.SIEM.models import (
     SAMPLE_THRESHOLD, SAMPLE_COUNT
 )
 from PLUGINS.SIEM.registry import _load_yaml_configs, get_default_agg_fields, get_backend_type
+
+
+def get_indices_by_backend() -> dict:
+    registry = _load_yaml_configs()
+    result = {"ELK": [], "Splunk": []}
+    for idx_name, idx_info in registry.items():
+        if idx_info.backend in result:
+            result[idx_info.backend].append(idx_name)
+    return result
 
 
 class ELKClient:
@@ -136,13 +146,13 @@ class SIEMToolKit(object):
             raise ValueError(f"Unsupported backend: {backend}")
 
     @classmethod
-    def keyword_search(cls, input_data: KeywordSearchInput) -> KeywordSearchOutput:
+    def keyword_search(cls, input_data: KeywordSearchInput) -> List[KeywordSearchOutput]:
         """
         Execute keyword-based search across SIEM backends with intelligent response formatting.
 
         This tool performs full-text search using a keyword across all fields (or specified index):
         - Supports searching by IP, hostname, username, or any arbitrary string
-        - Automatically searches across all indices when index_name is not specified
+        - When index_name is not specified, searches BOTH ELK and Splunk backends and returns results from each
         - Applies the same adaptive response strategy as execute_adaptive_query:
             * Full logs: < 20 results
             * Sample: 20-1000 results (statistics + samples)
@@ -155,7 +165,7 @@ class SIEMToolKit(object):
             ConnectionError: If SIEM backend is unreachable
 
         Example Usage by Agent:
-            # Search for an IP across all indices
+            # Search for an IP across all indices (returns results from both ELK and Splunk)
             input_data = KeywordSearchInput(
                 keyword="192.168.1.100",
                 time_range_start="2026-02-04T06:00:00Z",
@@ -173,25 +183,52 @@ class SIEMToolKit(object):
             )
             result = keyword_search(input_data)
         """
-        effective_index = input_data.index_name or "*"
+        if input_data.index_name:
+            backend = get_backend_type(input_data.index_name)
+            if backend == "ELK":
+                return [cls._keyword_search_elk(input_data)]
+            elif backend == "Splunk":
+                return [cls._keyword_search_splunk(input_data)]
+            else:
+                raise ValueError(f"Unsupported backend: {backend}")
 
-        if effective_index == "*":
-            registry = _load_yaml_configs()
-            if not registry:
-                raise ValueError("No SIEM indices configured in registry")
-            first_index = next(iter(registry.keys()))
-            backend = get_backend_type(first_index)
-        else:
-            backend = get_backend_type(effective_index)
+        indices_by_backend = get_indices_by_backend()
+        results = []
 
-        if backend == "ELK":
-            result = cls._keyword_search_elk(input_data)
-            return result
-        elif backend == "Splunk":
-            result = cls._keyword_search_splunk(input_data)
-            return result
-        else:
-            raise ValueError(f"Unsupported backend: {backend}")
+        elk_indices = indices_by_backend.get("ELK", [])
+        if elk_indices:
+            hit_indices = cls._discover_elk_hit_indices(input_data, elk_indices)
+            for idx_name in hit_indices:
+                modified_input = KeywordSearchInput(
+                    keyword=input_data.keyword,
+                    time_range_start=input_data.time_range_start,
+                    time_range_end=input_data.time_range_end,
+                    time_field=input_data.time_field,
+                    index_name=idx_name
+                )
+                result = cls._keyword_search_elk(modified_input)
+                result.backend = "ELK"
+                results.append(result)
+
+        splunk_indices = indices_by_backend.get("Splunk", [])
+        if splunk_indices:
+            hit_indices = cls._discover_splunk_hit_indices(input_data, splunk_indices)
+            for idx_name in hit_indices:
+                modified_input = KeywordSearchInput(
+                    keyword=input_data.keyword,
+                    time_range_start=input_data.time_range_start,
+                    time_range_end=input_data.time_range_end,
+                    time_field=input_data.time_field,
+                    index_name=idx_name
+                )
+                result = cls._keyword_search_splunk(modified_input)
+                result.backend = "Splunk"
+                results.append(result)
+
+        if not results:
+            raise ValueError("No SIEM indices configured in registry or no hits found")
+
+        return results
 
     @classmethod
     def _build_time_range_clause(cls, time_field: str, time_range_start: str, time_range_end: str) -> dict:
@@ -456,6 +493,48 @@ class SIEMToolKit(object):
                 statistics=stats_output, records=final_records,
                 message=f"Found {total_hits} events in Splunk. Returning full logs."
             )
+
+    @classmethod
+    def _discover_elk_hit_indices(cls, input_data: KeywordSearchInput, elk_indices: list) -> list:
+        client = ELKClient.get_client()
+        index_pattern = ",".join(elk_indices)
+
+        must_clauses = [
+            cls._build_time_range_clause(input_data.time_field, input_data.time_range_start, input_data.time_range_end),
+            {"query_string": {"query": input_data.keyword, "default_operator": "AND"}}
+        ]
+        query_body = {"bool": {"must": must_clauses}}
+        aggs_dsl = {"_index": {"terms": {"field": "_index", "size": 50}}}
+
+        response = client.search(
+            index=index_pattern, query=query_body, aggs=aggs_dsl, size=0, track_total_hits=True
+        )
+
+        hit_indices = []
+        if "aggregations" in response and "_index" in response["aggregations"]:
+            buckets = response["aggregations"]["_index"]["buckets"]
+            hit_indices = [b["key"] for b in buckets if b["doc_count"] > 0]
+
+        return hit_indices
+
+    @classmethod
+    def _discover_splunk_hit_indices(cls, input_data: KeywordSearchInput, splunk_indices: list) -> list:
+        service = SplunkClient.get_service()
+        t_start, t_end = cls._parse_time_range(input_data.time_range_start, input_data.time_range_end)
+
+        index_clause = " OR ".join([f'index="{idx}"' for idx in splunk_indices])
+        search_query = f"search ({index_clause}) {input_data.keyword} | stats count by index"
+
+        rr = service.jobs.oneshot(search_query, earliest_time=t_start, latest_time=t_end, output_mode="json")
+        reader = JSONResultsReader(rr)
+
+        hit_indices = []
+        for item in reader:
+            if isinstance(item, dict) and "index" in item and "count" in item:
+                if int(item["count"]) > 0:
+                    hit_indices.append(item["index"])
+
+        return hit_indices
 
     @classmethod
     def _build_safe_aggs(cls, agg_fields, index_name="*"):

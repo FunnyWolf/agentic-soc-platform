@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, UTC
+from typing import List
 
 from models import AdaptiveQueryInput, SchemaExplorerInput, KeywordSearchInput, KeywordSearchOutput
 from tools import SIEMToolKit
@@ -67,7 +68,7 @@ def test_adaptive_query():
 
 def test_keyword_search():
     toolkit = SIEMToolKit()
-    time_range_start, time_range_end = get_recent_time_range(30)
+    time_range_start, time_range_end = get_recent_time_range(1)
 
     input_data = KeywordSearchInput(
         # index_name="siem-network-traffic",
@@ -75,13 +76,8 @@ def test_keyword_search():
         time_range_start=time_range_start,
         time_range_end=time_range_end,
     )
-    result: KeywordSearchOutput = toolkit.keyword_search(input_data)
-    print(f"Status: {result.status}")
-    print(f"Total Hits: {result.total_hits}")
-
-    if result.records:
-        # 验证返回数据
-        print(f"Sample: {result.records[0]}")
+    result: List[KeywordSearchOutput] = toolkit.keyword_search(input_data)
+    print(result)
 
 
 if __name__ == "__main__":
