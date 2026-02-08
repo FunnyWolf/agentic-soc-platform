@@ -51,7 +51,8 @@ def get_default_agg_fields(index_name: str) -> List[str]:
     registry = _load_yaml_configs()
     if index_name not in registry:
         return []
-    return [f.name for f in registry[index_name].fields if f.is_key_field]
+    result = [f.name for f in registry[index_name].fields if f.is_key_field]
+    return result
 
 
 def get_backend_type(index_name: str) -> str:

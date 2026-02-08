@@ -28,6 +28,7 @@ HOSTS = [
             "workstation-win10-01", "workstation-mac-12", "workstation-linux-05"
         ] + [f"node-compute-{i:02d}" for i in range(1, 5)]
 
+# HOSTS = ["srv-web-prod-01", "srv-web-prod-02", "srv-web-staging-01"]
 INTERNAL_IPS = [f"10.0.0.{i}" for i in range(1, 51)] + [f"192.168.1.{i}" for i in range(100, 151)]
 
 EXTERNAL_IPS = [
