@@ -68,10 +68,7 @@ class AlienVaultOTX(object):
         查询指定文件哈希的威胁情报信息
 
         Args:
-            file_hash (str): 文件的哈希值，支持以下格式：
-                - MD5: 32 个十六进制字符
-                - SHA1: 40 个十六进制字符
-                - SHA256: 64 个十六进制字符
+            file_hash (str): 文件的哈希值
 
         Returns:
             dict: 包含以下字段的字典：
