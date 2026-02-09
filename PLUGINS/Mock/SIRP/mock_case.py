@@ -1,15 +1,8 @@
-from PLUGINS.Mock.SIRP.mock_alert import alert_user_reported_phishing, alert_malware_blocked, alert_psexec_lateral, alert_credential_dumping, \
-    alert_dns_tunnel_volume, alert_dns_long_query, alert_brute_force_ssh, alert_malware_execution, alert_unauthorized_access, alert_data_exfiltration, \
-    alert_malicious_email_attachment, alert_privilege_escalation, alert_cloud_config_change, alert_brute_force_siem, alert_sql_injection_siem, \
-    alert_ransomware_siem
-from PLUGINS.Mock.SIRP.mock_api import now, past_5m, past_30m, past_1h, past_2h, past_7d, past_1d_18h, past_2d_6h, past_3d_12h, past_4d_20h, \
-    past_5d_8h, past_6d_15h
-from PLUGINS.Mock.SIRP.mock_enrichment import enrichment_business, enrichment_greynoise_scanner, \
-    enrichment_urlhaus_malware, enrichment_geoip_russia, \
-    enrichment_carbonblack_execution
-from PLUGINS.Mock.SIRP.mock_ticket import ticket_jira, ticket_servicenow, ticket_pagerduty
+from PLUGINS.Mock.SIRP.mock_alert import *
+from PLUGINS.Mock.SIRP.mock_enrichment import *
+from PLUGINS.Mock.SIRP.mock_ticket import *
 from PLUGINS.SIRP.sirpmodel import (
-    CaseModel, Severity, ImpactLevel, Confidence, ProductCategory, CaseStatus,
+    CaseModel, CaseStatus,
     CasePriority, CaseVerdict
 )
 

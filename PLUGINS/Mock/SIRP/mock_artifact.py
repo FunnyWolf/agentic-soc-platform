@@ -1,6 +1,4 @@
-from PLUGINS.Mock.SIRP.mock_enrichment import enrichment_otx_evil_domain, enrichment_virustotal, enrichment_otx_8888, enrichment_abuseipdb_ransomware, \
-    enrichment_geoip_russia, enrichment_virustotal_cryptominer, enrichment_whois_domain, enrichment_okta_user, enrichment_aws_s3_public, \
-    enrichment_greynoise_scanner, enrichment_cve_detail, enrichment_urlhaus_malware
+from PLUGINS.Mock.SIRP.mock_enrichment import *
 from PLUGINS.SIRP.sirpmodel import ArtifactModel, ArtifactType, ArtifactRole, ArtifactReputationScore
 
 artifact_evil_email = ArtifactModel(

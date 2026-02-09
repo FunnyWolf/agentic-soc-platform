@@ -1,16 +1,7 @@
-import json
-
 from PLUGINS.Mock.SIRP.mock_api import past_10m, past_5m, now, past_1d_18h, past_2d_6h, past_3d_12h, past_4d_20h, past_5d_8h, past_6d_15h, past_7d, past_1h, \
     past_30m, past_2h
-from PLUGINS.Mock.SIRP.mock_artifact import artifact_evil_email, artifact_fake_url, artifact_malware_file, artifact_malware_hash, artifact_psexesvc, \
-    artifact_dc01, artifact_lsass, artifact_mimikatz, artifact_internal_ip, artifact_c2_domain, artifact_dns_port, artifact_google_dns, artifact_sql_server, \
-    artifact_ransomware_ip_2, artifact_powershell_script, artifact_malware_registry, artifact_user_account, artifact_suspicious_domain_3, artifact_aws_role, \
-    artifact_cloudtrail_event, artifact_brute_force_ip, artifact_target_user_brute, artifact_target_host_brute, artifact_malicious_url_sqli, \
-    artifact_sqlmap_tool, artifact_waf_server, artifact_vssadmin_process, artifact_decryptor_malware, artifact_ransom_note_file, artifact_encrypted_files, \
-    artifact_ransomware_host, artifact_ransomware_user
-from PLUGINS.Mock.SIRP.mock_enrichment import enrichment_virustotal, enrichment_otx_evil_domain, enrichment_greynoise_scanner, enrichment_carbonblack_execution, \
-    enrichment_splunk_anomaly, enrichment_darktrace_ai, enrichment_proofpoint_sandbox, enrichment_sentinel_threat, enrichment_aws_s3_public, \
-    enrichment_geoip_russia, enrichment_urlhaus_malware
+from PLUGINS.Mock.SIRP.mock_artifact import *
+from PLUGINS.Mock.SIRP.mock_enrichment import *
 from PLUGINS.SIRP.sirpmodel import AlertModel, Severity, ImpactLevel, Disposition, AlertAction, Confidence, AlertAnalyticType, AlertAnalyticState, \
     ProductCategory, AlertRiskLevel, AlertStatus, AlertPolicyType
 
