@@ -58,7 +58,7 @@ class AgentSIEM:
         return result
 
 
-tools = [SIEMToolKit.explore_schema, SIEMToolKit.execute_adaptive_query]
+tools = [SIEMToolKit.explore_schema, SIEMToolKit.execute_adaptive_query, SIEMToolKit.keyword_search]
 
 
 # LangGraph-based agent for complex, stateful queries

@@ -12,7 +12,7 @@ discovering relevant information.
 
 ## Available Tools
 
-You have access to two primary tools for SIEM data exploration and querying:
+You have access to three primary tools for SIEM data exploration and querying:
 
 ### 1. explore_schema()
 
@@ -54,6 +54,34 @@ This tool supports a step-by-step refinement approach:
 - Returns statistics + sample records for medium volumes (pattern identification)
 - Returns statistics only for large volumes (efficient insights)
 
+### 3. keyword_search()
+
+Execute keyword-based full-text search across SIEM backends with intelligent response formatting.
+
+**Usage approach:**
+
+- Use `keyword_search(keyword="search_term")` to search across all available indices in both ELK and Splunk
+- Use `keyword_search(keyword="search_term", index_name="specific_index")` to limit search to a specific index
+- Supports searching by IP addresses, hostnames, usernames, or any arbitrary string
+- Automatically applies the same adaptive response strategy as execute_adaptive_query
+
+**Key benefit:** The tool automatically adjusts its response format:
+
+- Returns all records when there are few results (easy analysis)
+- Returns statistics + sample records for medium volumes (pattern identification)
+- Returns statistics only for large volumes (efficient insights)
+- When searching across all indices, provides distribution metrics showing hit count per index
+
+**Aggregation fields:** When an index_name is provided, the tool automatically returns statistics for default aggregation fields defined for that index. This helps identify patterns and distributions.
+
+**Response includes:**
+- `status`: Response type ("full", "sample", or "summary")
+- `total_hits`: Total number of matching events
+- `index_distribution`: Shows count of results per index (when searching across indices)
+- `statistics`: Top values for aggregation fields
+- `records`: Sample or full records depending on volume
+- `backend`: Which backend returned the results (ELK or Splunk)
+
 ## Investigation Strategy
 
 1. **Identify Index**: Select the appropriate index from the available indices listed above
@@ -68,7 +96,33 @@ This tool supports a step-by-step refinement approach:
 
 ## Query Examples
 
-### Example: Investigating Security Events (Progressive Approach)
+### Example 1: Searching for an IP Address Across All Indices
+
+```
+keyword_search(
+  keyword="192.168.1.100",
+  time_range_start="2026-02-04T06:00:00Z",
+  time_range_end="2026-02-04T07:00:00Z",
+  aggregation_fields=["event.action", "source.ip", "user.name"]
+)
+```
+
+→ Returns results from all indices in both ELK and Splunk with index distribution
+
+### Example 2: Searching for a Hostname in a Specific Index
+
+```
+keyword_search(
+  keyword="DESKTOP-ABC123",
+  index_name="logs-endpoint",
+  time_range_start="2026-02-04T06:00:00Z",
+  time_range_end="2026-02-04T07:00:00Z"
+)
+```
+
+→ Returns focused results from the specific index with relevant statistics
+
+### Example 3: Investigating Security Events (Progressive Approach)
 
 **Step 1: Start broad to understand data volume and patterns**
 
