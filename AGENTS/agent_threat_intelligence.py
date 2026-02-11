@@ -127,17 +127,3 @@ class GraphAgent(LanggraphPlaybook):
         result = final_state['messages'][-1].content
         logger.info(f"Query result extracted, result length: {len(result)} characters")
         return result
-
-
-# Test code
-if __name__ == "__main__":
-    import os
-    import django
-
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ASP.settings")
-    django.setup()
-
-    print("\n--- Using create_agent for Query ---")
-    test_query = "最近5分钟192.168.1.150使用ssh访问了哪些内网主机?"
-    result_simple = AgentThreatIntelligence.threat_intelligence_lookup("ip", "66.240.205.34")
-    print(result_simple)

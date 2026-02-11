@@ -274,13 +274,13 @@ class CasePriority(StrEnum):
 
 
 class CaseStatus(StrEnum):
-    UNKNOWN = "Unknown"
+    # UNKNOWN = "Unknown"
     NEW = "New"
     IN_PROGRESS = "In Progress"
     ON_HOLD = "On Hold"
     RESOLVED = "Resolved"
     CLOSED = "Closed"
-    OTHER = "Other"
+    # OTHER = "Other"
 
 
 class CaseVerdict(StrEnum):
