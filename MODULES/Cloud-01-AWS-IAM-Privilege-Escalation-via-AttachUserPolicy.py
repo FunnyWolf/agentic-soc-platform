@@ -12,7 +12,7 @@ from Lib.api import get_current_time_str
 from Lib.basemodule import LanggraphModule
 from Lib.llmapi import BaseAgentState
 from PLUGINS.LLM.llmapi import LLMAPI
-from PLUGINS.SIRP.grouprule import GroupRule, CorrelationConfig, CorrelationStrategy
+from PLUGINS.SIRP.grouprule import GroupRule, CorrelationConfig
 from PLUGINS.SIRP.sirpapi import Alert
 from PLUGINS.SIRP.sirpmodel import AlertModel, ArtifactModel, ArtifactType, ArtifactRole, Severity, AlertStatus, AlertAnalyticType, ProductCategory, Confidence, \
     ImpactLevel, AlertRiskLevel, Disposition, AlertAction, AlertPolicyType
@@ -140,15 +140,11 @@ class Module(LanggraphModule):
 
             correlation_config = CorrelationConfig(
                 rule_id=self.module_name,
-                strategy=CorrelationStrategy.BY_ACTOR_AND_TARGET,
                 time_window="24h",
-                case_title_template="AWS IAM Privilege Escalation: {actor} → {target}"
+                keys=[principal_user, target_user, account_id]
             )
             group_rule = GroupRule(config=correlation_config)
-            correlation_uid = group_rule.generate_correlation_uid(
-                artifacts=artifacts,
-                timestamp=event_time_formatted
-            )
+            correlation_uid = group_rule.generate_correlation_uid(timestamp=event_time_formatted)
 
             alert_model = AlertModel(
                 title=f"AWS IAM Privilege Escalation: {principal_user} attached {policy_arn.split('/')[-1]} to {target_user}",
