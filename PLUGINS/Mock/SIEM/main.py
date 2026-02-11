@@ -51,11 +51,11 @@ class SplunkSender:
 
 
 # --- 核心引擎 ---
-def run_engine(generators, senders, scenario_list=None):
+def run_engine(generators, senders, scenario_mapping=None):
     """
     generators: dict { index_name: generator_instance }
     senders: list [sender_instances]
-    scenario_list: list [scenario_classes]
+    scenario_mapping: dict { index_name: [scenario_classes] }
     """
     print(f"Simulation engine started. Targets: {[s.__class__.__name__ for s in senders]}")
 
@@ -64,9 +64,9 @@ def run_engine(generators, senders, scenario_list=None):
             # 1. 生成基础批次
             batch = [gen.generate() for _ in range(settings.BATCH_SIZE)]
 
-            # 2. 注入异常场景 (可选)
-            if scenario_list and random.random() < 0.05:
-                scenario_class = random.choice(scenario_list)
+            # 2. 注入对应索引的异常场景
+            if scenario_mapping and index_name in scenario_mapping and random.random() < 0.05:
+                scenario_class = random.choice(scenario_mapping[index_name])
                 scenario_instance = scenario_class()
                 batch.extend(scenario_instance.get_logs())
 
@@ -94,8 +94,12 @@ if __name__ == "__main__":
     if CONFIG.SPLUNK_ENABLED:
         my_senders.append(SplunkSender())
 
-    # 3. 定义你想注入的攻击场景
-    my_scenarios = [BruteForceScenario, RansomwareScenario, CloudPrivilegeEscalationScenario]
+    # 3. 定义每个索引对应的攻击场景映射
+    my_scenario_mapping = {
+        settings.NET_INDEX: [BruteForceScenario],
+        settings.HOST_INDEX: [RansomwareScenario],
+        settings.CLOUD_INDEX: [CloudPrivilegeEscalationScenario]
+    }
 
     # 4. 启动引擎 (完全通过传参控制)
     if not my_senders:
@@ -104,5 +108,5 @@ if __name__ == "__main__":
     run_engine(
         generators=my_generators,
         senders=my_senders,
-        scenario_list=my_scenarios
+        scenario_mapping=my_scenario_mapping
     )

@@ -3,11 +3,9 @@ import time
 from datetime import datetime, timezone
 from typing import List
 
-import splunklib.client
-from elasticsearch import Elasticsearch
 from splunklib.results import JSONResultsReader
 
-from PLUGINS.SIEM.CONFIG import ELK_HOST, ELK_USER, ELK_PASS, SPLUNK_HOST, SPLUNK_PORT, SPLUNK_USER, SPLUNK_PASS
+from PLUGINS.ELK.client import ELKClient
 from PLUGINS.SIEM.models import (
     SchemaExplorerInput,
     AdaptiveQueryInput,
@@ -19,6 +17,7 @@ from PLUGINS.SIEM.models import (
     SAMPLE_THRESHOLD, SAMPLE_COUNT
 )
 from PLUGINS.SIEM.registry import _load_yaml_configs, get_default_agg_fields, get_backend_type
+from PLUGINS.Splunk.client import SplunkClient
 
 
 def get_indices_by_backend() -> dict:
@@ -28,39 +27,6 @@ def get_indices_by_backend() -> dict:
         if idx_info.backend in result:
             result[idx_info.backend].append(idx_name)
     return result
-
-
-class ELKClient:
-    _instance = None
-
-    @classmethod
-    def get_client(cls):
-        if cls._instance is None:
-            cls._instance = Elasticsearch(
-                ELK_HOST,
-                basic_auth=(ELK_USER, ELK_PASS),
-                verify_certs=False,
-                request_timeout=30
-            )
-        return cls._instance
-
-
-class SplunkClient:
-    """Splunk 连接单例工厂 (新增)"""
-    _instance = None
-
-    @classmethod
-    def get_service(cls):
-        if cls._instance is None:
-            cls._instance = splunklib.client.connect(
-                host=SPLUNK_HOST,
-                port=SPLUNK_PORT,
-                username=SPLUNK_USER,
-                password=SPLUNK_PASS,
-                scheme="https",
-                verify=False
-            )
-        return cls._instance
 
 
 class SIEMToolKit(object):
