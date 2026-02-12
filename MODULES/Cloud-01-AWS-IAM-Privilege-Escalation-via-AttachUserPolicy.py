@@ -13,9 +13,9 @@ from Lib.basemodule import LanggraphModule
 from Lib.llmapi import BaseAgentState
 from PLUGINS.LLM.llmapi import LLMAPI
 from PLUGINS.SIRP.grouprule import GroupRule, CorrelationConfig
-from PLUGINS.SIRP.sirpapi import Alert
+from PLUGINS.SIRP.sirpapi import Alert, Case
 from PLUGINS.SIRP.sirpmodel import AlertModel, ArtifactModel, ArtifactType, ArtifactRole, Severity, AlertStatus, AlertAnalyticType, ProductCategory, Confidence, \
-    ImpactLevel, AlertRiskLevel, Disposition, AlertAction, AlertPolicyType
+    ImpactLevel, AlertRiskLevel, Disposition, AlertAction, AlertPolicyType, CaseModel, CaseStatus, CasePriority
 
 
 class AnalyzeResult(BaseModel):
@@ -86,49 +86,39 @@ class Module(LanggraphModule):
 
             event_time_formatted = event_time if event_time else get_current_time_str()
 
-            artifacts: List[ArtifactModel] = []
-
-            artifacts.append(ArtifactModel(
-                type=ArtifactType.USER,
-                role=ArtifactRole.ACTOR,
-                value=principal_user,
-                name="Principal User"
-            ))
-
-            artifacts.append(ArtifactModel(
-                type=ArtifactType.OTHER,
-                role=ArtifactRole.ACTOR,
-                value=principal_arn,
-                name="Principal ARN"
-            ))
-
-            artifacts.append(ArtifactModel(
-                type=ArtifactType.USER,
-                role=ArtifactRole.TARGET,
-                value=target_user,
-                name="Target User"
-            ))
-
-            artifacts.append(ArtifactModel(
-                type=ArtifactType.IP_ADDRESS,
-                role=ArtifactRole.ACTOR,
-                value=source_ip,
-                name="Source IP"
-            ))
-
-            artifacts.append(ArtifactModel(
-                type=ArtifactType.OTHER,
-                role=ArtifactRole.RELATED,
-                value=policy_arn,
-                name="Policy ARN"
-            ))
-
-            artifacts.append(ArtifactModel(
-                type=ArtifactType.OTHER,
-                role=ArtifactRole.RELATED,
-                value=account_id,
-                name="AWS Account ID"
-            ))
+            artifacts: List[ArtifactModel] = [
+                ArtifactModel(
+                    type=ArtifactType.USER,
+                    role=ArtifactRole.ACTOR,
+                    value=principal_user,
+                    name="Principal User"
+                ), ArtifactModel(
+                    type=ArtifactType.OTHER,
+                    role=ArtifactRole.ACTOR,
+                    value=principal_arn,
+                    name="Principal ARN"
+                ), ArtifactModel(
+                    type=ArtifactType.USER,
+                    role=ArtifactRole.TARGET,
+                    value=target_user,
+                    name="Target User"
+                ), ArtifactModel(
+                    type=ArtifactType.IP_ADDRESS,
+                    role=ArtifactRole.ACTOR,
+                    value=source_ip,
+                    name="Source IP"
+                ), ArtifactModel(
+                    type=ArtifactType.OTHER,
+                    role=ArtifactRole.RELATED,
+                    value=policy_arn,
+                    name="Policy ARN"
+                ), ArtifactModel(
+                    type=ArtifactType.OTHER,
+                    role=ArtifactRole.RELATED,
+                    value=account_id,
+                    name="AWS Account ID"
+                )
+            ]
 
             if access_key_id and access_key_id != "unknown-key":
                 artifacts.append(ArtifactModel(
@@ -193,6 +183,47 @@ class Module(LanggraphModule):
             )
 
             alert_model.artifacts = artifacts
+
+            saved_alert_rowid = Alert.create(alert_model)
+            alert_model.rowid = saved_alert_rowid
+
+            self.logger.debug(f"Alert created with Rowid: {saved_alert_rowid}")
+
+            try:
+                existing_cases = Case.list_by_correlation_uid(correlation_uid, lazy_load=True)
+
+                if existing_cases and len(existing_cases) > 0:
+                    existing_case = existing_cases[0]
+                    self.logger.debug(f"Found existing case with correlation_uid: {correlation_uid}, Case ID: {existing_case.rowid}")
+
+                    update_case = CaseModel(alerts=[*existing_case.alerts, saved_alert_rowid], rowid=existing_case.rowid)
+                    Case.update(update_case)
+
+                    self.logger.debug(f"Alert {saved_alert_rowid} added to existing case {existing_case.rowid}")
+
+                else:
+                    self.logger.debug(f"No existing case found for correlation_uid: {correlation_uid}, creating new case")
+
+                    new_case = CaseModel(
+                        title=f"AWS IAM Privilege Escalation: {principal_user} → {target_user}",
+                        severity=severity,
+                        impact=ImpactLevel.CRITICAL if severity in [Severity.CRITICAL, Severity.HIGH] else ImpactLevel.HIGH,
+                        priority=CasePriority.CRITICAL if severity == Severity.CRITICAL else CasePriority.HIGH,
+                        confidence=Confidence.HIGH,
+                        status=CaseStatus.NEW,
+                        description=f"AWS IAM privilege escalation detected: {principal_user} attached {policy_arn} to {target_user}",
+                        category=ProductCategory.CLOUD,
+                        tags=["iam-privilege-escalation", "aws-cloudtrail", f"account-{account_id}"],
+                        correlation_uid=correlation_uid,
+                        alerts=[saved_alert_rowid]
+                    )
+
+                    case_uid = Case.create(new_case)
+                    self.logger.debug(f"New case created with UID: {case_uid}, Alert: {saved_alert_rowid}")
+
+            except Exception as e:
+                self.logger.error(f"Error creating/updating case for correlation_uid {correlation_uid}: {str(e)}")
+            # return Command(update={}, goto=END)
             return {"alert": alert_model}
 
         def alert_analyze_node(state: AgentState):
@@ -220,8 +251,7 @@ class Module(LanggraphModule):
             llm_structured = llm.with_structured_output(AnalyzeResult)
             response: AnalyzeResult = llm_structured.invoke(messages)
 
-            state.analyze_result = response
-            return state
+            return {"analyze_result": response}
 
         def alert_output_node(state: AgentState):
             """
@@ -247,12 +277,12 @@ class Module(LanggraphModule):
 
             alert_model.uid = f"iam-priv-esc-{get_current_time_str()}"
 
-            saved_alert = Alert.create(alert_model)
+            update_alert_rowid = Alert.update(alert_model)
 
             self.logger.info(
-                f"AWS IAM Privilege Escalation Alert saved with ID: {saved_alert}, Severity: {analyze_result.new_severity}, Confidence: {analyze_result.confidence}")
+                f"AWS IAM Privilege Escalation Alert saved with RowID: {update_alert_rowid}, Severity: {analyze_result.new_severity}, Confidence: {analyze_result.confidence}")
 
-            return state
+            return {}
 
         workflow = StateGraph(AgentState)
 
@@ -276,5 +306,5 @@ if __name__ == "__main__":
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ASP.settings")
     django.setup()
     module = Module()
-    module.debug_message_id = "1770882717911-0"
+    module.debug_message_id = "1770971504058-0"
     module.run()

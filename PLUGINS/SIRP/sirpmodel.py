@@ -7,7 +7,7 @@ from typing import List, Optional, Any, Union, ClassVar
 
 from pydantic import BaseModel, Field, field_validator, ConfigDict, field_serializer
 
-from PLUGINS.SIRP.nocolymodel import AttachmentModel, AccountModel
+from PLUGINS.SIRP.nocolymodel import AttachmentModel, AccountModel, AttachmentCreateModel
 
 
 # region Enums
@@ -653,6 +653,12 @@ class AlertModel(BaseSystemModel):
     artifacts: Optional[List[Union[ArtifactModel, str]]] = Field(default=None, description="从告警中提取出的实体（Artifact）列表")
     enrichments: Optional[List[Union[EnrichmentModel, str]]] = Field(default=None, description="对整个告警进行的富化结果")
 
+    @field_validator('attachments', mode='before')
+    def handle_attachments(cls, v):
+        if v == "":
+            return []
+        return v
+
 
 class CaseModel(BaseSystemModel):
     ai_exclude_fields: ClassVar[set[str]] = {'ownerid', 'caid', 'uaid', "workbook", "analysis_rationale_ai", "recommended_actions_ai", "attack_stage_ai",
@@ -677,7 +683,7 @@ class CaseModel(BaseSystemModel):
     assignee_l1: Optional[Union[List[AccountModel], AccountModel, str]] = Field(default=None, description="分配给L1一线分析师")
     acknowledged_time: Optional[Union[datetime, str]] = Field(default=None, description="L1分析师首次确认接收事件的时间")
     comment: Optional[str] = Field(default="", description="分析师对整个事件的评论或处置记录")
-    attachments: Optional[Union[List[AttachmentModel], str]] = Field(default=[], description="与事件相关的附件列表")
+    attachments: Optional[List[Union[AttachmentModel, AttachmentCreateModel]]] = Field(default=[], description="与事件相关的附件列表")
 
     assignee_l2: Optional[Union[List[AccountModel], AccountModel, str]] = Field(default=None, description="分配或升级给L2二线分析师")
     assignee_l3: Optional[Union[List[AccountModel], AccountModel, str]] = Field(default=None, description="分配或升级给L3专家分析师")
@@ -711,3 +717,9 @@ class CaseModel(BaseSystemModel):
     tickets: Optional[List[Union[TicketModel, str]]] = Field(default=None, description="与此事件关联的外部工单列表")
     enrichments: Optional[List[Union[EnrichmentModel, str]]] = Field(default=None, description="对整个事件进行的富化结果")
     alerts: Optional[List[Union[AlertModel, str]]] = Field(default=None, description="合并到此事件中的告警列表")
+
+    @field_validator('attachments', mode='before')
+    def handle_attachments(cls, v):
+        if v == "":
+            return []
+        return v

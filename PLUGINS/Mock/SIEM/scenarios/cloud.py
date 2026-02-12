@@ -10,7 +10,7 @@ class CloudPrivilegeEscalationScenario(object):
         self.attacker_user = random.choice(settings.IAM_USERS)
         self.target_account = random.choice(settings.AWS_ACCOUNTS)
         self.region = random.choice(settings.REGIONS)
-        self.malicious_new_user = f"service_account_{random.randint(1000, 9999)}"
+        self.malicious_new_user = f"service_account_{random.randint(1000, 1020)}"
         self.attacker_key = f"AKIA{uuid.uuid4().hex[:16].upper()}"
         self.malicious_key = f"AKIA{uuid.uuid4().hex[:16].upper()}"
         self.malicious_user_id = f"AIDAI{uuid.uuid4().hex[:16].upper()}"
@@ -278,7 +278,7 @@ class CloudPrivilegeEscalationScenario(object):
             "event.outcome": "success",
             "event.risk_score": 100,
             "log.level": "critical",
-            "message": f"Administrator policy attached to backdoor user {self.malicious_new_user} - PRIVILEGE ESCALATION"
+            "message": f"Administrator policy attached to user {self.malicious_new_user} - PRIVILEGE ESCALATION"
         })
 
         # 7. AssumeRole 获取临时凭证 (使用新创建的用户)

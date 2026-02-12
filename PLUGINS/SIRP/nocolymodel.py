@@ -106,6 +106,11 @@ class AttachmentModel(BaseModel):
     width: Optional[int] = Field(default=None, description="图片或视频的宽度（像素）")
 
 
+class AttachmentCreateModel(BaseModel):
+    name: Optional[str] = Field(default=None, description="文件名")
+    url: Optional[str] = Field(default=None, description="文件base64格式的值(不是url)")
+
+
 class AccountModel(BaseModel):
     accountId: Optional[str] = Field(default=None, description="用户的唯一标识ID")
     avatar: Optional[str] = Field(default=None, description="用户头像的URL")

@@ -1,8 +1,9 @@
 import random
 
 # 运行参数
-EPS = 50
+EPS = 100
 BATCH_SIZE = 100
+MALICIOUS_PERCENTAGE = 0.1  # 10% 的日志为恶意/异常日志
 
 # 索引/来源定义
 NET_INDEX = "siem-network-traffic"
@@ -12,21 +13,21 @@ CLOUD_INDEX = "siem-aws-cloudtrail"
 # 实体池
 # --- 基础实体扩展 ---
 USERS = [
-            "admin", "root", "system", "network-service", "guest",
-            "a.wang", "b.li", "c.zhang", "d.liu", "e.chen", "j.smith", "m.garcia",
-            "svc_deploy", "svc_backup", "svc_monitor", "svc_jenkins", "svc_sql",
-            "dev_01", "dev_02", "dev_03", "ops_primary", "ops_oncall",
-            "sec_audit", "tester_qa", "temp_contractor", "bot_scanner"
-        ] + [f"user_{i:03d}" for i in range(1, 5)]
+    "admin", "root", "system", "network-service", "guest",
+    "a.wang", "b.li", "c.zhang", "d.liu", "e.chen", "j.smith", "m.garcia",
+    "svc_deploy", "svc_backup", "svc_monitor", "svc_jenkins", "svc_sql",
+    "dev_01", "dev_02", "dev_03", "ops_primary", "ops_oncall",
+    "sec_audit", "tester_qa", "temp_contractor", "bot_scanner"
+]
 
 HOSTS = [
-            "srv-web-prod-01", "srv-web-prod-02", "srv-web-staging-01",
-            "srv-db-master", "srv-db-slave-01", "srv-db-slave-02",
-            "app-api-v1", "app-api-v2", "app-worker-01", "app-worker-02",
-            "cache-redis-01", "cache-memcached-01",
-            "gw-firewall-ext", "gw-vpn-server", "jump-bastion-01",
-            "workstation-win10-01", "workstation-mac-12", "workstation-linux-05"
-        ] + [f"node-compute-{i:02d}" for i in range(1, 5)]
+    "srv-web-prod-01", "srv-web-prod-02", "srv-web-staging-01",
+    "srv-db-master", "srv-db-slave-01", "srv-db-slave-02",
+    "app-api-v1", "app-api-v2", "app-worker-01", "app-worker-02",
+    "cache-redis-01", "cache-memcached-01",
+    "gw-firewall-ext", "gw-vpn-server", "jump-bastion-01",
+    "workstation-win10-01", "workstation-mac-12", "workstation-linux-05"
+]
 
 # HOSTS = ["srv-web-prod-01", "srv-web-prod-02", "srv-web-staging-01"]
 INTERNAL_IPS = [f"10.0.0.{i}" for i in range(1, 51)] + [f"192.168.1.{i}" for i in range(100, 151)]
@@ -38,13 +39,13 @@ EXTERNAL_IPS = [
                ] + [f"{random.randint(1, 254)}.{random.randint(1, 254)}.{random.randint(1, 254)}.{random.randint(1, 254)}" for _ in range(5)]
 
 PROCESSES = [
-                "nginx", "apache2", "mysql", "postgresql", "redis-server",
-                "python3", "java", "node", "go", "php-fpm",
-                "powershell.exe", "cmd.exe", "bash", "zsh", "ssh", "scp",
-                "lsass.exe", "svchost.exe", "services.exe", "wininit.exe",
-                "curl", "wget", "nmap", "nc", "metasploit", "mimikatz.exe",
-                "crond", "syslogd", "docker-containerd", "kubelet"
-            ] + [f"app_binary_{i}" for i in range(5)]
+    "nginx", "apache2", "mysql", "postgresql", "redis-server",
+    "python3", "java", "node", "go", "php-fpm",
+    "powershell.exe", "cmd.exe", "bash", "zsh", "ssh", "scp",
+    "lsass.exe", "svchost.exe", "services.exe", "wininit.exe",
+    "curl", "wget", "nmap", "nc", "metasploit", "mimikatz.exe",
+    "crond", "syslogd", "docker-containerd", "kubelet"
+]
 
 # 云环境实体池
 # --- 云环境实体扩展 ---

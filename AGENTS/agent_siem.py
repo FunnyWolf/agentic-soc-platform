@@ -173,6 +173,3 @@ class GraphAgent(LanggraphPlaybook):
         result = final_state['messages'][-1].content
         self.logger.info(f"Query result extracted, result length: {len(result)} characters")
         return result
-
-
-

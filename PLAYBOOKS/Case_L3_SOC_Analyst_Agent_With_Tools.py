@@ -7,6 +7,7 @@ from langgraph.prebuilt import ToolNode
 from pydantic import BaseModel, Field, ConfigDict
 
 from AGENTS.agent_knowledge import AgentKnowledge
+from AGENTS.agent_siem import AgentSIEM
 from Lib.baseplaybook import LanggraphPlaybook
 from Lib.llmapi import BaseAgentState
 from PLUGINS.LLM.llmapi import LLMAPI
@@ -68,6 +69,8 @@ NODE_OUTPUT = "output_node"
 FINAL_TOOL_NAME = AnalyzeResult.__name__
 MAX_ITERATIONS = 5
 
+tools = [AgentKnowledge.internal_knowledge_base_search, AgentSIEM.siem_search_by_natural_language]
+
 
 class Playbook(LanggraphPlaybook):
     TYPE = "CASE"
@@ -110,7 +113,7 @@ class Playbook(LanggraphPlaybook):
 
             llm_api = LLMAPI()
             llm = llm_api.get_model(tag=["structured_output", "function_calling"])
-            llm_with_tools = llm.bind_tools([AgentKnowledge.internal_knowledge_base_search, AnalyzeResult])
+            llm_with_tools = llm.bind_tools([*tools, AnalyzeResult])
 
             messages = [system_message] + state.messages
 
@@ -162,7 +165,7 @@ class Playbook(LanggraphPlaybook):
 
         workflow.add_node(NODE_PREPROCESS, preprocess_node)
         workflow.add_node(NODE_ANALYZE, analyze_node)
-        workflow.add_node(NODE_TOOLS, ToolNode([AgentKnowledge.internal_knowledge_base_search]))
+        workflow.add_node(NODE_TOOLS, ToolNode(tools))
         workflow.add_node(NODE_OUTPUT, output_node)
 
         workflow.add_edge(START, NODE_PREPROCESS)

@@ -23,4 +23,4 @@ if __name__ == "__main__":
         # case12_sql_injection,
         # case13_ransomware
     ]:
-        Case.update_or_create(case)
+        Case.create(case)

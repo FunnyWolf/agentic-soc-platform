@@ -115,6 +115,21 @@ class Case(BaseWorksheetEntity[CaseModel]):
             model.tickets = Ticket.batch_update_or_create(model.tickets)
         return model
 
+    @classmethod
+    def list_by_correlation_uid(cls, correlation_uid, lazy_load=False) -> List[CaseModel]:
+        """根据correlation_uid查询关联的Case"""
+        filter_model = Group(
+            logic="AND",
+            children=[
+                Condition(
+                    field="correlation_uid",
+                    operator=Operator.EQ,
+                    value=correlation_uid
+                )
+            ]
+        )
+        return cls.list(filter_model, lazy_load=lazy_load)
+
 
 class Message(BaseWorksheetEntity[MessageModel]):
     """Message 实体类"""
@@ -161,7 +176,7 @@ class Playbook(BaseWorksheetEntity[PlaybookModel]):
         playbook_model_tmp.job_status = job_status
         playbook_model_tmp.remark = remark
 
-        rowid = Playbook.update_or_create(playbook_model_tmp)
+        rowid = Playbook.update(playbook_model_tmp)
         return rowid
 
 

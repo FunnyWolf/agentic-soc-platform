@@ -65,7 +65,7 @@ def run_engine(generators, senders, scenario_mapping=None):
             batch = [gen.generate() for _ in range(settings.BATCH_SIZE)]
 
             # 2. 注入对应索引的异常场景
-            if scenario_mapping and index_name in scenario_mapping and random.random() < 0.05:
+            if scenario_mapping and index_name in scenario_mapping and random.random() < settings.MALICIOUS_PERCENTAGE:
                 scenario_class = random.choice(scenario_mapping[index_name])
                 scenario_instance = scenario_class()
                 batch.extend(scenario_instance.get_logs())
