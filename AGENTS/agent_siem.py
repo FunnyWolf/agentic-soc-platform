@@ -1,4 +1,4 @@
-from typing import Annotated, List, Literal, Any, Optional
+from typing import Annotated, List, Literal, Any
 
 from langchain_core.messages import HumanMessage, AIMessage
 from langchain_core.runnables import RunnableConfig
@@ -40,14 +40,12 @@ class AgentSIEM:
     @staticmethod
     def siem_search_by_natural_language(
             natural_query: Annotated[str, "A natural language query for SIEM. (e.g., 'Find connections from 10.10.10.10 to any malicious IP')"],
-            time_range_start: Annotated[Optional[str], "UTC start time in ISO8601 format: YYYY-MM-DDTHH:MM:SSZ. Provide together with time_range_end."] = None,
-            time_range_end: Annotated[Optional[str], "UTC end time in ISO8601 format: YYYY-MM-DDTHH:MM:SSZ. Provide together with time_range_start."] = None,
+            time_range_start: Annotated[str, "UTC start time in ISO8601 format: YYYY-MM-DDTHH:MM:SSZ. Provide together with time_range_end."] = None,
+            time_range_end: Annotated[str, "UTC end time in ISO8601 format: YYYY-MM-DDTHH:MM:SSZ. Provide together with time_range_start."] = None,
     ) -> Annotated[str, "A summary of the findings from the SIEM search."]:
         """
         Searches SIEM logs by a natural language query.
         """
-        if (time_range_start and not time_range_end) or (time_range_end and not time_range_start):
-            raise ValueError("time_range_start and time_range_end must be provided together.")
 
         adjusted_query = natural_query
         if time_range_start and time_range_end:
