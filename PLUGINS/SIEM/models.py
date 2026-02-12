@@ -44,11 +44,14 @@ class AdaptiveQueryInput(BaseModel):
         description="End time in UTC ISO8601 format. Format: 'YYYY-MM-DDTHH:MM:SSZ'. Example: '2026-02-04T07:00:00Z'"
     )
 
-    filters: Dict[str, str] = Field(
+    filters: Dict[str, Union[str, List[str]]] = Field(
         default_factory=dict,
         description=(
             "Key-value pairs for exact matching filters (term/exact match, not full-text search). "
-            "Example: {'event.outcome': 'success', 'source.ip': '45.33.22.11'}"
+            "Supports both single values (exact match) and lists (OR logic within list). "
+            "Examples: "
+            "{'event.outcome': 'success', 'source.ip': '45.33.22.11'} OR "
+            "{'event.outcome': ['success', 'failed'], 'source.ip': '45.33.22.11'}"
         )
     )
     aggregation_fields: List[str] = Field(

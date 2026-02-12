@@ -298,7 +298,10 @@ class SIEMToolKit(object):
 
         must_clauses = [cls._build_time_range_clause(input_data.time_field, input_data.time_range_start, input_data.time_range_end)]
         for k, v in input_data.filters.items():
-            must_clauses.append({"term": {k: v}})
+            if isinstance(v, list):
+                must_clauses.append({"terms": {k: v}})
+            else:
+                must_clauses.append({"term": {k: v}})
 
         query_body = {"bool": {"must": must_clauses}}
         agg_fields = input_data.aggregation_fields or get_default_agg_fields(input_data.index_name)
@@ -378,7 +381,11 @@ class SIEMToolKit(object):
 
         search_query = f"search index=\"{input_data.index_name}\""
         for k, v in input_data.filters.items():
-            search_query += f" {k}=\"{v}\""
+            if isinstance(v, list):
+                or_clause = " OR ".join([f'{k}="{val}"' for val in v])
+                search_query += f" ({or_clause})"
+            else:
+                search_query += f" {k}=\"{v}\""
 
         job = cls._create_and_wait_splunk_job(service, search_query, t_start, t_end)
         total_hits = int(job["eventCount"])

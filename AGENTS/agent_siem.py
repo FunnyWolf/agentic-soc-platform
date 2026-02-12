@@ -39,17 +39,17 @@ class AgentState(BaseModel):
 class AgentSIEM:
     @staticmethod
     def siem_search_by_natural_language(
-            natural_query: Annotated[str, "A natural language query for SIEM. (e.g., 'Find connections from 10.10.10.10 to any malicious IP')"],
+            natural_query: Annotated[str, "A natural language query for SIEM. (e.g., 'Find connections from 10.10.10.10 to any IP')"],
             time_range_start: Annotated[str, "UTC start time in ISO8601 format: YYYY-MM-DDTHH:MM:SSZ. Provide together with time_range_end."] = None,
             time_range_end: Annotated[str, "UTC end time in ISO8601 format: YYYY-MM-DDTHH:MM:SSZ. Provide together with time_range_start."] = None,
     ) -> Annotated[str, "A summary of the findings from the SIEM search."]:
         """
-        Searches SIEM logs by a natural language query.
+        Searches SIEM logs by a natural language query. Must use precise time periods and precise filter conditions to avoid SIEM returning a large number of logs.
         """
 
         adjusted_query = natural_query
         if time_range_start and time_range_end:
-            adjusted_query = f"{natural_query}\nTime range (UTC): start={time_range_start}, end={time_range_end}."
+            adjusted_query = f"{natural_query} Time range (UTC): start={time_range_start}, end={time_range_end}."
 
         agent = _get_graph_agent()
         result = agent.siem_query(adjusted_query)
@@ -153,7 +153,7 @@ class GraphAgent(LanggraphPlaybook):
 
     def siem_query(self, query: str, clear_thread: bool = True, max_iterations: int = MAX_ITERATIONS) -> str:
         """Executes a query against the graph."""
-        self.logger.info(f"SIEM Query started: {query[:100]}...")
+        self.logger.debug(f"SIEM Query: {query}")
         if clear_thread:
             self.graph.checkpointer.delete_thread(self.module_name)
             self.logger.debug(f"Deleted previous thread state for module: {self.module_name}")
@@ -169,5 +169,6 @@ class GraphAgent(LanggraphPlaybook):
         self.logger.info(f"Graph invocation completed")
 
         result = final_state['messages'][-1].content
-        self.logger.info(f"Query result extracted, result length: {len(result)} characters")
+        self.logger.debug(f"Query result: ")
+        self.logger.debug(result)
         return result
