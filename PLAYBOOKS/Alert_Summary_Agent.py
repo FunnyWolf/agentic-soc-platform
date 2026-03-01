@@ -107,12 +107,11 @@ class Playbook(LanggraphPlaybook):
                                     indent=2) if state.threat_intel_data else "No threat intelligence data available."
             logs_summary = [log.model_dump_json() for log in state.logs] if state.logs else []
 
-            human_template = self.load_human_prompt_template("summary_agent_human")
-            human_message = HumanMessage(content=human_template.format(
+            human_message = self.load_human_prompt_template("summary_agent_human").format(
                 alert_data=alert.model_dump_json(),
                 threat_intel=ti_summary,
                 siem_logs=logs_summary
-            ))
+            )
 
             llm_api = LLMAPI()
             llm = llm_api.get_model(tag="fast")

@@ -19,6 +19,7 @@ class ELKSender:
     def __init__(self):
         self.url = f"{CONFIG.ELK_HOST}/_bulk"
         self.auth = (CONFIG.ELK_USER, CONFIG.ELK_PASS)
+        self.client = httpx.Client(verify=False, timeout=30.0)
 
     def send(self, batch, index_name):
         payload = ""
@@ -26,15 +27,14 @@ class ELKSender:
             payload += json.dumps({"index": {"_index": index_name}}) + "\n"
             payload += json.dumps(doc) + "\n"
 
-        with httpx.Client(verify=False) as client:
-            resp = client.post(
-                self.url,
-                content=payload,
-                auth=self.auth,
-                headers={"Content-Type": "application/x-ndjson"}
-            )
-            if resp.status_code >= 400:
-                raise Exception(f"ELK Error: {resp.text}")
+        resp = self.client.post(
+            self.url,
+            content=payload,
+            auth=self.auth,
+            headers={"Content-Type": "application/x-ndjson"}
+        )
+        if resp.status_code >= 400:
+            raise Exception(f"ELK Error: {resp.text}")
 
 
 class SplunkSender:
