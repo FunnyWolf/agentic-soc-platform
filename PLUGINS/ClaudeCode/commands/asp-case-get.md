@@ -1,7 +1,7 @@
 ---
 name: asp-case-get
 description: Query security case details by case ID
-argument-hint: <case_id>
+argument-hint: "<case_id>"
 allowed-tools: [ "*" ]
 ---
 

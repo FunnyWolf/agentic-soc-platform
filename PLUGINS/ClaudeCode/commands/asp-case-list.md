@@ -1,7 +1,7 @@
 ---
 name: asp-case-list
 description: List security cases with optional filters
-argument-hint: [ status=<status1,status2,...> ] [ severity=<severity1,severity2,...> ] [ limit=<number> ]
+argument-hint: "[status=<status1,status2,...>] [severity=<severity1,severity2,...>] [limit=<number>]"
 allowed-tools: [ "*" ]
 ---
 

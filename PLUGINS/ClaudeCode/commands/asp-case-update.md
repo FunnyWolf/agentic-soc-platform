@@ -1,7 +1,7 @@
 ---
 name: asp-case-update
 description: Update an existing security case
-argument-hint: <case_id> [title=<title>] [severity=<severity>] [status=<status>] [description=<description>]
+argument-hint: "<case_id> [title=<title>] [severity=<severity>] [status=<status>] [description=<description>]"
 allowed-tools: [ "*" ]
 ---
 

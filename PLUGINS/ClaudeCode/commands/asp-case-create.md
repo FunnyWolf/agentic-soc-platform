@@ -1,7 +1,7 @@
 ---
 name: asp-case-create
 description: Create a new security case
-argument-hint: title=<title> severity=<severity> [description=<description>] [status=<status>]
+argument-hint: "title=<title> severity=<severity> [description=<description>] [status=<status>]"
 allowed-tools: [ "*" ]
 ---
 
