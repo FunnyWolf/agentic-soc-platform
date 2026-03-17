@@ -9,9 +9,9 @@ from PLUGINS.SIRP.sirpmodel import CaseModel, Severity, CaseStatus, CaseVerdict,
 
 
 def get_case(
-        case_id: Annotated[str, "Case ID, for example case_000005"]
-) -> Annotated[Optional[str], "AI-friendly JSON string of the case, or None if the case does not exist"]:
-    """Retrieve a security case by case ID."""
+    case_id: Annotated[str, "Case ID, e.g. case_000005"]
+) -> Annotated[Optional[str], "Case as AI-friendly JSON, or None if not found"]:
+    """Get one case by ID."""
     model = Case.get_by_id(case_id)
     if not model:
         return None
@@ -20,12 +20,12 @@ def get_case(
 
 
 def list_cases(
-        status: Annotated[Optional[list[CaseStatus]], "Filter by case status or a list of case statuses"] = None,
-        severity: Annotated[Optional[list[Severity]], "Filter by severity level or a list of severity levels"] = None,
-        confidence: Annotated[Optional[list[Confidence]], "Filter by severity level or a list of severity levels"] = None,
-        limit: Annotated[int, "Maximum number of results to return"] = 10
-) -> Annotated[list[str], "Security cases matching the filters"]:
-    """List security cases with optional filters."""
+    status: Annotated[Optional[list[CaseStatus]], "Case status filter"] = None,
+    severity: Annotated[Optional[list[Severity]], "Case severity filter"] = None,
+    confidence: Annotated[Optional[list[Confidence]], "Case confidence filter"] = None,
+    limit: Annotated[int, "Max cases to return"] = 10
+) -> Annotated[list[str], "Matching cases as AI-friendly JSON list"]:
+    """List cases with optional filters."""
     conditions = []
 
     if status:
@@ -46,18 +46,18 @@ def list_cases(
 
 def update_case(
         case_id: Annotated[str, "Case ID to update"],
-        severity: Annotated[Optional[Severity], "New severity"] = None,
-        status: Annotated[Optional[CaseStatus], "New status"] = None,
-        verdict: Annotated[Optional[CaseVerdict], "New verdict"] = None,
-        severity_ai: Annotated[Optional[Severity], "New AI-assessed severity"] = None,
-        confidence_ai: Annotated[Optional[Confidence], "New AI-assessed confidence"] = None,
-        attack_stage_ai: Annotated[Optional[AttackStage], "New AI-attack stage"] = None,
+        severity: Annotated[Optional[Severity], "Updated analyst severity"] = None,
+        status: Annotated[Optional[CaseStatus], "Updated case status"] = None,
+        verdict: Annotated[Optional[CaseVerdict], "Updated final verdict"] = None,
+        severity_ai: Annotated[Optional[Severity], "Updated AI-assessed severity"] = None,
+        confidence_ai: Annotated[Optional[Confidence], "Updated AI-assessed confidence"] = None,
+        attack_stage_ai: Annotated[Optional[AttackStage], "Updated AI-assessed attack stage"] = None,
         comment_ai: Annotated[Optional[
-            str], "New AI-comment. Supports Markdown format."] = None,
+            str], "Updated AI comment. Markdown supported"] = None,
         summary_ai: Annotated[Optional[
-            str], "New AI-summary. Supports Markdown format."] = None
-) -> Annotated[Optional[str], "Row ID of the updated case, or None if the case does not exist"]:
-    """Update an existing security case_old."""
+            str], "Updated AI summary. Markdown supported"] = None
+) -> Annotated[Optional[str], "Updated case row ID, or None if not found"]:
+    """Update selected fields on a case."""
     case_old = Case.get_by_id(case_id, lazy_load=True)
     if not case_old:
         return None
@@ -85,12 +85,13 @@ def update_case(
 
 
 def siem_keyword_search(
-        keyword: Annotated[str | list[str], "Search keyword or keyword list. A list uses AND semantics across all provided keywords."],
-        time_range_start: Annotated[str, "Start time in UTC ISO8601 format. Example: 2026-02-04T06:00:00Z"],
-        time_range_end: Annotated[str, "End time in UTC ISO8601 format. Example: 2026-02-04T07:00:00Z"],
-        time_field: Annotated[str, "The field to apply time range filter on"] = "@timestamp",
-        index_name: Annotated[Optional[str], "Target SIEM index/source name. If None, searches across all indices"] = None
-) -> Annotated[list[str], "Keyword search results as AI-friendly JSON strings"]:
+    keyword: Annotated[str | list[str], "Keyword or keyword list; list uses AND matching"],
+    time_range_start: Annotated[str, "UTC start time in ISO8601, e.g. 2026-02-04T06:00:00Z"],
+    time_range_end: Annotated[str, "UTC end time in ISO8601, e.g. 2026-02-04T07:00:00Z"],
+    time_field: Annotated[str, "Time field used for range filtering"] = "@timestamp",
+    index_name: Annotated[Optional[str], "Target SIEM index or source; None means all"] = None
+) -> Annotated[list[str], "Search hits as JSON strings"]:
+    """Search SIEM events by keyword and time range."""
     input_data = KeywordSearchInput(
         keyword=keyword,
         time_range_start=time_range_start,
@@ -104,9 +105,9 @@ def siem_keyword_search(
 
 def get_current_time(
         time_format: Annotated[
-            Optional[str], "Optional datetime format string,used by python strftime (e.g. '%Y/%m/%d %H:%M:%S' '%Y-%m-%dT%H:%M:%SZ'). "
-                           "If not provided, returns ISO 8601 time with timezone information accurate to seconds"] = None
-) -> Annotated[str, "Current system time string with timezone information"]:
+            Optional[str], "Optional Python strftime format. If omitted, returns ISO8601 time with timezone"] = None
+) -> Annotated[str, "Current local time string with timezone"]:
+    """Get current system time."""
     current_time = datetime.now().astimezone()
     if time_format:
         return current_time.strftime(time_format)

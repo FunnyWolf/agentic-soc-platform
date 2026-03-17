@@ -1,126 +1,142 @@
 ---
 name: asp-siem
-description: SIEM search and investigation operations for the Agentic SOC Platform, currently focused on keyword-based search across ELK and Splunk backends.
+description: 'Investigate ASP SIEM data with keyword search. Use when users ask to search logs, pivot on IOC values, check activity in a time range, hunt related events, or refine SIEM evidence across ELK or Splunk.'
+argument-hint: 'search <keyword> from <UTC start> to <UTC end> [index_name] [time_field]'
 compatibility: connect to asp mcp server
 metadata:
   author: Funnywolf
-  version: 0.1.0
+  version: 0.2.0
   mcp-server: asp
   category: cyber security
-  tags: [ SIEM, search, SOC ]
+  tags: [ SIEM, search, SOC, hunting, investigation ]
   documentation: https://asp.viperrtp.com/
 ---
 
 # ASP SIEM
 
-This skill provides SIEM search and investigation capabilities for the Agentic SOC Platform.
+Use this skill for SIEM investigation on ASP. This skill should guide search strategy and evidence collection.
 
-## Available Operations
+## When to Use
 
-Ask the user which operation they want to perform:
+- The user wants to search logs by IP, user, host, hash, domain, process, email, or arbitrary keyword.
+- The user wants to pivot from an alert, artifact, or case into SIEM evidence.
+- The user wants to narrow a noisy search or expand an empty one.
+- The user wants complete raw evidence, not only a high-level count.
 
-1. **Keyword search** - Search logs by IP, hostname, username, hash, or any arbitrary keyword across one or more SIEM
-   indices
+## Operating Rules
 
-This skill currently focuses on `siem_keyword_search`. More SIEM operations can be added later using the same structure.
+- Do not ask the user to choose an operation when the request already implies a SIEM search.
+- Collect only missing essentials: keyword and UTC time range.
+- Treat this as an investigation workflow, not a one-shot query helper.
+- Use the result `status` to decide whether to refine, expand, or stop.
+- Optimize for useful evidence, not maximum raw output.
+- Prefer `full` when the user needs exact logs or evidence preservation.
+- If the user only needs scoping, `summary` or `sample` may be enough.
 
-## Operation Details
+## Decision Flow
 
-### 1. Keyword Search
+1. If the user already provides keyword and time range, search immediately.
+2. If the user gives only an IOC or keyword, ask for the narrowest workable UTC time range.
+3. If the user knows the data source, pass `index_name`; otherwise search broadly.
+4. If the source likely uses a non-default time field, ask for it; otherwise use `@timestamp`.
+5. After each search, decide whether to stop, narrow, or expand based on `status`, hit volume, and user goal.
 
-**Required parameters:**
+## SOP
 
-- `keyword` - Search keyword or keyword list. Can be an IP address, hostname, username, email, hash, process name,
-  domain, or any string. If a list is provided, all keywords are matched with AND semantics
-- `time_range_start` - Start time in UTC ISO8601 format, for example `2026-02-04T06:00:00Z`
-- `time_range_end` - End time in UTC ISO8601 format, for example `2026-02-04T07:00:00Z`
+### Start the Search
 
-**Optional parameters:**
+1. Extract the strongest known keyword first.
+2. Normalize multiple keywords into an AND set only when the user truly means all conditions must match.
+3. Require UTC timestamps ending in `Z`.
+4. Call `siem_keyword_search`.
+5. Parse each returned JSON string.
 
-- `time_field` - Time field used for the range filter. Default is `@timestamp`. Common alternatives include
-  `event.created` and `_time`
-- `index_name` - Target SIEM index/source name. If omitted, search across all available indices and backends. If
-  provided, search only that specific index
+### Refine the Search
 
-**Process:**
+Use the returned `status` as the control signal:
 
-1. Collect the keyword and time range from the user
-2. If the user knows the target data source, collect `index_name`; otherwise leave it empty for cross-index search
-3. If the target source uses a non-default time field, collect `time_field`; otherwise use `@timestamp`
-4. Use MCP tool `siem_keyword_search` with the collected parameters
-5. Check the returned `status` for each result group
-6. If the result is too large, reduce the time range or add more precise keywords so the query moves from `summary` or
-   `sample` toward `full`
-7. If the result is empty or too narrow, expand the time range or remove restrictive keywords
-8. Continue iterating until `full` is reached when the goal is to retrieve the complete original raw logs
-9. Parse each returned JSON string
-10. If the result list is empty after reasonable refinement, state that no matching logs were found in the specified
-    time range
-11. Present results grouped by backend and index when multiple results are returned
+- `full`: stop if the user asked for concrete evidence or raw logs.
+- `sample`: inspect records and statistics, then narrow if exact logs are still needed.
+- `summary`: narrow aggressively by time range, source, or added keywords.
 
-**Behavior notes:**
+Preferred refinement actions:
 
-- If `index_name` is not provided, the tool searches across available ELK and Splunk indices
-- A keyword list uses AND semantics, so adding keywords reduces result volume and removing keywords broadens the search
-- The tool returns adaptive results based on hit volume:
-    - `full` - complete matching records for smaller result sets
-    - `sample` - statistics plus representative sample records for medium result sets
-    - `summary` - statistics only for large result sets
-- Use time range changes together with keyword changes to control result volume and converge on `full`
-- The preferred end state for evidence collection is `full`, because it contains the complete original raw logs returned
-  by the backend
-- Time values must be UTC and end with `Z`
+1. Narrow time range before adding many new keywords.
+2. Add one or two high-signal keywords instead of many weak ones.
+3. Remove one restrictive keyword if the query is empty.
+4. Add `index_name` when broad search returns too much irrelevant data.
+5. Keep iterating until the result quality matches the user's goal.
 
-**Refinement guidance:**
+### Investigation Patterns
 
-1. Start with the strongest known keyword and a reasonable time window
-2. If the search returns `summary`, narrow the time window or add more keywords
-3. If the search returns `sample`, inspect the sample and statistics, then refine again if full logs are required
-4. If the search returns `full`, use those records as the complete raw log set for that query
-5. If the search is empty, expand the time window or remove one keyword from the AND list
+Use these patterns when helpful:
 
-**Output format:**
+- `IOC pivot`: start with one IOC, then add host, user, process, or action from returned records.
+- `Alert follow-up`: search with the alert artifact plus the alert time window, then tighten around first and last seen.
+- `User activity check`: start with username plus narrow time range, then pivot to source IP, host, and action.
+- `Infrastructure pivot`: start with IP or hostname, then pivot to related users, processes, and destinations.
 
-**Search Overview**
+### Stop Conditions
 
-- Keyword
-- Keyword count and whether AND semantics were used
-- Time range start/end
-- Time field
-- Searched index or `all indices`
-- Total result groups
+Stop refining when one of these is true:
 
-**Per Result Group**
+- The result is `full` and satisfies the request.
+- The user asked only for scope, trend, or prevalence.
+- Further refinement would likely remove relevant evidence.
+- Repeated refinement still returns no useful data.
 
-- Backend
-- Index distribution
-- Status
-- Total hits
-- Message
+## Response Strategy
 
-**Statistics**
+Always explain what the search means, not only what it returned.
 
-- For each field statistic: field name and top values with counts
+Preferred response structure:
 
-**Sample Records**
+### Search Overview
 
-- Show representative records when `records` is not empty
-- Prefer highlighting timestamp, source index, host, user, IP, process, event/action, and other directly relevant fields
-  when present
+- keyword set
+- time range
+- searched index or `all`
+- number of result groups
+- overall interpretation in one or two lines
 
-**Suggested rendering:**
+### Result Groups
 
-| Backend | Status | Total Hits | Index Distribution | Message |
+| Backend | Status | Total Hits | Index Distribution | Meaning |
 |---------|--------|------------|--------------------|---------|
-| ...     | ...    | ...        | ...                | ...     |
 
-Then provide statistics and sample records under each result group.
+### Evidence Highlights
 
-## Usage Flow
+- Key field statistics that matter to the investigation.
+- Representative records only when they add value.
+- Important pivots: user, host, IP, process, event, action, destination, or other relevant fields.
 
-1. Ask user which SIEM operation they want to perform
-2. Collect required parameters for the chosen operation
-3. Execute the appropriate MCP tool
-4. Format and present the results according to the operation's output specification
-5. Handle errors gracefully, such as invalid UTC time format, unsupported index, backend connection issues, or no
-   matching logs
+### Next Best Step
+
+- Narrow time range
+- Add one stronger keyword
+- Remove one restrictive keyword
+- Search a specific index
+- Stop because evidence is already sufficient
+
+## Clarification Rules
+
+- Ask for time range if missing.
+- Ask for timezone only if the user did not provide UTC and the intended timezone is unclear.
+- Ask for `index_name` only when broad search is likely wasteful or the user already hints at a known source.
+- If the user says "look around this event", derive a reasonable first search from the available IOC and timeframe rather than asking them to design the query.
+
+## Output Rules
+
+- Be concise.
+- Do not dump every returned record by default.
+- Prefer the most relevant records and statistics.
+- Group results by backend and index when multiple groups are returned.
+- Explicitly state when the result is partial (`summary` or `sample`).
+- If no data is found, say that directly and suggest the most likely useful adjustment.
+
+## Failure Handling
+
+- Invalid time format: ask for UTC ISO8601 with trailing `Z`.
+- Empty results: expand time range or remove one keyword.
+- Too many hits: narrow time range first, then add signal.
+- Backend or source issue: state which backend or index failed if the result indicates it.
