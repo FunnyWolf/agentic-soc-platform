@@ -4,8 +4,6 @@ from pathlib import Path
 from Lib.configs import BASE_DIR
 from Lib.log import logger
 from Lib.xcache import Xcache
-from PLUGINS.SIRP.sirpapi import Playbook, Case, Alert, Artifact
-from PLUGINS.SIRP.sirpmodel import PlaybookModel, PlaybookJobStatus
 
 
 class PlaybookLoader:
@@ -75,28 +73,3 @@ class PlaybookLoader:
     def list_playbook_config(cls):
         all_modules_config = Xcache.list_module_configs()
         return all_modules_config
-
-    @classmethod
-    def run_playbook_job(cls, type, name, user_input=None, source_rowid=None, id=None):
-        if source_rowid is None:
-            if id is None:
-                raise Exception("id is required when source_rowid is None")
-            else:
-                if type == "CASE":
-                    record = Case.get_by_id(id)
-                    source_rowid = record.rowid
-                elif type == "ALERT":
-                    record = Alert.get_by_id(id)
-                    source_rowid = record.rowid
-                elif type == "ARTIFACT":
-                    record = Artifact.get_by_id(id)
-                    source_rowid = record.rowid
-
-        model = PlaybookModel()
-        model.source_rowid = source_rowid
-        model.job_status = PlaybookJobStatus.PENDING
-        model.type = type
-        model.name = name
-        model.user_input = user_input
-        rowid = Playbook.create(model)
-        return rowid

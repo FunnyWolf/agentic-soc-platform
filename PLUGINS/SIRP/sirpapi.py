@@ -8,7 +8,7 @@ from PLUGINS.SIRP.nocolyapi import WorksheetRow
 from PLUGINS.SIRP.nocolymodel import AccountModel, Condition, Group, Operator
 from PLUGINS.SIRP.sirpbase import BaseWorksheetEntity
 from PLUGINS.SIRP.sirpmodel import EnrichmentModel, ArtifactModel, AlertModel, CaseModel, TicketModel, MessageModel, PlaybookModel, PlaybookJobStatus, \
-    KnowledgeAction, KnowledgeModel, Severity, Confidence
+    KnowledgeAction, KnowledgeModel, Severity, Confidence, PlaybookType
 
 
 class Enrichment(BaseWorksheetEntity[EnrichmentModel]):
@@ -545,6 +545,31 @@ class Playbook(BaseWorksheetEntity[PlaybookModel]):
         playbook_model_tmp.remark = remark
 
         rowid = Playbook.update(playbook_model_tmp)
+        return rowid
+
+    @classmethod
+    def add_pending_playbook(cls, type: PlaybookType, name, user_input=None, source_rowid=None, record_id=None):
+        if source_rowid is None:
+            if record_id is None:
+                raise Exception("id is required when source_rowid is None")
+            else:
+                if type == PlaybookType.CASE:
+                    record = Case.get_by_id(record_id)
+                    source_rowid = record.rowid
+                elif type == PlaybookType.ALERT:
+                    record = Alert.get_by_id(record_id)
+                    source_rowid = record.rowid
+                elif type == PlaybookType.ARTIFACT:
+                    record = Artifact.get_by_id(record_id)
+                    source_rowid = record.rowid
+
+        model = PlaybookModel()
+        model.source_rowid = source_rowid
+        model.job_status = PlaybookJobStatus.PENDING
+        model.type = type
+        model.name = name
+        model.user_input = user_input
+        rowid = Playbook.create(model)
         return rowid
 
 
