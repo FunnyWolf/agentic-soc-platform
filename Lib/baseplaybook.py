@@ -22,7 +22,6 @@ from PLUGINS.SIRP.sirpmodel import PlaybookModel, PlaybookJobStatus, MessageMode
 
 class BasePlaybook(BaseAPI):
     RUN_AS_JOB = True  # 是否作为后台任务运行
-    TYPE = None
     NAME = None
 
     def __init__(self):
@@ -34,10 +33,6 @@ class BasePlaybook(BaseAPI):
     @property
     def param_source_rowid(self):
         return self._playbook_model.source_rowid
-
-    @property
-    def param_source_worksheet(self):
-        return self._playbook_model.source_worksheet
 
     @property
     def param_user_input(self):

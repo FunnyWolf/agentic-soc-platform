@@ -73,8 +73,8 @@ tools = [AgentKnowledge.internal_knowledge_base_search, AgentSIEM.siem_search_by
 
 
 class Playbook(LanggraphPlaybook):
-    TYPE = "CASE"
     NAME = "L3 SOC Analyst Agent With Tools"
+    DESC = "L3 SOC Analyst Agent With Tools"
 
     def __init__(self):
         super().__init__()
@@ -196,7 +196,7 @@ if __name__ == "__main__":
 
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ASP.settings")
     django.setup()
-    model = PlaybookModel(source_worksheet='case', source_rowid='f46e781f-e95c-4bac-a1c7-be45fccd3b4c')
+    model = PlaybookModel( source_rowid='f46e781f-e95c-4bac-a1c7-be45fccd3b4c')
     module = Playbook()
     module._playbook_model = model
 

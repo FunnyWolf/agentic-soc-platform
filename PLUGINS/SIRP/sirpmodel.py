@@ -523,16 +523,15 @@ class MessageModel(BaseSystemModel):
 
 
 class PlaybookModel(BaseSystemModel):
-    source_worksheet: Optional[str] = Field(default="", description="Trigger source worksheet")
     source_rowid: Optional[str] = Field(default="", description="Trigger source row ID")
-    job_id: Optional[str] = Field(default="", description="Background job ID")
-    job_status: Optional[PlaybookJobStatus] = Field(default=None, description="Background job status")
-    remark: Optional[str] = Field(default="", description="Execution remark")
     type: Optional[PlaybookType] = Field(default=None, description="Linked object type")
     name: Optional[str] = Field(default="", description="Executed playbook name")
-
     user_input: Optional[str] = Field(default="", description="Initial or follow-up user input")
     user: Optional[Union[List[AccountModel], AccountModel, str]] = Field(default=None, description="Playbook requester")
+
+    job_status: Optional[PlaybookJobStatus] = Field(default=None, description="Background job status")
+    job_id: Optional[str] = Field(default="", description="Background job ID")
+    remark: Optional[str] = Field(default="", description="Execution remark")
 
     # 关联表
     messages: Optional[List[Union[MessageModel, str]]] = Field(default=None, description="Execution message history")

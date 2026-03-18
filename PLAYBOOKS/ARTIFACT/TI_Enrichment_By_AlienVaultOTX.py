@@ -8,8 +8,8 @@ from PLUGINS.SIRP.sirpmodel import PlaybookJobStatus, EnrichmentModel, ArtifactM
 
 
 class Playbook(BasePlaybook):
-    TYPE = "ARTIFACT"
     NAME = "TI Enrichment By AlienVaultOTX"
+    DESC = "TI Enrichment By AlienVaultOTX"
 
     def __init__(self):
         super().__init__()  # do not delete this code
@@ -54,7 +54,7 @@ if __name__ == "__main__":
 
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ASP.settings")
     django.setup()
-    model = PlaybookModel(source_worksheet='artifact', source_rowid='73ed8a06-38e9-4d03-8d17-74b578f0cafa')
+    model = PlaybookModel(source_rowid='73ed8a06-38e9-4d03-8d17-74b578f0cafa')
     module = Playbook()
     module._playbook_model = model
 

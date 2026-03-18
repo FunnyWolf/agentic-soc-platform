@@ -6,8 +6,8 @@ from PLUGINS.SIRP.sirpmodel import PlaybookModel, PlaybookJobStatus, EnrichmentM
 
 
 class Playbook(BasePlaybook):
-    TYPE = "ARTIFACT"
     NAME = "TI Enrichment By Mock"
+    DESC = "Simulate threat intelligence enrichment. This playbook is for testing and demonstration purposes only. It does not perform real threat intelligence queries."
 
     def __init__(self):
         super().__init__()  # do not delete this code
@@ -43,7 +43,7 @@ if __name__ == "__main__":
 
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ASP.settings")
     django.setup()
-    model = PlaybookModel(source_worksheet='Artifact', source_rowid='a966036e-b29e-4449-be48-23293bacac5d')
+    model = PlaybookModel(source_rowid='a966036e-b29e-4449-be48-23293bacac5d')
     module = Playbook()
     module._playbook_model = model
     module.run()

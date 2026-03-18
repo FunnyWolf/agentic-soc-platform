@@ -39,8 +39,8 @@ class AgentState(BaseAgentState):
 
 
 class Playbook(LanggraphPlaybook):
-    TYPE = "ALERT"
     NAME = "Alert Summary Agent"
+    DESC = "Alert Summary Agent"
 
     def __init__(self):
         super().__init__()
@@ -160,7 +160,7 @@ if __name__ == "__main__":
 
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ASP.settings")
     django.setup()
-    model = PlaybookModel(source_worksheet='alert', source_rowid='03e21470-edd8-4b19-8ffb-628d5203a1c3')
+    model = PlaybookModel(source_rowid='03e21470-edd8-4b19-8ffb-628d5203a1c3')
     module = Playbook()
     module._playbook_model = model
 

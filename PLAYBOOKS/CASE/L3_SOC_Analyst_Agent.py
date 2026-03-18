@@ -31,8 +31,8 @@ class AgentState(BaseAgentState):
 
 
 class Playbook(LanggraphPlaybook):
-    TYPE = "CASE"
     NAME = "L3 SOC Analyst Agent"
+    DESC = "L3 SOC Analyst Agent"
 
     def __init__(self):
         super().__init__()  # do not delete this code
@@ -117,7 +117,7 @@ if __name__ == "__main__":
 
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ASP.settings")
     django.setup()
-    model = PlaybookModel(source_worksheet='case', source_rowid='141a4bd0-f3cf-4e0c-91b6-f8d9fff6f653')
+    model = PlaybookModel(source_rowid='141a4bd0-f3cf-4e0c-91b6-f8d9fff6f653')
     module = Playbook()
     module._playbook_model = model
 

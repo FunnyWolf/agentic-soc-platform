@@ -14,8 +14,8 @@ class AgentState(BaseAgentState):
 
 
 class Playbook(LanggraphPlaybook):
-    TYPE = "ALERT"  # Classification tag
     NAME = "Alert Analysis Agent"  # PlaybookLoader name
+    DESC = "Alert Analysis Agent"
 
     def __init__(self):
         super().__init__()  # do not delete this code
@@ -94,7 +94,7 @@ if __name__ == "__main__":
 
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ASP.settings")
     django.setup()
-    model = PlaybookModel(source_worksheet='alert', source_rowid='89f83414-a0fc-43bf-a15d-afab4309153a')
+    model = PlaybookModel( source_rowid='89f83414-a0fc-43bf-a15d-afab4309153a')
     module = Playbook()
     module._playbook_model = model
 

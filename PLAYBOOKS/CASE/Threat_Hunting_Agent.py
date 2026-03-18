@@ -172,8 +172,8 @@ class MainState(BaseModel):
 
 
 class Playbook(LanggraphPlaybook):
-    TYPE = "CASE"
     NAME = "Threat Hunting Agent"
+    DESC = "Threat Hunting Agent"
 
     def __init__(self):
         super().__init__()
@@ -557,7 +557,7 @@ if __name__ == "__main__":
 
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ASP.settings")
     django.setup()
-    model = PlaybookModel(source_worksheet='case',
+    model = PlaybookModel(
                           source_rowid='141a4bd0-f3cf-4e0c-91b6-f8d9fff6f653',
                           user_input="Has the host in the case been infected",
                           rowid="401ca83c-4579-4e6f-8329-2e61a6c3405a")
