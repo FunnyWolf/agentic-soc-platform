@@ -428,6 +428,15 @@ def update_knowledge(
     )
 
 
+def siem_explore_schema(
+        target_index: Annotated[Optional[str], "Target SIEM index; omit to list all available indices"] = None
+) -> Annotated[str, "Schema exploration result as JSON string"]:
+    """Explore available SIEM indices or inspect one index schema."""
+    input_data = SchemaExplorerInput(target_index=target_index)
+    result = SIEMToolKit.explore_schema(input_data)
+    return json.dumps(result, ensure_ascii=False)
+
+
 def siem_keyword_search(
         keyword: Annotated[str | list[str], "Keyword or keyword list; list uses AND matching"],
         time_range_start: Annotated[str, "UTC start time in ISO8601, e.g. 2026-02-04T06:00:00Z"],
@@ -466,15 +475,6 @@ def siem_adaptive_query(
     )
     result = SIEMToolKit.execute_adaptive_query(input_data)
     return result.model_dump_json()
-
-
-def siem_explore_schema(
-        target_index: Annotated[Optional[str], "Target SIEM index; omit to list all available indices"] = None
-) -> Annotated[str, "Schema exploration result as JSON string"]:
-    """Explore available SIEM indices or inspect one index schema."""
-    input_data = SchemaExplorerInput(target_index=target_index)
-    result = SIEMToolKit.explore_schema(input_data)
-    return json.dumps(result, ensure_ascii=False)
 
 
 def get_current_time(
