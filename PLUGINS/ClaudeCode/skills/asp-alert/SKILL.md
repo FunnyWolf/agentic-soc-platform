@@ -40,8 +40,8 @@ Use this skill for alert-centric SOC work on ASP.
 2. If the user asks for discussion context, call `get_alert_discussions(alert_id)` after retrieving the alert.
 3. If the user asks to browse or compare alerts, call `list_alerts` with supported filters.
 4. If the user asks to update AI severity, AI confidence, or AI comment, call `update_alert`.
-5. If the user asks to add an IOC, host, user, URL, or hash to the alert, call `append_artifact`.
-6. If the user asks to attach analysis results, intel, or structured context to the alert, call `append_enrichment(target_type=alert, target_id=<alert_id>, ...)`.
+5. If the user asks to add an IOC, host, user, URL, or hash to the alert, first call `create_artifact`, then call `attach_artifact_to_alert(alert_id=<alert_id>, artifact_rowid=<created_rowid>)`.
+6. If the user asks to attach analysis results, intel, or structured context to the alert, first call `create_enrichment`, then call `attach_enrichment_to_target(target_type=alert, target_id=<alert_id>, enrichment_rowid=<created_rowid>)`.
 
 ## SOP
 
@@ -87,17 +87,19 @@ Then add one short interpretation line when useful.
 ### Append Artifact To Alert
 
 1. Require `alert_id`.
-2. Collect the smallest useful artifact payload first: usually `value`, and when possible `type` or `role`.
-3. Call `append_artifact`.
-4. Confirm that a new artifact was created and attached.
-5. If the artifact is likely to need context, suggest attaching enrichment next.
+2. Collect the smallest useful artifact payload first: usually `value`, and when possible `name`, `type`, or `role`.
+3. Call `create_artifact` and keep the returned artifact row ID.
+4. Call `attach_artifact_to_alert(alert_id=<alert_id>, artifact_rowid=<created_rowid>)`.
+5. Confirm that a new artifact was created and attached.
+6. If the artifact is likely to need context, suggest creating enrichment for the artifact or the alert next.
 
 ### Append Enrichment To Alert
 
 1. Require `alert_id`.
 2. Convert the user's analysis into a compact structured enrichment payload.
-3. Call `append_enrichment(target_type=alert, target_id=<alert_id>, ...)`.
-4. Confirm the created enrichment record.
+3. Call `create_enrichment` and keep the returned enrichment row ID.
+4. Call `attach_enrichment_to_target(target_type=alert, target_id=<alert_id>, enrichment_rowid=<created_rowid>)`.
+5. Confirm that the enrichment was created and attached.
 
 ## Clarification Rules
 

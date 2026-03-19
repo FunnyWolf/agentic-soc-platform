@@ -33,17 +33,19 @@ Use this skill for SIEM investigation on ASP. This skill should guide search str
 - Use `siem_explore_schema` when the user does not know the right index or fields.
 - Use `siem_keyword_search` when the user has one or more strong keywords and needs matching events.
 - Use `siem_adaptive_query` when the user already knows the target index and wants exact field filters or statistics.
+- If the user gives a relative time window, call `get_current_time` first and convert it into a workable UTC range.
 - Optimize for useful evidence, not maximum raw output.
 
 ## Decision Flow
 
 1. If the user asks which index to use, which fields exist, or how the SIEM source is structured, use `siem_explore_schema`.
 2. If the user already provides keyword and time range, use `siem_keyword_search` immediately.
-3. If the user gives only an IOC or keyword, ask for the narrowest workable UTC time range.
-4. If the user wants exact field filters, grouped statistics, or controlled aggregations, use `siem_adaptive_query`.
-5. If the user knows the data source, pass `index_name`; otherwise search broadly first or explore schema.
-6. If the source likely uses a non-default time field, ask for it; otherwise use `@timestamp`.
-7. After each search, decide whether to stop, narrow, or expand based on hit volume, result quality, and user goal.
+3. If the user gives a relative time window, call `get_current_time`, derive a workable UTC range, then continue.
+4. If the user gives only an IOC or keyword, ask for the narrowest workable UTC time range.
+5. If the user wants exact field filters, grouped statistics, or controlled aggregations, use `siem_adaptive_query`.
+6. If the user knows the data source, pass `index_name`; otherwise search broadly first or explore schema.
+7. If the source likely uses a non-default time field, ask for it; otherwise use `@timestamp`.
+8. After each search, decide whether to stop, narrow, expand, or write the useful result back as enrichment.
 
 ## SOP
 
@@ -135,6 +137,7 @@ Preferred response structure:
 - Remove one restrictive keyword
 - Search a specific index
 - Switch to adaptive query with exact filters
+- Save the useful SIEM result as enrichment on the relevant case, alert, or artifact
 - Stop because evidence is already sufficient
 
 ## Clarification Rules

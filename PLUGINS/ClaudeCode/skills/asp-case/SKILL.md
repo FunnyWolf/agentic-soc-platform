@@ -23,6 +23,8 @@ Use this skill for case-centric SOC work on ASP.
 - The user wants case discussion context.
 - The user wants to check related alerts or playbook runs from a case view.
 - The user wants to update case workflow fields or AI analysis fields.
+- The user wants to attach enrichment or structured analysis to a case.
+- The user wants to attach an external ticket record to a case.
 - The user wants to run a playbook against a case.
 
 ## Operating Rules
@@ -44,10 +46,12 @@ Use this skill for case-centric SOC work on ASP.
 3. If the user wants related alert context, use the case's `correlation_uid` and call `list_alerts`.
 4. If the user wants case automation status, call `list_playbook_runs(source_id=case_id, type=[CASE])`.
 5. If the user wants to run automation on the case, use `list_available_playbook_definitions` only when the playbook name is missing, then call `execute_playbook(type=CASE, record_id=case_id, name=...)`.
-6. If the user asks to find, browse, or compare cases, use `list_cases`.
-7. If the user asks to change status, verdict, severity, or AI fields, use `update_case`.
-8. If the user asks to update a case but does not provide a case ID, ask for it.
-9. If the user gives multiple possible filters, apply the ones ASP supports directly and mention any unsupported filters explicitly.
+6. If the user asks to attach enrichment or structured analysis to the case, first call `create_enrichment`, then call `attach_enrichment_to_target(target_type=case, target_id=<case_id>, enrichment_rowid=<created_rowid>)`.
+7. If the user asks to attach an external ticket to the case, first call `create_ticket`, then call `attach_ticket_to_case(case_id=<case_id>, ticket_rowid=<created_rowid>)`.
+8. If the user asks to find, browse, or compare cases, use `list_cases`.
+9. If the user asks to change status, verdict, severity, or AI fields, use `update_case`.
+10. If the user asks to update a case but does not provide a case ID, ask for it.
+11. If the user gives multiple possible filters, apply the ones ASP supports directly and mention any unsupported filters explicitly.
 
 ## SOP
 
@@ -108,6 +112,36 @@ Preferred response structure:
 - `Run status`: usually pending at creation time
 - `User input`: only if provided
 - `Next useful step`: optional, usually to query case-related runs
+
+### Attach Enrichment To Case
+
+1. Require `case_id`.
+2. Convert the user's analysis into a compact structured enrichment payload.
+3. Call `create_enrichment` and keep the returned enrichment row ID.
+4. Call `attach_enrichment_to_target(target_type=case, target_id=<case_id>, enrichment_rowid=<created_rowid>)`.
+5. Confirm that the enrichment was created and attached to the case.
+
+Preferred response structure:
+
+- `Case`: case ID
+- `Enrichment`: created enrichment row ID
+- `Attachment`: attached to case
+- `Next useful step`: optional, usually to review the case again or continue the investigation from the enriched summary
+
+### Attach Ticket To Case
+
+1. Require `case_id`.
+2. Collect the external ticket details the user wants to sync.
+3. Call `create_ticket` and keep the returned ticket row ID.
+4. Call `attach_ticket_to_case(case_id=<case_id>, ticket_rowid=<created_rowid>)`.
+5. Confirm that the ticket was created and attached to the case.
+
+Preferred response structure:
+
+- `Case`: case ID
+- `Ticket`: created ticket row ID or external ticket identifier when useful
+- `Attachment`: attached to case
+- `Next useful step`: optional, usually to review the case again or update the synced ticket later
 
 ### Update a Case
 
