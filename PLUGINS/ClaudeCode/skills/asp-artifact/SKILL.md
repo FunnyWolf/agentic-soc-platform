@@ -1,6 +1,6 @@
 ---
 name: asp-artifact
-description: 'Manage ASP artifacts. Use when users ask to find artifacts, create a new artifact, attach an artifact to an alert, review artifact-centered pivots, or attach enrichment to an artifact.'
+description: 'Find artifacts by IOC, create new artifacts, attach artifacts to alerts, or save enrichment on artifacts.'
 argument-hint: 'review artifact <artifact_id> | list artifacts [filters] | create artifact <value> | attach artifact to alert <alert_id> | enrich artifact <artifact_id>'
 compatibility: connect to asp mcp server
 metadata:
@@ -20,8 +20,8 @@ Use this skill for artifact-centric investigation work on ASP.
 
 - The user wants to find artifacts by value, type, role, owner, or reputation.
 - The user wants to create a new artifact record.
-- The user wants to attach an existing or newly created artifact to an alert.
-- The user wants to pivot investigation from an artifact value into other systems or follow-up workflows.
+- The user wants to attach a newly created artifact to an alert.
+- The user wants to attach an existing artifact to an alert when they already have the artifact row ID.
 - The user wants to attach enrichment or structured analysis to an artifact.
 
 ## Operating Rules
@@ -33,14 +33,15 @@ Use this skill for artifact-centric investigation work on ASP.
 - Use `create_artifact` when the user wants to add a new artifact record.
 - Use `attach_artifact_to_alert` only after you already have an artifact row ID.
 - Use `create_enrichment` plus `attach_enrichment_to_target` when the user wants to save analysis on the artifact itself.
+- For detailed enrichment persistence workflow, use the `asp-enrichment` skill.
 - Keep artifact responses short and investigation-oriented.
 
 ## Decision Flow
 
 1. If the user asks to find or review artifacts, call `list_artifacts`.
 2. If the user asks to create a new artifact, call `create_artifact`.
-3. If the user asks to add an artifact to an alert, first call `create_artifact` when needed, then call `attach_artifact_to_alert`.
-4. If the user asks to attach intel, analyst notes, or structured analysis to an artifact, first call `create_enrichment`, then call `attach_enrichment_to_target(target_type=artifact, target_id=<artifact_id>, enrichment_rowid=<created_rowid>)`.
+3. If the user asks to add an artifact to an alert, first call `create_artifact` when needed or retrieve an existing artifact row ID, then call `attach_artifact_to_alert`.
+4. If the user asks to attach intel, analyst notes, or structured analysis to an artifact, use the `asp-enrichment` skill.
 5. If the user is investigating from an artifact, use the artifact as a pivot and suggest the next useful hop only when needed.
 
 ## SOP
@@ -50,7 +51,7 @@ Use this skill for artifact-centric investigation work on ASP.
 1. Extract the narrowest useful filters from the request.
 2. Call `list_artifacts`.
 3. Parse the returned JSON strings.
-4. Present a compact artifact-oriented view.
+4. Present a compact artifact-oriented view, and surface the artifact row ID when the user is likely to attach or reuse the artifact next.
 
 Preferred response structure:
 
@@ -75,24 +76,9 @@ Preferred response structure:
 ### Attach Artifact To Alert
 
 1. Require `alert_id`.
-2. If the user does not already have an artifact row ID, call `create_artifact` first.
+2. If the user does not already have an artifact row ID, either call `create_artifact` for a new artifact or retrieve the existing artifact first.
 3. Call `attach_artifact_to_alert(alert_id=<alert_id>, artifact_rowid=<artifact_rowid>)`.
 4. Confirm that the artifact is attached.
-
-### Enrich Artifact
-
-1. Require `artifact_id`.
-2. Convert the user's analysis into a compact enrichment payload.
-3. Call `create_enrichment` and keep the returned enrichment row ID.
-4. Call `attach_enrichment_to_target(target_type=artifact, target_id=<artifact_id>, enrichment_rowid=<created_rowid>)`.
-5. Confirm that the enrichment was created and attached.
-
-Preferred response structure:
-
-- `Artifact`: artifact ID
-- `Enrichment`: created enrichment row ID
-- `Attachment`: attached to artifact
-- `Next useful step`: optional, usually to pivot into SIEM or review the parent alert
 
 ## Clarification Rules
 

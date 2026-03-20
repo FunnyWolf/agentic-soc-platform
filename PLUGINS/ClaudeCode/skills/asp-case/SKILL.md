@@ -38,15 +38,16 @@ Use this skill for case-centric SOC work on ASP.
 - After updates, confirm only the fields that were changed.
 - For single-case retrieval, use `list_cases(case_id=...)` because the current MCP surface does not expose a separate `get_case` tool.
 - Keep case as the primary user view. Pull alerts, discussions, or playbook runs only when they help answer the case question.
+- If the user wants to save structured analysis back onto the case, use the `asp-enrichment` skill.
 
 ## Decision Flow
 
 1. If the user provides a specific case ID or says "open", "show", "review", or "summarize" a case, call `list_cases` with `case_id` and `limit=1`.
 2. If the user wants discussion history or analyst context, call `get_case_discussions` after retrieving the case.
-3. If the user wants related alert context, use the case's `correlation_uid` and call `list_alerts`.
+3. If the user wants related alert context, pivot through the case's `correlation_uid` and call `list_alerts` when that helps answer the case question.
 4. If the user wants case automation status, call `list_playbook_runs(source_id=case_id, type=[CASE])`.
 5. If the user wants to run automation on the case, use `list_available_playbook_definitions` only when the playbook name is missing, then call `execute_playbook(type=CASE, record_id=case_id, name=...)`.
-6. If the user asks to attach enrichment or structured analysis to the case, first call `create_enrichment`, then call `attach_enrichment_to_target(target_type=case, target_id=<case_id>, enrichment_rowid=<created_rowid>)`.
+6. If the user asks to attach enrichment or structured analysis to the case, use the `asp-enrichment` skill.
 7. If the user asks to attach an external ticket to the case, first call `create_ticket`, then call `attach_ticket_to_case(case_id=<case_id>, ticket_rowid=<created_rowid>)`.
 8. If the user asks to find, browse, or compare cases, use `list_cases`.
 9. If the user asks to change status, verdict, severity, or AI fields, use `update_case`.
@@ -61,7 +62,7 @@ Use this skill for case-centric SOC work on ASP.
 2. If the result is empty, state that the case was not found.
 3. Parse the first JSON record.
 4. If the user asks for analyst context, call `get_case_discussions(case_id)`.
-5. If the case contains a useful `correlation_uid` and the user needs alert context, call `list_alerts(correlation_uid=...)`.
+5. If the case contains a useful `correlation_uid` and the user needs related alert context, use it as a pivot and call `list_alerts(correlation_uid=...)`.
 6. If the user asks whether automation has run or is pending, call `list_playbook_runs(source_id=case_id, type=[CASE])`.
 7. Present only the most useful sections for the request.
 8. Highlight missing or suspicious fields only if they matter to the user's goal.
@@ -113,21 +114,6 @@ Preferred response structure:
 - `User input`: only if provided
 - `Next useful step`: optional, usually to query case-related runs
 
-### Attach Enrichment To Case
-
-1. Require `case_id`.
-2. Convert the user's analysis into a compact structured enrichment payload.
-3. Call `create_enrichment` and keep the returned enrichment row ID.
-4. Call `attach_enrichment_to_target(target_type=case, target_id=<case_id>, enrichment_rowid=<created_rowid>)`.
-5. Confirm that the enrichment was created and attached to the case.
-
-Preferred response structure:
-
-- `Case`: case ID
-- `Enrichment`: created enrichment row ID
-- `Attachment`: attached to case
-- `Next useful step`: optional, usually to review the case again or continue the investigation from the enriched summary
-
 ### Attach Ticket To Case
 
 1. Require `case_id`.
@@ -168,7 +154,7 @@ Preferred response structure:
 
 - `Updated case`: case ID or returned row ID
 - `Changed fields`: only the fields sent in the request
-- `Next useful step`: optional, usually `get_case` if the user needs the refreshed record
+- `Next useful step`: optional, usually `list_cases(case_id=..., limit=1)` if the user needs the refreshed record
 
 ## Clarification Rules
 

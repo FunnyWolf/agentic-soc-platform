@@ -1,6 +1,6 @@
 ---
 name: asp-alert
-description: 'Manage ASP alerts. Use when users ask to review alerts, find alerts by status or severity, inspect alert discussions, update AI triage fields, append artifacts, or attach enrichments to alerts.'
+description: 'Review ASP alerts, update AI triage, create and attach new artifacts, inspect alert discussions, or attach enrichment to alerts.'
 argument-hint: 'review alert <alert_id> | list alerts [filters] | update alert <alert_id> <fields> | append artifact to alert <alert_id>'
 compatibility: connect to asp mcp server
 metadata:
@@ -22,7 +22,7 @@ Use this skill for alert-centric SOC work on ASP.
 - The user wants to find alerts by status, severity, confidence, or correlation UID.
 - The user wants analyst discussion context on an alert.
 - The user wants to update AI triage fields on an alert.
-- The user wants to append a new artifact to an alert.
+- The user wants to create and attach a new artifact to an alert.
 - The user wants to attach enrichment to an alert after analysis.
 
 ## Operating Rules
@@ -33,6 +33,8 @@ Use this skill for alert-centric SOC work on ASP.
 - Keep the response focused on triage value rather than raw schema output.
 - For updates, change only the fields the user explicitly requested.
 - For append actions, confirm the target alert ID and the minimum required payload before writing.
+- For attachment flows, distinguish between creating a new related record and reusing an existing one. Attach tools need the related record row ID.
+- If the user wants to save structured analysis back onto the alert, use the `asp-enrichment` skill.
 
 ## Decision Flow
 
@@ -40,8 +42,8 @@ Use this skill for alert-centric SOC work on ASP.
 2. If the user asks for discussion context, call `get_alert_discussions(alert_id)` after retrieving the alert.
 3. If the user asks to browse or compare alerts, call `list_alerts` with supported filters.
 4. If the user asks to update AI severity, AI confidence, or AI comment, call `update_alert`.
-5. If the user asks to add an IOC, host, user, URL, or hash to the alert, first call `create_artifact`, then call `attach_artifact_to_alert(alert_id=<alert_id>, artifact_rowid=<created_rowid>)`.
-6. If the user asks to attach analysis results, intel, or structured context to the alert, first call `create_enrichment`, then call `attach_enrichment_to_target(target_type=alert, target_id=<alert_id>, enrichment_rowid=<created_rowid>)`.
+5. If the user asks to add an IOC, host, user, URL, or hash to the alert, first call `create_artifact` for a new artifact or locate an existing artifact row ID, then call `attach_artifact_to_alert(alert_id=<alert_id>, artifact_rowid=<artifact_rowid>)`.
+6. If the user asks to attach analysis results, intel, or structured context to the alert, use the `asp-enrichment` skill.
 
 ## SOP
 
@@ -87,19 +89,12 @@ Then add one short interpretation line when useful.
 ### Append Artifact To Alert
 
 1. Require `alert_id`.
-2. Collect the smallest useful artifact payload first: usually `value`, and when possible `name`, `type`, or `role`.
-3. Call `create_artifact` and keep the returned artifact row ID.
-4. Call `attach_artifact_to_alert(alert_id=<alert_id>, artifact_rowid=<created_rowid>)`.
-5. Confirm that a new artifact was created and attached.
-6. If the artifact is likely to need context, suggest creating enrichment for the artifact or the alert next.
-
-### Append Enrichment To Alert
-
-1. Require `alert_id`.
-2. Convert the user's analysis into a compact structured enrichment payload.
-3. Call `create_enrichment` and keep the returned enrichment row ID.
-4. Call `attach_enrichment_to_target(target_type=alert, target_id=<alert_id>, enrichment_rowid=<created_rowid>)`.
-5. Confirm that the enrichment was created and attached.
+2. If the user wants a new artifact, collect the smallest useful artifact payload first: usually `value`, and when possible `name`, `type`, or `role`.
+3. For a new artifact, call `create_artifact` and keep the returned artifact row ID.
+4. For an existing artifact, first retrieve it and keep the returned artifact row ID.
+5. Call `attach_artifact_to_alert(alert_id=<alert_id>, artifact_rowid=<artifact_rowid>)`.
+6. Confirm that the artifact is attached.
+7. If the artifact is likely to need context, suggest creating enrichment for the artifact or the alert next.
 
 ## Clarification Rules
 

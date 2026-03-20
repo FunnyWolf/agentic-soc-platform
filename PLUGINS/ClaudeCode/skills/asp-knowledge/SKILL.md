@@ -1,6 +1,6 @@
 ---
 name: asp-knowledge
-description: 'Manage ASP knowledge records. Use when users ask to find internal knowledge, search by title, body, tags, action, or source, or update knowledge content, usage state, lifecycle action, or tags.'
+description: 'Find internal guidance for a case or alert, check whether knowledge already exists, or update existing ASP knowledge records.'
 argument-hint: 'search knowledge [filters] | update knowledge <knowledge_id> <fields>'
 compatibility: connect to asp mcp server
 metadata:

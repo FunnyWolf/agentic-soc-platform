@@ -1,6 +1,6 @@
 ---
 name: asp-ticket
-description: 'Manage ASP ticket sync records. Use when users ask to create synced tickets, attach tickets to cases, list tickets, or update synced ticket fields.'
+description: 'Sync external tickets into ASP, link tickets to cases, list synced tickets, or update existing ticket records.'
 argument-hint: 'list tickets [filters] | create ticket <uid> | attach ticket to case <case_id> | update ticket <ticket_id> <fields>'
 compatibility: connect to asp mcp server
 metadata:
@@ -29,14 +29,14 @@ Use this skill for external ticket sync work on ASP.
 - Do not ask the user to choose an operation if the request already implies one.
 - Collect only missing required inputs.
 - Use `create_ticket` to create the synced ticket record.
-- Use `attach_ticket_to_case` to link an existing ticket record to a case.
+- Use `attach_ticket_to_case` to link an existing ticket record to a case once you have the ticket row ID.
 - Use `list_tickets` for browsing and lookup.
 - Use `update_ticket` only for fields the user explicitly wants changed.
 
 ## Decision Flow
 
 1. If the user wants to create a synced ticket record, call `create_ticket`.
-2. If the user wants to attach a ticket to a case, first create the ticket when needed, then call `attach_ticket_to_case`.
+2. If the user wants to attach a ticket to a case, first create the ticket when needed or retrieve an existing ticket row ID, then call `attach_ticket_to_case`.
 3. If the user wants to browse or compare synced tickets, call `list_tickets`.
 4. If the user wants to revise synced ticket fields, call `update_ticket`.
 
@@ -47,7 +47,7 @@ Use this skill for external ticket sync work on ASP.
 1. Extract the narrowest useful filters from the request.
 2. Call `list_tickets`.
 3. Parse the returned JSON strings.
-4. Present a compact workflow-oriented view.
+4. Present a compact workflow-oriented view, and surface the ticket row ID when the user is likely to attach or reuse the ticket next.
 
 Preferred response structure:
 
@@ -66,7 +66,7 @@ Then add one short interpretation line when useful.
 ### Attach Ticket To Case
 
 1. Require `case_id`.
-2. If the user does not already have a ticket row ID, call `create_ticket` first.
+2. If the user does not already have a ticket row ID, either call `create_ticket` for a new ticket or retrieve the existing ticket first.
 3. Call `attach_ticket_to_case(case_id=<case_id>, ticket_rowid=<ticket_rowid>)`.
 4. Confirm that the ticket is attached.
 
