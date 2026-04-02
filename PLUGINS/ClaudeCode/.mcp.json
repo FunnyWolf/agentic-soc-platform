@@ -2,7 +2,8 @@
   "mcpServers": {
     "asp": {
       "type": "sse",
-      "url": "http://localhost:7001/a670db8a1d2811f1/sse"
+      "url": "${ASP_MCP_SSE_URL}"
     }
   }
 }
+

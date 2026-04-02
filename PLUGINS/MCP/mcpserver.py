@@ -4,7 +4,7 @@ import sys
 import uuid
 
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, project_root)
+sys.path.insert(0, str(project_root))
 
 from mcp.server import FastMCP
 from Lib.configs import BASE_DIR

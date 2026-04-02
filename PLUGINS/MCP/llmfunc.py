@@ -425,9 +425,9 @@ def update_knowledge(
 
 
 def search_knowledge(
-        query: Annotated[str, "Question need to search in knowledge base"],
-):
-    """Search knowledge base with a natural language query."""
+        query: Annotated[str, "The search query."]
+) -> Annotated[str, "relevant knowledge entries, policies, and special handling instructions."]:
+    """Search the internal knowledge base for specific entities, business-specific logic, SOPs, or historical context."""
     results = Knowledge.search(query)
     return results
 

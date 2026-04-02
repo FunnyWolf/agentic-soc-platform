@@ -619,7 +619,7 @@ class Knowledge(BaseWorksheetEntity[KnowledgeModel]):
         Search the internal knowledge base for specific entities, business-specific logic, SOPs, or historical context.
         """
         logger.debug(f"knowledge search : {query}")
-        threshold = 0.8
+        threshold = 0.5
         result_all = []
         docs_qdrant = embedding_api_singleton_qdrant.search_documents_with_rerank(collection_name=SIRP_KNOWLEDGE_COLLECTION, query=query, k=10, top_n=3)
         logger.debug(docs_qdrant)

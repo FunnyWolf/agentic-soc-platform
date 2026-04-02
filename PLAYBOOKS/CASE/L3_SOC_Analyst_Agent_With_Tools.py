@@ -6,12 +6,11 @@ from langgraph.graph.state import CompiledStateGraph
 from langgraph.prebuilt import ToolNode
 from pydantic import BaseModel, Field, ConfigDict
 
-from AGENTS.agent_knowledge import AgentKnowledge
 from AGENTS.agent_siem import AgentSIEM
 from Lib.baseplaybook import LanggraphPlaybook
 from Lib.llmapi import BaseAgentState
 from PLUGINS.LLM.llmapi import LLMAPI
-from PLUGINS.SIRP.sirpapi import Case
+from PLUGINS.SIRP.sirpapi import Case, Knowledge
 from PLUGINS.SIRP.sirpmodel import PlaybookJobStatus, CaseModel, PlaybookModel, AttackStage
 from PLUGINS.SIRP.sirpmodel import Severity, Confidence
 
@@ -69,7 +68,7 @@ NODE_OUTPUT = "output_node"
 FINAL_TOOL_NAME = AnalyzeResult.__name__
 MAX_ITERATIONS = 5
 
-tools = [AgentKnowledge.internal_knowledge_base_search, AgentSIEM.siem_search_by_natural_language]
+tools = [Knowledge.search, AgentSIEM.siem_search_by_natural_language]
 
 
 class Playbook(LanggraphPlaybook):
@@ -196,7 +195,7 @@ if __name__ == "__main__":
 
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ASP.settings")
     django.setup()
-    model = PlaybookModel( source_rowid='f46e781f-e95c-4bac-a1c7-be45fccd3b4c')
+    model = PlaybookModel(source_rowid='f46e781f-e95c-4bac-a1c7-be45fccd3b4c')
     module = Playbook()
     module._playbook_model = model
 
