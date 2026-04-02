@@ -594,7 +594,7 @@ class TicketModel(BaseSystemModel):
     src_url: Optional[str] = Field(default="", description="External ticket URL")
 
     # 反向关联
-    case: Optional[List[Union[CaseModel, str]]] = Field(default=None, description="Linked case row IDs")
+    case: Optional[List[Union[CaseModel, str]]] = Field(default=None, description="Linked case rowid")
 
 
 class ArtifactModel(BaseSystemModel):
@@ -610,6 +610,9 @@ class ArtifactModel(BaseSystemModel):
     reputation_provider: Optional[str] = Field(default="", description="Threat intel provider", json_schema_extra={"type": 2})
     reputation_score: Optional[ArtifactReputationScore] = Field(
         default=None, description="Artifact reputation")
+    
+    # 反向关联
+    alert: Optional[List[Union[AlertModel, str]]] = Field(default=None, description="Linked alert rowid")
 
     # 关联表
     enrichments: Optional[List[Union[EnrichmentModel, str]]] = Field(default=None, description="Artifact enrichments")  # None 时表示无需处理,[] 时表示要将 link 清空
@@ -620,7 +623,7 @@ class ArtifactModel(BaseSystemModel):
 
 
 class AlertModel(BaseSystemModel):
-    ai_exclude_fields: ClassVar[set[str]] = {'ownerid', 'caid', 'uaid', "comment_ai", "case", "attachments"}
+    ai_exclude_fields: ClassVar[set[str]] = {'ownerid', 'caid', 'uaid', "comment_ai", "attachments"}
     id: Optional[str] = Field(default=None)
     severity: Optional[Severity] = Field(default=None,
                                          description="Source-defined severity")
@@ -692,7 +695,7 @@ class AlertModel(BaseSystemModel):
     comment_ai: Optional[str] = Field(default="", description="AI-generated comment")
 
     # 反向关联
-    case: Optional[List[Union[CaseModel, str]]] = Field(default=None, description="Linked case row IDs")
+    case: Optional[List[Union[CaseModel, str]]] = Field(default=None, description="Linked case rowid")
 
     # 关联表
     artifacts: Optional[List[Union[ArtifactModel, str]]] = Field(default=None, description="Extracted artifacts")

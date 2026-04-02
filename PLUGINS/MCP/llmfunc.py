@@ -22,6 +22,7 @@ def _dump_models_for_ai(models, limit: int) -> list[str]:
 
 # Case
 def list_cases(
+    rowid: Annotated[Optional[str], "Case row ID filter, e.g. 03c26478-b213-44c8-b651-3cc88abaac01"] = None,
         case_id: Annotated[Optional[str], "Case ID, e.g. case_000005"] = None,
         status: Annotated[Optional[list[CaseStatus]], "Case status filter"] = None,
         severity: Annotated[Optional[list[Severity]], "Case severity filter"] = None,
@@ -34,6 +35,8 @@ def list_cases(
 ) -> Annotated[list[str], "Matching cases as AI-friendly JSON list"]:
     """List cases with optional filters."""
     conditions = []
+    if rowid:
+        conditions.append(Condition(field="rowid", operator=Operator.EQ, value=rowid))
     if case_id:
         conditions.append(Condition(field="id", operator=Operator.EQ, value=case_id))
     if status:
@@ -91,6 +94,7 @@ def update_case(
 
 # Alert
 def list_alerts(
+    rowid: Annotated[Optional[str], "Alert row ID filter, e.g. 03c26478-b213-44c8-b651-3cc88abaac01"] = None,
         alert_id: Annotated[Optional[str], "Alert ID, e.g. alert_000001"] = None,
         status: Annotated[Optional[list[AlertStatus]], "Alert status filter"] = None,
         severity: Annotated[Optional[list[Severity]], "Alert severity filter"] = None,
@@ -101,6 +105,8 @@ def list_alerts(
     """List alerts with optional filters."""
     conditions = []
 
+    if rowid:
+        conditions.append(Condition(field="rowid", operator=Operator.EQ, value=rowid))
     if alert_id:
         conditions.append(Condition(field="id", operator=Operator.EQ, value=alert_id))
     if status:
@@ -178,6 +184,7 @@ def attach_artifact_to_alert(
 
 
 def list_artifacts(
+    rowid: Annotated[Optional[str], "Artifact row ID filter, e.g. 03c26478-b213-44c8-b651-3cc88abaac01"] = None,
         artifact_id: Annotated[Optional[str], "Artifact ID, e.g. artifact_000001"] = None,
         type: Annotated[Optional[list[ArtifactType]], "Artifact type filter"] = None,
         role: Annotated[Optional[list[ArtifactRole]], "Artifact role filter"] = None,
@@ -188,6 +195,8 @@ def list_artifacts(
 ) -> Annotated[list[str], "Matching artifacts as AI-friendly JSON list"]:
     """List artifacts with optional filters."""
     conditions = []
+    if rowid:
+        conditions.append(Condition(field="rowid", operator=Operator.EQ, value=rowid))
     if artifact_id:
         conditions.append(Condition(field="id", operator=Operator.EQ, value=artifact_id))
     if type:
@@ -286,6 +295,7 @@ def attach_ticket_to_case(
 
 
 def list_tickets(
+        rowid: Annotated[Optional[str], "Ticket row ID filter, e.g. 03c26478-b213-44c8-b651-3cc88abaac01"] = None,
         status: Annotated[Optional[list[TicketStatus]], "Ticket status filter"] = None,
         type: Annotated[Optional[list[TicketType]], "Ticket type filter"] = None,
         uid: Annotated[Optional[str], "Exact external ticket ID filter"] = None,
@@ -294,6 +304,8 @@ def list_tickets(
     """List synced external tickets with optional filters."""
     conditions = []
 
+    if rowid:
+        conditions.append(Condition(field="rowid", operator=Operator.EQ, value=rowid))
     if status:
         conditions.append(Condition(field="status", operator=Operator.IN, value=status))
     if type:
@@ -334,6 +346,7 @@ def list_available_playbook_definitions(
 
 
 def list_playbook_runs(
+    rowid: Annotated[Optional[str], "Playbook run row ID filter, e.g. 03c26478-b213-44c8-b651-3cc88abaac01"] = None,
         playbook_id: Annotated[Optional[str], "Playbook run ID, e.g. playbook_000001"] = None,
         job_status: Annotated[Optional[list[PlaybookJobStatus]], "Playbook job status filter"] = None,
         type: Annotated[Optional[list[PlaybookType]], "Playbook type filter"] = None,
@@ -343,6 +356,8 @@ def list_playbook_runs(
     """List playbook run records with optional filters."""
     conditions = []
 
+    if rowid:
+        conditions.append(Condition(field="rowid", operator=Operator.EQ, value=rowid))
     if playbook_id:
         conditions.append(Condition(field="id", operator=Operator.EQ, value=playbook_id))
     if source_id:
@@ -374,6 +389,7 @@ def execute_playbook(
 
 
 def list_knowledge(
+    rowid: Annotated[Optional[str], "Knowledge row ID filter, e.g. 03c26478-b213-44c8-b651-3cc88abaac01"] = None,
         action: Annotated[Optional[list[KnowledgeAction]], "Knowledge action filter"] = None,
         source: Annotated[Optional[list[KnowledgeSource]], "Knowledge source filter"] = None,
         using: Annotated[Optional[bool], "Knowledge using flag filter"] = None,
@@ -385,6 +401,8 @@ def list_knowledge(
     """List knowledge records with optional filters."""
     conditions = []
 
+    if rowid:
+        conditions.append(Condition(field="rowid", operator=Operator.EQ, value=rowid))
     if action:
         conditions.append(Condition(field="action", operator=Operator.IN, value=action))
     if source:
