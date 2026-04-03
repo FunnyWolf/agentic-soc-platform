@@ -1,6 +1,6 @@
 ---
 name: asp-enrichment-zh
-description: '把结构化分析结果保存为 enrichment，并附加到 case、alert 或 artifact。'
+description: '把结构化数据保存为 enrichment，并附加到 case、alert 或 artifact。'
 argument-hint: 'create enrichment for <case|alert|artifact> <target_id> | attach enrichment to <case|alert|artifact> <target_id>'
 compatibility: connect to asp mcp server
 metadata:
@@ -14,7 +14,7 @@ metadata:
 
 # ASP Enrichment
 
-当分析结果需要以结构化上下文形式保存回 ASP 时，使用这个 skill。
+当数据需要以结构化上下文形式保存回 ASP 且挂载到对应 case , alert 或 artifact 时，使用这个 skill。
 
 ## 适用场景
 
@@ -33,6 +33,10 @@ metadata:
 - enrichment payload 保持紧凑且可操作。
 - 查看对象本身时优先使用对象对应的 skill；保存结果时再使用本 skill。
 
+## 补充信息
+
+- rowid 为每条 enrichment 记录的UUID,用于数据关联. enrichment_id 是每条 enrichment 记录人类可读的唯一ID
+
 ## 决策流程
 
 1. 如果用户想保存新的结构化结果，先调用 `create_enrichment`。
@@ -44,10 +48,10 @@ metadata:
 
 ### 创建并附加新的 Enrichment
 
-1. 要求提供 `target_type` 和 `target_id`。
+1. 要求提供`target_id` (比如 case_000001 / alert_000001 / artifact_000001)。
 2. 把用户的分析整理成紧凑的结构化 enrichment payload。
 3. 调用 `create_enrichment` 并保留返回的 enrichment row ID。
-4. 调用 `attach_enrichment_to_target(target_type=<target_type>, target_id=<target_id>, enrichment_rowid=<created_rowid>)`。
+4. 调用`attach_enrichment_to_target(target_id=<target_id>, enrichment_rowid=<created_rowid>)`。
 5. 确认 enrichment 已创建并附加成功。
 
 首选回复结构：
@@ -59,8 +63,8 @@ metadata:
 
 ### 附加已有 Enrichment
 
-1. 要求提供 `target_type`、`target_id` 和 `enrichment_rowid`。
-2. 调用 `attach_enrichment_to_target(target_type=<target_type>, target_id=<target_id>, enrichment_rowid=<enrichment_rowid>)`。
+1. 要求提供 `target_id` 和 `enrichment_rowid`。
+2. 调用`attach_enrichment_to_target(target_id=<target_id>, enrichment_rowid=<enrichment_rowid>)`。
 3. 确认 enrichment 已附加成功。
 
 ## 澄清规则

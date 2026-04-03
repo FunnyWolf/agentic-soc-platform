@@ -430,9 +430,7 @@ def update_knowledge(
         knowledge_id: Annotated[str, Field(description="Knowledge ID to update")],
         title: Annotated[Optional[str], Field(description="Updated knowledge title")] = None,
         body: Annotated[Optional[str], Field(description="Updated knowledge body")] = None,
-        using: Annotated[Optional[bool], Field(description="Updated knowledge using flag")] = None,
         action: Annotated[Optional[KnowledgeAction], Field(description="Updated knowledge action")] = None,
-        source: Annotated[Optional[KnowledgeSource], Field(description="Updated knowledge source")] = None,
         tags: Annotated[Optional[list[str]], Field(description="Updated knowledge tags; pass [] to clear")] = None
 ) -> Annotated[Optional[str], Field(description="Updated knowledge row ID, or None if not found")]:
     """Update one knowledge record in SIRP."""
@@ -440,7 +438,6 @@ def update_knowledge(
         knowledge_id=knowledge_id,
         title=title,
         body=body,
-        using=using,
         action=action,
         source=source,
         tags=tags
@@ -516,27 +513,44 @@ def get_current_time(
 
 
 REGISTERED_MCP_TOOLS = [
-    attach_enrichment_to_target,
-    attach_ticket_to_case,
-    create_enrichment,
-    create_ticket,
-    execute_playbook,
-    get_alert_discussions,
-    get_case_discussions,
-    list_alerts,
-    list_available_playbook_definitions,
-    list_artifacts,
+
+    # case
     list_cases,
-    list_knowledge,
-    list_playbook_runs,
-    list_tickets,
-    update_alert,
+    get_case_discussions,
     update_case,
+
+    # alert
+    list_alerts,
+    get_alert_discussions,
+    update_alert,
+
+    # artifact
+    list_artifacts,
+
+    # enrichment
+    create_enrichment,
+    attach_enrichment_to_target,
+
+    # playbook
+    list_available_playbook_definitions,
+    execute_playbook,
+    list_playbook_runs,
+
+    # knowledge
+    list_knowledge,
     update_knowledge,
     search_knowledge,
+
+    # ticket
+    list_tickets,
+    create_ticket,
     update_ticket,
-    siem_adaptive_query,
-    siem_explore_schema,
-    siem_keyword_search,
+    attach_ticket_to_case,
+
+    # SIEM
     get_current_time,
+    siem_explore_schema,
+    siem_adaptive_query,
+    siem_keyword_search,
+
 ]

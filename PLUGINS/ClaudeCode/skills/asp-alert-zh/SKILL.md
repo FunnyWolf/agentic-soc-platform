@@ -1,6 +1,6 @@
 ---
 name: asp-alert-zh
-description: '审查 ASP 告警、更新 AI 分析字段、查看告警讨论，或把 enrichment 附加到告警。'
+description: '审查 ASP 告警、更新 AI 分析字段、查看告警讨论。'
 argument-hint: 'review alert <alert_id> | list alerts [filters] | update alert <alert_id> <fields>'
 compatibility: connect to asp mcp server
 metadata:
@@ -15,6 +15,7 @@ metadata:
 # ASP Alert
 
 当用户要围绕 ASP 告警开展 SOC 分析工作时，使用这个 skill。
+Alert 是 ASP 中的二级数据,每个 Alert 都会挂载到一个 Case,一个 Alert 会挂载一个或多个 Artifact。
 
 ## 适用场景
 
@@ -26,10 +27,11 @@ metadata:
 
 ## 运行规则
 
-- 如果用户请求已经隐含了操作，不要反问用户想做哪一种。
-- 只补充收集缺失的必要输入。
 - 回复要聚焦于分诊价值，而不是原样回显 schema 字段。
-- 更新时只修改用户明确要求修改的字段。
+
+## 补充信息
+
+- rowid 为每条告警记录的UUID,用于数据关联. alert_id 是每条告警记录人类可读的唯一ID
 
 ## 决策流程
 
