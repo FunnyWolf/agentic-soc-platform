@@ -1,12 +1,12 @@
 import json
 from datetime import datetime
-from typing import Optional, Union, Dict, Any, List
+from typing import Optional, Union, Dict, Any, List, Literal
 
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.graph import StateGraph, END
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.types import Command
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 from Lib.api import get_current_time_str
 from Lib.basemodule import LanggraphModule
@@ -14,6 +14,29 @@ from Lib.llmapi import BaseAgentState
 from PLUGINS.LLM.llmapi import LLMAPI
 from PLUGINS.SIRP.sirpapi import Alert
 from PLUGINS.SIRP.sirpmodel import AlertModel, ArtifactModel, ArtifactType, ArtifactRole, Severity, AlertStatus, AlertAnalyticType, ProductCategory, Confidence
+
+
+class NDRArtifactSchema(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    type: str = ""
+    value: str = ""
+
+
+class NDRAlertSchema(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    source: Optional[str] = ""
+    rule_id: Optional[str] = ""
+    rule_name: Optional[str] = ""
+    alert_date: Optional[str] = ""
+    tags: Optional[List[str]] = []
+    severity: Optional[Literal["Critical", "High", "Medium", "Low", "Informational"]] = "Medium"
+    reference: Optional[str] = ""
+    description: Optional[str] = ""
+    id: Optional[str] = ""
+    artifact: Optional[List[NDRArtifactSchema]] = []
+    raw_log: Optional[Dict[str, Any]] = {}
 
 
 class AnalyzeResult(BaseModel):
@@ -47,7 +70,8 @@ class Module(LanggraphModule):
             if raw_message is None:
                 return Command(update={}, goto=END)
 
-            alert_raw = raw_message
+            validated = NDRAlertSchema.model_validate(raw_message)
+            alert_raw = validated.model_dump()
 
             artifacts_raw: list = alert_raw.get("artifact", [])
             alert_date: str = alert_raw.get("alert_date", "")
