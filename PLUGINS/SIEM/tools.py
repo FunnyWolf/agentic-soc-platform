@@ -230,7 +230,7 @@ class SIEMToolKit(object):
     def _format_splunk_keyword(cls, keyword: str) -> str:
         if re.fullmatch(r"[A-Za-z0-9._:@/\\-]+", keyword):
             return keyword
-        escaped_keyword = keyword.replace("\\", "\\\\").replace('"', '\\"')
+        escaped_keyword = keyword.replace('"', '""')
         return f'"{escaped_keyword}"'
 
     @classmethod
