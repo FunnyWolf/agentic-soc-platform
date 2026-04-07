@@ -10,7 +10,7 @@
   "plugins": [
     {
       "name": "asp",
-      "description": "A comprehensive toolkit for operating the ASP platform, including features such as case management,SIEM Query.",
+      "description": "A comprehensive toolkit for operating the ASP platform.",
       "source": "./PLUGINS/ClaudeCode",
       "category": "cybersecurity",
       "homepage": "https://github.com/FunnyWolf/agentic-soc-platform/tree/master/PLUGINS/ClaudeCode"
