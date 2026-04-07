@@ -1,5 +1,5 @@
 {
-  "name": "asp",
+  "name": "ASP",
   "owner": {
     "name": "Funnywolf"
   },
@@ -9,7 +9,7 @@
   },
   "plugins": [
     {
-      "name": "asp",
+      "name": "ASP",
       "description": "A comprehensive toolkit for operating the ASP platform.",
       "source": "./PLUGINS/ClaudeCode",
       "category": "cybersecurity",
