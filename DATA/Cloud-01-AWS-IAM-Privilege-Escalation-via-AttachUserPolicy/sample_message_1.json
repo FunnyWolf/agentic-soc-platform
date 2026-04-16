@@ -1,0 +1,62 @@
+{
+  "@timestamp": "2026-04-16T03:01:39.950645Z",
+  "event.dataset": "aws.cloudtrail",
+  "event.module": "cloudtrail",
+  "eventName": "AttachUserPolicy",
+  "eventSource": "iam.amazonaws.com",
+  "eventVersion": "1.08",
+  "eventTime": "2026-04-16T03:01:39.950656Z",
+  "eventID": "f348ff47-4f49-4391-8068-1f9796834448",
+  "eventType": "AwsApiCall",
+  "awsRegion": "ap-southeast-1",
+  "sourceIPAddress": "193.23.181.2",
+  "userAgent": "AWS-CloudFormation/1.0",
+  "requestID": "a0c5a39c-14bb-4a2f-8a3a-7ccc28db7b09",
+  "recipientAccountId": "123456780003",
+  "userIdentity": {
+    "type": "IAMUser",
+    "principalId": "AIDAIE9A08C7814394948",
+    "arn": "arn:aws:iam::123456780003:user/admin-cli",
+    "accountId": "123456780003",
+    "userName": "admin-cli",
+    "accessKeyId": "AKIA7140C900AC784AB1"
+  },
+  "requestParameters": {
+    "userName": "user-3849"
+  },
+  "responseElements": null,
+  "errorCode": null,
+  "errorMessage": null,
+  "readOnly": false,
+  "cloud.provider": "aws",
+  "cloud.service.name": "iam",
+  "cloud.region": "sa-east-1",
+  "cloud.account.id": "123456780003",
+  "event.action": "AttachUserPolicy",
+  "event.category": "iam",
+  "event.outcome": "success",
+  "event.risk_score": 80,
+  "log.level": "warning",
+  "message": "CloudTrail event: AttachUserPolicy from admin-cli",
+  "event": {
+    "dataset": "aws.cloudtrail",
+    "module": "CloudTrail",
+    "action": "AttachUserPolicy",
+    "category": "iam",
+    "outcome": "success",
+    "risk_score": 80
+  },
+  "cloud": {
+    "provider": "aws",
+    "service": {
+      "name": "iam"
+    },
+    "region": "sa-east-1",
+    "account": {
+      "id": "123456780003"
+    }
+  },
+  "log": {
+    "level": "warning"
+  }
+}

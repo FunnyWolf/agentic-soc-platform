@@ -12,7 +12,7 @@ from Lib.api import get_current_time_str
 from Lib.basemodule import LanggraphModule
 from Lib.llmapi import BaseAgentState
 from PLUGINS.LLM.llmapi import LLMAPI
-from PLUGINS.SIRP.grouprule import GroupRule, CorrelationConfig
+from PLUGINS.SIRP.grouprule import Correlation, CorrelationConfig
 from PLUGINS.SIRP.sirpapi import Alert, Case
 from PLUGINS.SIRP.sirpmodel import AlertModel, ArtifactModel, ArtifactType, ArtifactRole, Severity, AlertStatus, AlertAnalyticType, ProductCategory, Confidence, \
     ImpactLevel, AlertRiskLevel, Disposition, AlertAction, AlertPolicyType, CaseModel, CaseStatus, CasePriority
@@ -133,7 +133,7 @@ class Module(LanggraphModule):
                 time_window="24h",
                 keys=[principal_user, target_user, account_id]
             )
-            group_rule = GroupRule(config=correlation_config)
+            group_rule = Correlation(config=correlation_config)
             correlation_uid = group_rule.generate_correlation_uid(timestamp=event_time_formatted)
 
             alert_model = AlertModel(

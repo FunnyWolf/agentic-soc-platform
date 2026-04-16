@@ -2,29 +2,15 @@ import hashlib
 from datetime import datetime, timezone
 from typing import List, Optional, Union
 
+from typing import Literal
 
-class CorrelationConfig:
-
-    def __init__(self,
-                 rule_id: str,
-                 time_window: str = "24h",
-                 keys: List[str] = None):
-        self.rule_id = rule_id
-        self.time_window = time_window
-        self.keys = keys or []
-
-        valid_windows = ['10m', '30m', '1h', '2h', '4h', '8h', '12h', '24h', '7d', '30d']
-        if time_window not in valid_windows:
-            raise ValueError(f"无效的时间窗口: {time_window}. 有效选项: {valid_windows}")
+ValidTimeWindows = Literal['10m', '30m', '1h', '2h', '4h', '8h', '12h', '24h', '7d', '30d']
 
 
-class GroupRule:
+class Correlation(object):
 
-    def __init__(self, config: CorrelationConfig):
-        self.config = config
-
-    @staticmethod
-    def _get_time_bucket(dt: datetime, window: str) -> str:
+    @classmethod
+    def _get_time_bucket(cls, dt: datetime, window: str) -> str:
         if window.endswith('m'):
             minutes = int(window[:-1])
             bucket_minute = (dt.minute // minutes) * minutes
@@ -39,8 +25,8 @@ class GroupRule:
             return dt.replace(hour=0, minute=0, second=0, microsecond=0).strftime('%Y%m%d')
         return dt.strftime('%Y%m%d%H%M')
 
-    @staticmethod
-    def _parse_timestamp(timestamp: Optional[Union[int, float, str, datetime]]) -> datetime:
+    @classmethod
+    def _parse_timestamp(cls, timestamp: Optional[Union[int, float, str, datetime]]) -> datetime:
         if timestamp is None:
             return datetime.now(timezone.utc)
         elif isinstance(timestamp, datetime):
@@ -53,16 +39,18 @@ class GroupRule:
         else:
             return datetime.fromtimestamp(timestamp, tz=timezone.utc)
 
-    def generate_correlation_uid(self,
-                                 keys: List[str] = None,
-                                 timestamp: Optional[Union[int, float, str, datetime]] = None) -> str:
-        processing_dt = self._parse_timestamp(timestamp)
-        time_bucket = self._get_time_bucket(processing_dt, self.config.time_window)
+    @classmethod
+    def generate_correlation_uid(cls,
+                                 rule_id: str,
+                                 time_window: ValidTimeWindows = "24h",
+                                 timestamp: Optional[Union[int, float, str, datetime]] = None,
+                                 keys: List[Union[str, None]] = None) -> str:
+        processing_dt = cls._parse_timestamp(timestamp)
+        time_bucket = cls._get_time_bucket(processing_dt, time_window)
 
-        key_parts = [self.config.rule_id, time_bucket]
+        key_parts = [rule_id, time_bucket]
 
-        final_keys = keys or self.config.keys
-        for key in sorted(final_keys):
+        for key in sorted(keys):
             if key:
                 key_parts.append(str(key))
 

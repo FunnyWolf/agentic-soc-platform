@@ -619,7 +619,7 @@ class AlertModel(BaseSystemModel):
 
     rule_id: Optional[str] = Field(default="", description="触发规则 ID (Trigger rule ID)")
     rule_name: Optional[str] = Field(default="", description="触发规则名称 (Trigger rule name)")
-    correlation_uid: Optional[str] = Field(default="", description="事件关联 ID (Event correlation ID)")
+    correlation_uid: Optional[str] = Field(default="", description="事件关联 ID (Case correlation ID)")
     count: Optional[Union[int, str]] = Field(default=None, description="聚合事件计数 (Aggregated event count)")
 
     src_url: Optional[str] = Field(default="", description="原始告警 URL (Source alert URL)")
@@ -656,20 +656,20 @@ class AlertModel(BaseSystemModel):
     status_detail: Optional[str] = Field(default="", description="处理状态详情 (Handling status details)")
     remediation: Optional[str] = Field(default="", description="处置建议或记录 (Remediation advice or record)")
 
-    comment: Optional[str] = Field(default="", description="分析师注释 (Analyst comment)")
-
-    unmapped: Optional[str] = Field(default="", description="原始未映射字段 (Raw unmapped fields)")
+    unmapped: Optional[str] = Field(default="", description="原始未映射字段 JSON 格式 (Raw unmapped fields, JSON Format)")
 
     raw_data: Optional[str] = Field(default="", description="原始告警日志 JSON (Raw alert log JSON)")
 
+    # comment attachments 用户手动填写
+    comment: Optional[str] = Field(default="", description="分析师注释 (Analyst comment)")
     attachments: Optional[Union[List[AttachmentModel], str]] = Field(default=[], description="告警附件 (Alert attachments)")
 
-    # AI字段
+    # AI字段 创建告警时无需填写
     severity_ai: Optional[Severity] = Field(default=None, description="AI 评估严重程度 (AI-assessed severity)")
     confidence_ai: Optional[Confidence] = Field(default=None, description="AI 评估置信度 (AI-assessed confidence)")
     comment_ai: Optional[str] = Field(default="", description="AI 生成的注释 (AI-generated comment)")
 
-    # 反向关联
+    # 反向关联 自动化关联,无需手动设置
     case: Optional[List[Union[CaseModel, str]]] = Field(default=None, description="关联案例行 ID (Linked case rowid)")
 
     # 关联表
