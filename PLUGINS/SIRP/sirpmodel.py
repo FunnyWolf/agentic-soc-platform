@@ -519,7 +519,7 @@ class MessageModel(BaseSystemModel):
 
 
 class PlaybookModel(BaseSystemModel):
-    id: Optional[str] = Field(default=None, description="剧本记录 ID (Playbook record ID)")
+    id: Optional[str] = Field(default=None, description="记录 ID e.g. playbook_000001 (Record ID e.g. playbook_000001)")
     source_rowid: Optional[str] = Field(default="", description="触发源行 ID (Trigger source row ID)")
     source_id: Optional[str] = Field(default="", description="触发源记录 ID (Trigger source record ID e.g. case_00000_1,alert_000001,artifact_000001)")
     type: Optional[PlaybookType] = Field(default=None, description="关联对象类型 (Linked object type)")
@@ -536,6 +536,7 @@ class PlaybookModel(BaseSystemModel):
 
 
 class KnowledgeModel(BaseSystemModel):
+    id: Optional[str] = Field(default=None, description="记录 ID e.g. knowledge_000001 (Record ID e.g. knowledge_000001)")
     title: Optional[str] = Field(default="", description="知识标题 (Knowledge title)")
     body: Optional[str] = Field(default="", description="知识内容 (Knowledge content)")
     using: Optional[bool] = Field(default=False, description="当前正在使用 (Currently in use)")
@@ -546,7 +547,7 @@ class KnowledgeModel(BaseSystemModel):
 
 class EnrichmentModel(BaseSystemModel):
     ai_exclude_fields: ClassVar[set[str]] = {'ownerid', 'caid', 'uaid'}
-    id: Optional[str] = Field(default=None, description="富化记录 ID (Enrichment record ID)")
+    id: Optional[str] = Field(default=None, description="记录 ID e.g. enrichment_000001 (Record ID e.g. enrichment_000001)")
     name: Optional[str] = Field(default="", description="富化名称 (Enrichment name)")
     type: Optional[str] = Field(default="Other", description="富化类型 (Enrichment type)", json_schema_extra={"type": 2})
     provider: Optional[str] = Field(default="Other", description="富化提供商 (Enrichment provider)", json_schema_extra={"type": 2})
@@ -559,6 +560,7 @@ class EnrichmentModel(BaseSystemModel):
 class TicketModel(BaseSystemModel):
     ai_exclude_fields: ClassVar[set[str]] = {'ownerid', 'caid', 'uaid'}
 
+    id: Optional[str] = Field(default=None, description="记录 ID e.g. ticket_000001 (Record ID e.g. ticket_000001)")
     status: Optional[TicketStatus] = Field(
         default=None, description="外部工单状态 (External ticket status)")
     type: Optional[TicketType] = Field(default=None, description="外部工单类型 (External ticket type)",
@@ -573,7 +575,8 @@ class TicketModel(BaseSystemModel):
 
 class ArtifactModel(BaseSystemModel):
     ai_exclude_fields: ClassVar[set[str]] = {'ownerid', 'caid', 'uaid'}
-    id: Optional[str] = Field(default=None, description="痕迹记录 ID (Artifact record ID)")
+
+    id: Optional[str] = Field(default=None, description="痕迹记录 ID e.g. artifact_000001 (Artifact record ID e.g. artifact_000001)")
     name: Optional[str] = Field(default="", description="痕迹名称 (Artifact name)")
     type: Optional[ArtifactType] = Field(
         default=None, description="痕迹类型 (Artifact type)")
@@ -589,12 +592,14 @@ class ArtifactModel(BaseSystemModel):
     alert: Optional[List[Union[AlertModel, str]]] = Field(default=None, description="关联告警行 ID (Linked alert rowid)")
 
     # 关联表
-    enrichments: Optional[List[Union[EnrichmentModel, str]]] = Field(default=None, description="痕迹富化 (Artifact enrichments)")  # None 时表示无需处理,[] 时表示要将 link 清空
+    enrichments: Optional[List[Union[EnrichmentModel, str]]] = Field(default=None,
+                                                                     description="痕迹富化 (Artifact enrichments)")  # None 时表示无需处理,[] 时表示要将 link 清空
 
 
 class AlertModel(BaseSystemModel):
     ai_exclude_fields: ClassVar[set[str]] = {'ownerid', 'caid', 'uaid', "comment_ai", "attachments", "raw_data", "unmapped"}
-    id: Optional[str] = Field(default=None, description="告警记录 ID (Alert record ID)")
+
+    id: Optional[str] = Field(default=None, description="记录 ID e.g. alert_000001 (Record ID e.g. alert_000001)")
     severity: Optional[Severity] = Field(default=None,
                                          description="源定义严重程度 (Source-defined severity)")
     title: Optional[str] = Field(default="", description="告警标题 (Alert title)")
@@ -682,7 +687,8 @@ class CaseModel(BaseSystemModel):
     ai_exclude_fields: ClassVar[set[str]] = {'ownerid', 'caid', 'uaid', "workbook", "summary_ai", "comment_ai", "attack_stage_ai",
                                              "severity_ai", "confidence_ai",
                                              "threat_hunting_report_ai"}
-    id: Optional[str] = Field(default=None, description="案例记录 ID (Case record ID)")
+
+    id: Optional[str] = Field(default=None, description="记录 ID e.g. case_000001 (Record ID e.g. case_000001)")
     title: Optional[str] = Field(default="", description="案例标题 (Case title)")
     severity: Optional[Severity] = Field(default=None,
                                          description="分析师评估严重程度 (Analyst-assessed severity)")
@@ -703,8 +709,10 @@ class CaseModel(BaseSystemModel):
     comment: Optional[str] = Field(default="", description="案例分析师注释 (Case analyst comment)")
     attachments: Optional[List[Union[AttachmentModel, AttachmentCreateModel]]] = Field(default=[], description="案例附件 (Case attachments)")
 
-    assignee_l2: Optional[Union[List[AccountModel], AccountModel, str]] = Field(default=None, description="分配或升级的 L2 分析师 (Assigned or escalated L2 analyst)")
-    assignee_l3: Optional[Union[List[AccountModel], AccountModel, str]] = Field(default=None, description="分配或升级的 L3 分析师 (Assigned or escalated L3 analyst)")
+    assignee_l2: Optional[Union[List[AccountModel], AccountModel, str]] = Field(default=None,
+                                                                                description="分配或升级的 L2 分析师 (Assigned or escalated L2 analyst)")
+    assignee_l3: Optional[Union[List[AccountModel], AccountModel, str]] = Field(default=None,
+                                                                                description="分配或升级的 L3 分析师 (Assigned or escalated L3 analyst)")
     closed_time: Optional[Union[datetime, str]] = Field(default=None, description="案例关闭时间 (Case closed time)")
     verdict: Optional[CaseVerdict] = Field(
         default=None, description="最终判定结果 (Final verdict)")
