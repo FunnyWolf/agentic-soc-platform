@@ -314,7 +314,7 @@ class Case(BaseWorksheetEntity[CaseModel]):
         return model
 
     @classmethod
-    def list_by_correlation_uid(cls, correlation_uid, lazy_load=False) -> List[CaseModel]:
+    def get_by_correlation_uid(cls, correlation_uid, lazy_load=False) -> Union[CaseModel, None]:
         """根据correlation_uid查询关联的Case"""
         filter_model = Group(
             logic="AND",
@@ -326,7 +326,15 @@ class Case(BaseWorksheetEntity[CaseModel]):
                 )
             ]
         )
-        return cls.list(filter_model, lazy_load=lazy_load)
+        cases = cls.list(filter_model, lazy_load=lazy_load)
+        if len(cases) == 0:
+            return None
+        elif len(cases) == 1:
+            return cases[0]
+        elif len(cases) > 1:
+            logger.warning(f"More than one case has correlation_uid : {correlation_uid}")
+            return cases[0]
+        return None
 
     @classmethod
     def get_by_id(cls, case_id, lazy_load=False) -> Union[CaseModel, None]:

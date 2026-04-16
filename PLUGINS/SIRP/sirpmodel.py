@@ -10,16 +10,6 @@ from pydantic import BaseModel, Field, field_validator, ConfigDict, field_serial
 from PLUGINS.SIRP.nocolymodel import AttachmentModel, AccountModel, AttachmentCreateModel
 
 
-# region Enums
-
-# class WfStatus(StrEnum):
-#     PASS = "通过"
-#     REJECT = "否决"
-#     ABORT = "中止"
-#     IN_PROGRESS = "进行中"
-#     EMPTY = ""
-
-
 class MessageType(StrEnum):
     SYSTEM = "SystemMessage"
     HUMAN = "HumanMessage"
@@ -291,13 +281,11 @@ class CasePriority(StrEnum):
 
 
 class CaseStatus(StrEnum):
-    # UNKNOWN = "Unknown"
     NEW = "New"
     IN_PROGRESS = "In Progress"
     ON_HOLD = "On Hold"
     RESOLVED = "Resolved"
     CLOSED = "Closed"
-    # OTHER = "Other"
 
 
 class CaseVerdict(StrEnum):
@@ -328,31 +316,17 @@ class KnowledgeAction(StrEnum):
     DONE = 'Done'
 
 
-# endregion Enums
-
-
 class BaseSystemModel(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     ai_exclude_fields: ClassVar[set[str]] = set()
 
-    rowid: Optional[str] = Field(default=None, description="Unique row ID")
-    ownerid: Optional[AccountModel] = Field(default=None, description="Record owner")
-    caid: Optional[AccountModel] = Field(default=None, description="Creator account")
-    ctime: Optional[Union[datetime, str]] = Field(default=None, description="Record created time")
-    utime: Optional[Union[datetime, str]] = Field(default=None, description="Record last updated time")
-    uaid: Optional[AccountModel] = Field(default=None, description="Last updated by")
-
-    # 流程相关参数
-    # wfname: Optional[str] = Field(default=None, description="Workflow name")
-    # wfcuaids: Optional[Any] = Field(default=None, description="Current assignees")
-    # wfcaid: Optional[Any] = Field(default=None, description="Current assignee")
-    # wfctime: Optional[Union[datetime, str]] = Field(default=None, description="Workflow created at")
-    # wfrtime: Optional[Union[datetime, str]] = Field(default=None, description="Workflow received at")
-    # wfcotime: Optional[Union[datetime, str]] = Field(default=None, description="Workflow completed at")
-    # wfdtime: Optional[Union[datetime, str]] = Field(default=None, description="Workflow due at")
-    # wfftime: Optional[Any] = Field(default=None, description="Workflow followed at")
-    # wfstatus: Optional[WfStatus] = Field(default=None, description="Workflow status")
+    rowid: Optional[str] = Field(default=None, description="唯一行 ID (Unique row ID)")
+    ownerid: Optional[AccountModel] = Field(default=None, description="记录所有者 (Record owner)")
+    caid: Optional[AccountModel] = Field(default=None, description="创建账号 (Creator account)")
+    ctime: Optional[Union[datetime, str]] = Field(default=None, description="记录创建时间 (Record created time)")
+    utime: Optional[Union[datetime, str]] = Field(default=None, description="记录最后更新时间 (Record last updated time)")
+    uaid: Optional[AccountModel] = Field(default=None, description="最后更新人 (Last updated by)")
 
     @field_validator("ownerid", mode="before")
     def empty_list_to_none(cls, v):
@@ -536,170 +510,166 @@ class BaseSystemModel(BaseModel):
 
 
 class MessageModel(BaseSystemModel):
-    playbook: Optional[List[Union[PlaybookModel, str]]] = Field(default="", description="Owning playbook row ID")
-    node: Optional[str] = Field(default="", description="Source node name or ID")
-    content: Optional[str] = Field(default="", description="Message text content")
-    data: Optional[str] = Field(default="", description="Message JSON payload")
+    playbook: Optional[List[Union[PlaybookModel, str]]] = Field(default="", description="所属剧本行 ID (Owning playbook row ID)")
+    node: Optional[str] = Field(default="", description="源节点名称或 ID (Source node name or ID)")
+    content: Optional[str] = Field(default="", description="消息文本内容 (Message text content)")
+    data: Optional[str] = Field(default="", description="消息 JSON 负载 (Message JSON payload)")
     type: Optional[MessageType] = Field(default=None,
-                                        description="Message role type")
+                                        description="消息角色类型 (Message role type)")
 
 
 class PlaybookModel(BaseSystemModel):
-    id: Optional[str] = Field(default=None)
-    source_rowid: Optional[str] = Field(default="", description="Trigger source row ID")
-    source_id: Optional[str] = Field(default="", description="Trigger source record ID e.g. case_00000_1,alert_000001,artifact_000001")
-    type: Optional[PlaybookType] = Field(default=None, description="Linked object type")
-    name: Optional[str] = Field(default="", description="Executed playbook name")
-    user_input: Optional[str] = Field(default="", description="Initial or follow-up user input")
-    user: Optional[Union[List[AccountModel], AccountModel, str]] = Field(default=None, description="Playbook requester")
+    id: Optional[str] = Field(default=None, description="剧本记录 ID (Playbook record ID)")
+    source_rowid: Optional[str] = Field(default="", description="触发源行 ID (Trigger source row ID)")
+    source_id: Optional[str] = Field(default="", description="触发源记录 ID (Trigger source record ID e.g. case_00000_1,alert_000001,artifact_000001)")
+    type: Optional[PlaybookType] = Field(default=None, description="关联对象类型 (Linked object type)")
+    name: Optional[str] = Field(default="", description="执行剧本名称 (Executed playbook name)")
+    user_input: Optional[str] = Field(default="", description="初始或后续用户输入 (Initial or follow-up user input)")
+    user: Optional[Union[List[AccountModel], AccountModel, str]] = Field(default=None, description="剧本请求者 (Playbook requester)")
 
-    job_status: Optional[PlaybookJobStatus] = Field(default=None, description="Background job status")
-    job_id: Optional[str] = Field(default="", description="Background job ID")
-    remark: Optional[str] = Field(default="", description="Execution remark")
+    job_status: Optional[PlaybookJobStatus] = Field(default=None, description="后台任务状态 (Background job status)")
+    job_id: Optional[str] = Field(default="", description="后台任务 ID (Background job ID)")
+    remark: Optional[str] = Field(default="", description="执行备注 (Execution remark)")
 
     # 关联表
-    messages: Optional[List[Union[MessageModel, str]]] = Field(default=None, description="Execution message history")
+    messages: Optional[List[Union[MessageModel, str]]] = Field(default=None, description="执行消息历史 (Execution message history)")
 
 
 class KnowledgeModel(BaseSystemModel):
-    title: Optional[str] = Field(default="", description="Knowledge title")
-    body: Optional[str] = Field(default="", description="Knowledge content")
-    using: Optional[bool] = Field(default=False, description="Currently in use")
-    action: Optional[KnowledgeAction] = Field(default=None, description="Knowledge action")
-    source: Optional[KnowledgeSource] = Field(default=None, description="Knowledge source")
-    tags: Optional[List[str]] = Field(default=[], description="Knowledge tags", json_schema_extra={"type": 2})
+    title: Optional[str] = Field(default="", description="知识标题 (Knowledge title)")
+    body: Optional[str] = Field(default="", description="知识内容 (Knowledge content)")
+    using: Optional[bool] = Field(default=False, description="当前正在使用 (Currently in use)")
+    action: Optional[KnowledgeAction] = Field(default=None, description="知识操作 (Knowledge action)")
+    source: Optional[KnowledgeSource] = Field(default=None, description="知识来源 (Knowledge source)")
+    tags: Optional[List[str]] = Field(default=[], description="知识标签 (Knowledge tags)", json_schema_extra={"type": 2})
 
 
 class EnrichmentModel(BaseSystemModel):
     ai_exclude_fields: ClassVar[set[str]] = {'ownerid', 'caid', 'uaid'}
-    id: Optional[str] = Field(default=None)
-    name: Optional[str] = Field(default="", description="Enrichment name")
-    type: Optional[str] = Field(default="Other", description="Enrichment type", json_schema_extra={"type": 2})
-    provider: Optional[str] = Field(default="Other", description="Enrichment provider", json_schema_extra={"type": 2})
-    value: Optional[str] = Field(default="", description="Enrichment value")
-    src_url: Optional[str] = Field(default="", description="Enrichment source URL")
-    desc: Optional[str] = Field(default="", description="Enrichment summary")
-    data: Optional[str] = Field(default="", description="Detailed enrichment JSON")
+    id: Optional[str] = Field(default=None, description="富化记录 ID (Enrichment record ID)")
+    name: Optional[str] = Field(default="", description="富化名称 (Enrichment name)")
+    type: Optional[str] = Field(default="Other", description="富化类型 (Enrichment type)", json_schema_extra={"type": 2})
+    provider: Optional[str] = Field(default="Other", description="富化提供商 (Enrichment provider)", json_schema_extra={"type": 2})
+    value: Optional[str] = Field(default="", description="富化值 (Enrichment value)")
+    src_url: Optional[str] = Field(default="", description="富化来源 URL (Enrichment source URL)")
+    desc: Optional[str] = Field(default="", description="富化摘要 (Enrichment summary)")
+    data: Optional[str] = Field(default="", description="详细富化 JSON (Detailed enrichment JSON)")
 
 
 class TicketModel(BaseSystemModel):
     ai_exclude_fields: ClassVar[set[str]] = {'ownerid', 'caid', 'uaid'}
 
     status: Optional[TicketStatus] = Field(
-        default=None, description="External ticket status")
-    type: Optional[TicketType] = Field(default=None, description="External ticket type",
+        default=None, description="外部工单状态 (External ticket status)")
+    type: Optional[TicketType] = Field(default=None, description="外部工单类型 (External ticket type)",
                                        json_schema_extra={"type": 2})
-    title: Optional[str] = Field(default="", description="Ticket title")
-    uid: Optional[str] = Field(default="", description="External ticket ID")
-    src_url: Optional[str] = Field(default="", description="External ticket URL")
+    title: Optional[str] = Field(default="", description="工单标题 (Ticket title)")
+    uid: Optional[str] = Field(default="", description="外部工单 ID (External ticket ID)")
+    src_url: Optional[str] = Field(default="", description="外部工单 URL (External ticket URL)")
 
     # 反向关联
-    case: Optional[List[Union[CaseModel, str]]] = Field(default=None, description="Linked case rowid")
+    case: Optional[List[Union[CaseModel, str]]] = Field(default=None, description="关联案例行 ID (Linked case rowid)")
 
 
 class ArtifactModel(BaseSystemModel):
     ai_exclude_fields: ClassVar[set[str]] = {'ownerid', 'caid', 'uaid'}
-    id: Optional[str] = Field(default=None)
-    name: Optional[str] = Field(default="", description="Artifact name")
+    id: Optional[str] = Field(default=None, description="痕迹记录 ID (Artifact record ID)")
+    name: Optional[str] = Field(default="", description="痕迹名称 (Artifact name)")
     type: Optional[ArtifactType] = Field(
-        default=None, description="Artifact type")
+        default=None, description="痕迹类型 (Artifact type)")
     role: Optional[ArtifactRole] = Field(default=None,
-                                         description="Artifact role in event")
-    owner: Optional[str] = Field(default="", description="Owning system or user")
-    value: Optional[str] = Field(default="", description="Artifact value")
-    reputation_provider: Optional[str] = Field(default="", description="Threat intel provider", json_schema_extra={"type": 2})
+                                         description="痕迹在事件中的角色 (Artifact role in event)")
+    owner: Optional[str] = Field(default="", description="所属系统或用户 (Owning system or user)")
+    value: Optional[str] = Field(default="", description="痕迹值 (Artifact value)")
+    reputation_provider: Optional[str] = Field(default="", description="威胁情报提供商 (Threat intel provider)", json_schema_extra={"type": 2})
     reputation_score: Optional[ArtifactReputationScore] = Field(
-        default=None, description="Artifact reputation")
+        default=None, description="痕迹信誉 (Artifact reputation)")
 
     # 反向关联
-    alert: Optional[List[Union[AlertModel, str]]] = Field(default=None, description="Linked alert rowid")
+    alert: Optional[List[Union[AlertModel, str]]] = Field(default=None, description="关联告警行 ID (Linked alert rowid)")
 
     # 关联表
-    enrichments: Optional[List[Union[EnrichmentModel, str]]] = Field(default=None, description="Artifact enrichments")  # None 时表示无需处理,[] 时表示要将 link 清空
-
-    # playbooks: Optional[Any] = "" # 内部字段
-    # playbook: Optional[Literal['TI Enrichment By AlienVaultOTX', 'TI Enrichment By Mock', None]] = None # 内部字段
-    # user_input: Optional[str] = "" # 内部字段
+    enrichments: Optional[List[Union[EnrichmentModel, str]]] = Field(default=None, description="痕迹富化 (Artifact enrichments)")  # None 时表示无需处理,[] 时表示要将 link 清空
 
 
 class AlertModel(BaseSystemModel):
-    ai_exclude_fields: ClassVar[set[str]] = {'ownerid', 'caid', 'uaid', "comment_ai", "attachments"}
-    id: Optional[str] = Field(default=None)
+    ai_exclude_fields: ClassVar[set[str]] = {'ownerid', 'caid', 'uaid', "comment_ai", "attachments", "raw_data", "unmapped"}
+    id: Optional[str] = Field(default=None, description="告警记录 ID (Alert record ID)")
     severity: Optional[Severity] = Field(default=None,
-                                         description="Source-defined severity")
-    title: Optional[str] = Field(default="", description="Alert title")
-    impact: Optional[ImpactLevel] = Field(default=None, description="Potential impact")
+                                         description="源定义严重程度 (Source-defined severity)")
+    title: Optional[str] = Field(default="", description="告警标题 (Alert title)")
+    impact: Optional[ImpactLevel] = Field(default=None, description="潜在影响 (Potential impact)")
     disposition: Optional[Disposition] = Field(
-        default=None, description="Source disposition")
+        default=None, description="源处置结果 (Source disposition)")
     action: Optional[AlertAction] = Field(default=None,
-                                          description="Observed action")
+                                          description="观测到的动作 (Observed action)")
     confidence: Optional[Confidence] = Field(default=None,
-                                             description="True-positive confidence")
-    uid: Optional[str] = Field(default="", description="Alert unique ID")
-    labels: Optional[List[str]] = Field(default=[], description="Alert labels", json_schema_extra={"type": 2})
-    desc: Optional[str] = Field(default="", description="Alert description")
+                                             description="真阳性置信度 (True-positive confidence)")
+    uid: Optional[str] = Field(default="", description="告警唯一 ID (Alert unique ID)")
+    labels: Optional[List[str]] = Field(default=[], description="告警标签 (Alert labels)", json_schema_extra={"type": 2})
+    desc: Optional[str] = Field(default="", description="告警描述 (Alert description)")
 
-    first_seen_time: Optional[Union[datetime, str]] = Field(default=None, description="First observed time")
-    last_seen_time: Optional[Union[datetime, str]] = Field(default=None, description="Last observed time")
+    first_seen_time: Optional[Union[datetime, str]] = Field(default=None, description="首次观测时间 (First observed time)")
+    last_seen_time: Optional[Union[datetime, str]] = Field(default=None, description="最后观测时间 (Last observed time)")
 
-    rule_id: Optional[str] = Field(default="", description="Trigger rule ID")
-    rule_name: Optional[str] = Field(default="", description="Trigger rule name")
-    correlation_uid: Optional[str] = Field(default="", description="Event correlation ID")
-    count: Optional[Union[int, str]] = Field(default=None, description="Aggregated event count")
+    rule_id: Optional[str] = Field(default="", description="触发规则 ID (Trigger rule ID)")
+    rule_name: Optional[str] = Field(default="", description="触发规则名称 (Trigger rule name)")
+    correlation_uid: Optional[str] = Field(default="", description="事件关联 ID (Event correlation ID)")
+    count: Optional[Union[int, str]] = Field(default=None, description="聚合事件计数 (Aggregated event count)")
 
-    src_url: Optional[str] = Field(default="", description="Source alert URL")
-    source_uid: Optional[str] = Field(default="", description="Source product ID")
-    data_sources: Optional[List[str]] = Field(default=[], description="Underlying data sources")
+    src_url: Optional[str] = Field(default="", description="原始告警 URL (Source alert URL)")
+    source_uid: Optional[str] = Field(default="", description="原始产品 ID (Source product ID)")
+    data_sources: Optional[List[str]] = Field(default=[], description="基础数据源 (Underlying data sources)")
 
-    analytic_name: Optional[str] = Field(default="", description="Analytic engine name")
+    analytic_name: Optional[str] = Field(default="", description="分析引擎名称 (Analytic engine name)")
     analytic_type: Optional[AlertAnalyticType] = Field(
-        default=None, description="Analytic engine type")
-    analytic_state: Optional[AlertAnalyticState] = Field(default=None, description="Analytic rule state")
-    analytic_desc: Optional[str] = Field(default="", description="Analytic rule description")
+        default=None, description="分析引擎类型 (Analytic engine type)")
+    analytic_state: Optional[AlertAnalyticState] = Field(default=None, description="分析规则状态 (Analytic rule state)")
+    analytic_desc: Optional[str] = Field(default="", description="分析规则描述 (Analytic rule description)")
 
-    tactic: Optional[str] = Field(default="", description="Mapped MITRE tactic")
-    technique: Optional[str] = Field(default="", description="Mapped MITRE technique")
-    sub_technique: Optional[str] = Field(default="", description="Mapped MITRE sub-technique")
-    mitigation: Optional[str] = Field(default="", description="Suggested mitigation")
+    tactic: Optional[str] = Field(default="", description="映射的 MITRE 战术 (Mapped MITRE tactic)")
+    technique: Optional[str] = Field(default="", description="映射的 MITRE 技术 (Mapped MITRE technique)")
+    sub_technique: Optional[str] = Field(default="", description="映射的 MITRE 子技术 (Mapped MITRE sub-technique)")
+    mitigation: Optional[str] = Field(default="", description="建议的缓解措施 (Suggested mitigation)")
 
     product_category: Optional[ProductCategory] = Field(default=None,
-                                                        description="Source product category")
-    product_vendor: Optional[str] = Field(default=None, description="Source vendor", json_schema_extra={"type": 2})
-    product_name: Optional[str] = Field(default=None, description="Source product name", json_schema_extra={"type": 2})
-    product_feature: Optional[str] = Field(default=None, description="Source product feature", json_schema_extra={"type": 2})
+                                                        description="原始产品类别 (Source product category)")
+    product_vendor: Optional[str] = Field(default=None, description="原始厂商 (Source vendor)", json_schema_extra={"type": 2})
+    product_name: Optional[str] = Field(default=None, description="原始产品名称 (Source product name)", json_schema_extra={"type": 2})
+    product_feature: Optional[str] = Field(default=None, description="原始产品功能 (Source product feature)", json_schema_extra={"type": 2})
 
-    policy_name: Optional[str] = Field(default="", description="Trigger policy name")
+    policy_name: Optional[str] = Field(default="", description="触发策略名称 (Trigger policy name)")
     policy_type: Optional[AlertPolicyType] = Field(default=None,
-                                                   description="Trigger policy type")
-    policy_desc: Optional[str] = Field(default="", description="Trigger policy description")
+                                                   description="触发策略类型 (Trigger policy type)")
+    policy_desc: Optional[str] = Field(default="", description="触发策略描述 (Trigger policy description)")
 
-    risk_level: Optional[AlertRiskLevel] = Field(default=None, description="Assessed risk level")
-    risk_details: Optional[str] = Field(default="", description="Risk assessment details")
+    risk_level: Optional[AlertRiskLevel] = Field(default=None, description="评估的风险等级 (Assessed risk level)")
+    risk_details: Optional[str] = Field(default="", description="风险评估详情 (Risk assessment details)")
 
     status: Optional[AlertStatus] = Field(default=None,
-                                          description="Alert handling status")
-    status_detail: Optional[str] = Field(default="", description="Handling status details")
-    remediation: Optional[str] = Field(default="", description="Remediation advice or record")
+                                          description="告警处理状态 (Alert handling status)")
+    status_detail: Optional[str] = Field(default="", description="处理状态详情 (Handling status details)")
+    remediation: Optional[str] = Field(default="", description="处置建议或记录 (Remediation advice or record)")
 
-    comment: Optional[str] = Field(default="", description="Analyst comment")
+    comment: Optional[str] = Field(default="", description="分析师注释 (Analyst comment)")
 
-    unmapped: Optional[str] = Field(default="", description="Raw unmapped fields")
+    unmapped: Optional[str] = Field(default="", description="原始未映射字段 (Raw unmapped fields)")
 
-    raw_data: Optional[str] = Field(default="", description="Raw alert log JSON")
+    raw_data: Optional[str] = Field(default="", description="原始告警日志 JSON (Raw alert log JSON)")
 
-    attachments: Optional[Union[List[AttachmentModel], str]] = Field(default=[], description="Alert attachments")
+    attachments: Optional[Union[List[AttachmentModel], str]] = Field(default=[], description="告警附件 (Alert attachments)")
 
     # AI字段
-    severity_ai: Optional[Severity] = Field(default=None, description="AI-assessed severity")
-    confidence_ai: Optional[Confidence] = Field(default=None, description="AI-assessed confidence")
-    comment_ai: Optional[str] = Field(default="", description="AI-generated comment")
+    severity_ai: Optional[Severity] = Field(default=None, description="AI 评估严重程度 (AI-assessed severity)")
+    confidence_ai: Optional[Confidence] = Field(default=None, description="AI 评估置信度 (AI-assessed confidence)")
+    comment_ai: Optional[str] = Field(default="", description="AI 生成的注释 (AI-generated comment)")
 
     # 反向关联
-    case: Optional[List[Union[CaseModel, str]]] = Field(default=None, description="Linked case rowid")
+    case: Optional[List[Union[CaseModel, str]]] = Field(default=None, description="关联案例行 ID (Linked case rowid)")
 
     # 关联表
-    artifacts: Optional[List[Union[ArtifactModel, str]]] = Field(default=None, description="Extracted artifacts")
-    enrichments: Optional[List[Union[EnrichmentModel, str]]] = Field(default=None, description="Alert enrichments")
+    artifacts: Optional[List[Union[ArtifactModel, str]]] = Field(default=None, description="提取的痕迹 (Extracted artifacts)")
+    enrichments: Optional[List[Union[AlertModel, str]]] = Field(default=None, description="告警富化 (Alert enrichments)")
 
     @field_validator('attachments', mode='before')
     def handle_attachments(cls, v):
@@ -712,59 +682,59 @@ class CaseModel(BaseSystemModel):
     ai_exclude_fields: ClassVar[set[str]] = {'ownerid', 'caid', 'uaid', "workbook", "summary_ai", "comment_ai", "attack_stage_ai",
                                              "severity_ai", "confidence_ai",
                                              "threat_hunting_report_ai"}
-    id: Optional[str] = Field(default=None)
-    title: Optional[str] = Field(default="", description="Case title")
+    id: Optional[str] = Field(default=None, description="案例记录 ID (Case record ID)")
+    title: Optional[str] = Field(default="", description="案例标题 (Case title)")
     severity: Optional[Severity] = Field(default=None,
-                                         description="Analyst-assessed severity")
-    impact: Optional[ImpactLevel] = Field(default=None, description="Analyst-assessed impact")
-    priority: Optional[CasePriority] = Field(default=None, description="Response priority")
-    src_url: Optional[str] = Field(default="", description="Source case URL")
-    confidence: Optional[Confidence] = Field(default=None, description="Analyst-assessed confidence")
-    description: Optional[str] = Field(default="", description="Case description")
+                                         description="分析师评估严重程度 (Analyst-assessed severity)")
+    impact: Optional[ImpactLevel] = Field(default=None, description="分析师评估影响 (Analyst-assessed impact)")
+    priority: Optional[CasePriority] = Field(default=None, description="响应优先级 (Response priority)")
+    src_url: Optional[str] = Field(default="", description="原始案例 URL (Source case URL)")
+    confidence: Optional[Confidence] = Field(default=None, description="分析师评估置信度 (Analyst-assessed confidence)")
+    description: Optional[str] = Field(default="", description="案例描述 (Case description)")
 
     category: Optional[ProductCategory] = Field(default=None,
-                                                description="Case category")
-    tags: Optional[List[str]] = Field(default=[], description="Case tags", json_schema_extra={"type": 2})
+                                                description="案例类别 (Case category)")
+    tags: Optional[List[str]] = Field(default=[], description="案例标签 (Case tags)", json_schema_extra={"type": 2})
 
     status: Optional[CaseStatus] = Field(default=None,
-                                         description="Case handling status")
-    assignee_l1: Optional[Union[List[AccountModel], AccountModel, str]] = Field(default=None, description="Assigned L1 analyst")
-    acknowledged_time: Optional[Union[datetime, str]] = Field(default=None, description="L1 first acknowledged time")
-    comment: Optional[str] = Field(default="", description="Case analyst comment")
-    attachments: Optional[List[Union[AttachmentModel, AttachmentCreateModel]]] = Field(default=[], description="Case attachments")
+                                         description="案例处理状态 (Case handling status)")
+    assignee_l1: Optional[Union[List[AccountModel], AccountModel, str]] = Field(default=None, description="分配的 L1 分析师 (Assigned L1 analyst)")
+    acknowledged_time: Optional[Union[datetime, str]] = Field(default=None, description="L1 首次接手时间 (L1 first acknowledged time)")
+    comment: Optional[str] = Field(default="", description="案例分析师注释 (Case analyst comment)")
+    attachments: Optional[List[Union[AttachmentModel, AttachmentCreateModel]]] = Field(default=[], description="案例附件 (Case attachments)")
 
-    assignee_l2: Optional[Union[List[AccountModel], AccountModel, str]] = Field(default=None, description="Assigned or escalated L2 analyst")
-    assignee_l3: Optional[Union[List[AccountModel], AccountModel, str]] = Field(default=None, description="Assigned or escalated L3 analyst")
-    closed_time: Optional[Union[datetime, str]] = Field(default=None, description="Case closed time")
+    assignee_l2: Optional[Union[List[AccountModel], AccountModel, str]] = Field(default=None, description="分配或升级的 L2 分析师 (Assigned or escalated L2 analyst)")
+    assignee_l3: Optional[Union[List[AccountModel], AccountModel, str]] = Field(default=None, description="分配或升级的 L3 分析师 (Assigned or escalated L3 analyst)")
+    closed_time: Optional[Union[datetime, str]] = Field(default=None, description="案例关闭时间 (Case closed time)")
     verdict: Optional[CaseVerdict] = Field(
-        default=None, description="Final verdict")
-    summary: Optional[str] = Field(default="", description="Closure summary")
+        default=None, description="最终判定结果 (Final verdict)")
+    summary: Optional[str] = Field(default="", description="结案摘要 (Closure summary)")
 
-    correlation_uid: Optional[str] = Field(default="", description="Case correlation ID")
+    correlation_uid: Optional[str] = Field(default="", description="案例关联 ID (Case correlation ID)")
 
-    workbook: Optional[str] = Field(default="", description="Investigation workbook")
+    workbook: Optional[str] = Field(default="", description="调查工作手册 (Investigation workbook)")
 
     # ai 字段
-    attack_stage_ai: Optional[AttackStage] = Field(default="", description="AI-assessed attack stage")
+    attack_stage_ai: Optional[AttackStage] = Field(default="", description="AI 评估攻击阶段 (AI-assessed attack stage)")
     severity_ai: Optional[Severity] = Field(default=None,
-                                            description="AI-assessed severity")
-    confidence_ai: Optional[Confidence] = Field(default=None, description="AI-assessed confidence")
-    comment_ai: Optional[str] = Field(default="", description="AI-generated comment")
-    summary_ai: Optional[str] = Field(default="", description="AI-generated closure summary")
-    verdict_ai: Optional[CaseVerdict] = Field(default=None, description="AI-generated Final verdict")
-    threat_hunting_report_ai: Optional[str] = Field(default="", description="AI-generated hunting report")
+                                            description="AI 评估严重程度 (AI-assessed severity)")
+    confidence_ai: Optional[Confidence] = Field(default=None, description="AI 评估置信度 (AI-assessed confidence)")
+    comment_ai: Optional[str] = Field(default="", description="AI 生成的注释 (AI-generated comment)")
+    summary_ai: Optional[str] = Field(default="", description="AI 生成的结案摘要 (AI-generated closure summary)")
+    verdict_ai: Optional[CaseVerdict] = Field(default=None, description="AI 生成的最终判定结果 (AI-generated Final verdict)")
+    threat_hunting_report_ai: Optional[str] = Field(default="", description="AI 生成的威胁狩猎报告 (AI-generated hunting report)")
 
     # 公式计算字段
-    start_time_calc: Optional[Any] = Field(default=None, description="Calculated start time")
-    end_time_calc: Optional[Any] = Field(default=None, description="Calculated end time")
-    detect_time_calc: Optional[Any] = Field(default=None, description="Calculated detect time")
-    acknowledge_time_calc: Optional[Any] = Field(default=None, description="Calculated acknowledge time")
-    respond_time_calc: Optional[Any] = Field(default=None, description="Calculated response time")
+    start_time_calc: Optional[Any] = Field(default=None, description="计算的开始时间 (Calculated start time)")
+    end_time_calc: Optional[Any] = Field(default=None, description="计算的结束时间 (Calculated end time)")
+    detect_time_calc: Optional[Any] = Field(default=None, description="计算的检测时间 (Calculated detect time)")
+    acknowledge_time_calc: Optional[Any] = Field(default=None, description="计算的接手时间 (Calculated acknowledge time)")
+    respond_time_calc: Optional[Any] = Field(default=None, description="计算的响应时间 (Calculated response time)")
 
     # 关联表
-    tickets: Optional[List[Union[TicketModel, str]]] = Field(default=None, description="Linked external tickets")
-    enrichments: Optional[List[Union[EnrichmentModel, str]]] = Field(default=None, description="Case enrichments")
-    alerts: Optional[List[Union[AlertModel, str]]] = Field(default=None, description="Merged alerts")
+    tickets: Optional[List[Union[TicketModel, str]]] = Field(default=None, description="关联外部工单 (Linked external tickets)")
+    enrichments: Optional[List[Union[EnrichmentModel, str]]] = Field(default=None, description="案例富化 (Case enrichments)")
+    alerts: Optional[List[Union[AlertModel, str]]] = Field(default=None, description="合并的告警 (Merged alerts)")
 
     @field_validator('attachments', mode='before')
     def handle_attachments(cls, v):

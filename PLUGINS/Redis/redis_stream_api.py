@@ -1,5 +1,6 @@
 import json
 import time
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from typing import Dict, Any, Optional, List
 
 import redis
@@ -106,34 +107,51 @@ class RedisStreamAPI(object):
                 logger.error(f"Error reading from stream {stream_key}: {e}")
                 time.sleep(1)  # 发生异常(如网络闪断)时稍作停顿，防止死循环刷屏
 
-    def read_stream_from_start(self, stream_key, start_id='0-0'):
+    def read_stream_head(self, stream_key: str, n: int, timeout: Optional[float] = None) -> List[Dict[str, Any]]:
         """
-        从指定位置一次性读取一条消息（非阻塞）.
+        读取指定 stream 的前 n 条消息（非阻塞）.
         :param stream_key: Stream 的名称.
-        :param start_id: 开始读取的消息ID，默认从头开始.
+        :param n: 要读取的消息数量.
+        :param timeout: 超时时间（秒），None 表示不限制.
         """
+        def _fetch():
+            messages = self.redis_client.xrange(stream_key, min='-', max='+', count=n)
+            return [json.loads(fields["data"]) for _, fields in messages]
 
         try:
-            messages = self.redis_client.xread(
-                count=1,
-                block=None,
-                streams={stream_key: start_id}
-            )
+            if timeout is None:
+                return _fetch()
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                return executor.submit(_fetch).result(timeout=timeout)
+        except FuturesTimeoutError:
+            logger.error(f"Timeout reading stream head: {stream_key}")
+            return []
+        except Exception as e:
+            logger.exception(e)
+            return []
 
-            if not messages or not messages[0][1]:
+    def read_message_by_id(self, stream_key: str, message_id: str, timeout: Optional[float] = None) -> Optional[Dict[str, Any]]:
+        """
+        读取指定 ID 的消息（精确匹配，非阻塞）.
+        :param stream_key: Stream 的名称.
+        :param message_id: 要读取的消息 ID.
+        :param timeout: 超时时间（秒），None 表示不限制.
+        """
+        def _fetch():
+            messages = self.redis_client.xrange(stream_key, min=message_id, max=message_id, count=1)
+            if not messages:
                 return None
+            _, fields = messages[0]
+            return json.loads(fields["data"])
 
-            # 解析消息
-            stream_name, stream_messages = messages[0]
-            if not stream_messages:
-                return None
-
-            message_id, fields = stream_messages[0]
-
-            value = fields["data"]
-            data = json.loads(value)
-            return data
-
+        try:
+            if timeout is None:
+                return _fetch()
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                return executor.submit(_fetch).result(timeout=timeout)
+        except FuturesTimeoutError:
+            logger.error(f"Timeout reading message {message_id} from: {stream_key}")
+            return None
         except Exception as e:
             logger.exception(e)
             return None
