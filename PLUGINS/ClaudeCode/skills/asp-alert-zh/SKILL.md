@@ -31,7 +31,7 @@ Alert 是 ASP 中的二级数据,每个 Alert 都会挂载到一个 Case,一个 
 
 ## 补充信息
 
-- rowid 为每条告警记录的UUID,用于数据关联. alert_id 是每条告警记录人类可读的唯一ID
+- row_id 为每条告警记录的UUID,用于数据关联. alert_id 是每条告警记录人类可读的唯一ID
 
 ## 决策流程
 

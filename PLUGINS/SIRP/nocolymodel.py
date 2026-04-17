@@ -109,13 +109,3 @@ class AttachmentModel(BaseModel):
 class AttachmentCreateModel(BaseModel):
     name: Optional[str] = Field(default=None, description="文件名")
     url: Optional[str] = Field(default=None, description="文件base64格式的值(不是url)")
-
-
-class AccountModel(BaseModel):
-    accountId: Optional[str] = Field(default=None, description="用户的唯一标识ID")
-    avatar: Optional[str] = Field(default=None, description="用户头像的URL")
-    email: Optional[str] = Field(default=None, description="用户的电子邮件地址")
-    fullname: Optional[str] = Field(default=None, description="用户的全名")
-    jobNumber: Optional[str] = Field(default=None, description="用户的工号")
-    mobilePhone: Optional[str] = Field(default=None, description="用户的手机号码")
-    status: Optional[int] = Field(default=None, description="用户状态, 例如: 1表示正常")

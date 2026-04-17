@@ -8,10 +8,10 @@ from Lib.log import logger
 from PLUGINS.Embeddings.embeddings_qdrant import embedding_api_singleton_qdrant, SIRP_KNOWLEDGE_COLLECTION
 from PLUGINS.SIRP.CONFIG import SIRP_NOTICE_WEBHOOK
 from PLUGINS.SIRP.nocolyapi import WorksheetRow
-from PLUGINS.SIRP.nocolymodel import AccountModel, Condition, Group, Operator
+from PLUGINS.SIRP.nocolymodel import Condition, Group, Operator
 from PLUGINS.SIRP.sirpbase import BaseWorksheetEntity
 from PLUGINS.SIRP.sirpmodel import EnrichmentModel, ArtifactModel, AlertModel, CaseModel, TicketModel, MessageModel, PlaybookModel, PlaybookJobStatus, \
-    KnowledgeAction, KnowledgeModel, Severity, Confidence, PlaybookType
+    KnowledgeAction, KnowledgeModel, Severity, Confidence, PlaybookType, AccountModel
 
 
 class Enrichment(BaseWorksheetEntity[EnrichmentModel]):
@@ -58,7 +58,7 @@ class Ticket(BaseWorksheetEntity[TicketModel]):
             return None
 
         ticket_new = TicketModel()
-        ticket_new.rowid = ticket_old.rowid
+        ticket_new.row_id = ticket_old.row_id
         if uid is not None:
             ticket_new.uid = uid
         if title is not None:
@@ -81,8 +81,11 @@ class Artifact(BaseWorksheetEntity[ArtifactModel]):
     @classmethod
     def _load_relations(cls, model: ArtifactModel, include_system_fields: bool = True) -> ArtifactModel:
         """加载关联的enrichments"""
-        model.enrichments = Enrichment.list_by_rowids(
-            model.enrichments,
+        if not model.enrichments:
+            model.enrichments = []
+            return model
+        model.enrichments = Enrichment.list_by_row_ids(
+            row_ids=model.enrichments,
             include_system_fields=include_system_fields,
             lazy_load=False
         )
@@ -117,7 +120,7 @@ class Artifact(BaseWorksheetEntity[ArtifactModel]):
     def attach_enrichment(
             cls,
             artifact_id: str,
-            enrichment_rowid: str
+            enrichment_row_id: str
     ) -> Union[str, None]:
         artifact_old = cls.get_by_id(artifact_id, lazy_load=True)
         if not artifact_old:
@@ -127,18 +130,18 @@ class Artifact(BaseWorksheetEntity[ArtifactModel]):
         for enrichment in artifact_old.enrichments or []:
             if isinstance(enrichment, str):
                 existing_enrichments.append(enrichment)
-            elif enrichment.rowid:
-                existing_enrichments.append(enrichment.rowid)
+            elif enrichment.row_id:
+                existing_enrichments.append(enrichment.row_id)
 
-        if enrichment_rowid in existing_enrichments:
-            return enrichment_rowid
+        if enrichment_row_id in existing_enrichments:
+            return enrichment_row_id
 
         artifact_new = ArtifactModel()
-        artifact_new.rowid = artifact_old.rowid
-        artifact_new.enrichments = [*existing_enrichments, enrichment_rowid]
+        artifact_new.row_id = artifact_old.row_id
+        artifact_new.enrichments = [*existing_enrichments, enrichment_row_id]
         cls.update(artifact_new)
 
-        return enrichment_rowid
+        return enrichment_row_id
 
 
 class Alert(BaseWorksheetEntity[AlertModel]):
@@ -149,12 +152,12 @@ class Alert(BaseWorksheetEntity[AlertModel]):
     @classmethod
     def _load_relations(cls, model: AlertModel, include_system_fields: bool = True) -> AlertModel:
         """加载关联的artifacts和enrichments"""
-        model.artifacts = Artifact.list_by_rowids(
+        model.artifacts = Artifact.list_by_row_ids(
             model.artifacts,
             include_system_fields=include_system_fields,
             lazy_load=False
         )
-        model.enrichments = Enrichment.list_by_rowids(
+        model.enrichments = Enrichment.list_by_row_ids(
             model.enrichments,
             include_system_fields=include_system_fields,
             lazy_load=False
@@ -203,7 +206,7 @@ class Alert(BaseWorksheetEntity[AlertModel]):
             return None
 
         alert_new = AlertModel()
-        alert_new.rowid = alert_old.rowid
+        alert_new.row_id = alert_old.row_id
         if severity_ai is not None:
             alert_new.severity_ai = severity_ai
         if confidence_ai is not None:
@@ -218,13 +221,13 @@ class Alert(BaseWorksheetEntity[AlertModel]):
         alert_model = cls.get_by_id(alert_id, lazy_load=True)
         if not alert_model:
             return None
-        return WorksheetRow.get_discussions(cls.WORKSHEET_ID, alert_model.rowid)
+        return WorksheetRow.get_discussions(cls.WORKSHEET_ID, alert_model.row_id)
 
     @classmethod
     def attach_artifact(
             cls,
             alert_id: str,
-            artifact_rowid: str
+            artifact_row_id: str
     ) -> Union[str, None]:
         alert_old = cls.get_by_id(alert_id, lazy_load=True)
         if not alert_old:
@@ -234,24 +237,24 @@ class Alert(BaseWorksheetEntity[AlertModel]):
         for artifact in alert_old.artifacts or []:
             if isinstance(artifact, str):
                 existing_artifacts.append(artifact)
-            elif artifact.rowid:
-                existing_artifacts.append(artifact.rowid)
+            elif artifact.row_id:
+                existing_artifacts.append(artifact.row_id)
 
-        if artifact_rowid in existing_artifacts:
-            return artifact_rowid
+        if artifact_row_id in existing_artifacts:
+            return artifact_row_id
 
         alert_new = AlertModel()
-        alert_new.rowid = alert_old.rowid
-        alert_new.artifacts = [*existing_artifacts, artifact_rowid]
+        alert_new.row_id = alert_old.row_id
+        alert_new.artifacts = [*existing_artifacts, artifact_row_id]
         cls.update(alert_new)
 
-        return artifact_rowid
+        return artifact_row_id
 
     @classmethod
     def attach_enrichment(
             cls,
             alert_id: str,
-            enrichment_rowid: str
+            enrichment_row_id: str
     ) -> Union[str, None]:
         alert_old = cls.get_by_id(alert_id, lazy_load=True)
         if not alert_old:
@@ -261,18 +264,18 @@ class Alert(BaseWorksheetEntity[AlertModel]):
         for enrichment in alert_old.enrichments or []:
             if isinstance(enrichment, str):
                 existing_enrichments.append(enrichment)
-            elif enrichment.rowid:
-                existing_enrichments.append(enrichment.rowid)
+            elif enrichment.row_id:
+                existing_enrichments.append(enrichment.row_id)
 
-        if enrichment_rowid in existing_enrichments:
-            return enrichment_rowid
+        if enrichment_row_id in existing_enrichments:
+            return enrichment_row_id
 
         alert_new = AlertModel()
-        alert_new.rowid = alert_old.rowid
-        alert_new.enrichments = [*existing_enrichments, enrichment_rowid]
+        alert_new.row_id = alert_old.row_id
+        alert_new.enrichments = [*existing_enrichments, enrichment_row_id]
         cls.update(alert_new)
 
-        return enrichment_rowid
+        return enrichment_row_id
 
 
 class Case(BaseWorksheetEntity[CaseModel]):
@@ -283,17 +286,17 @@ class Case(BaseWorksheetEntity[CaseModel]):
     @classmethod
     def _load_relations(cls, model: CaseModel, include_system_fields: bool = True) -> CaseModel:
         """加载所有关联数据"""
-        model.alerts = Alert.list_by_rowids(
+        model.alerts = Alert.list_by_row_ids(
             model.alerts,
             include_system_fields=include_system_fields,
             lazy_load=False
         )
-        model.enrichments = Enrichment.list_by_rowids(
+        model.enrichments = Enrichment.list_by_row_ids(
             model.enrichments,
             include_system_fields=include_system_fields,
             lazy_load=False
         )
-        model.tickets = Ticket.list_by_rowids(
+        model.tickets = Ticket.list_by_row_ids(
             model.tickets,
             include_system_fields=include_system_fields,
             lazy_load=False
@@ -373,7 +376,7 @@ class Case(BaseWorksheetEntity[CaseModel]):
             return None
 
         case_new = CaseModel()
-        case_new.rowid = case_old.rowid
+        case_new.row_id = case_old.row_id
         if severity is not None:
             case_new.severity = severity
         if status is not None:
@@ -400,13 +403,13 @@ class Case(BaseWorksheetEntity[CaseModel]):
         case_model = cls.get_by_id(case_id, lazy_load=True)
         if not case_model:
             return None
-        return WorksheetRow.get_discussions(cls.WORKSHEET_ID, case_model.rowid)
+        return WorksheetRow.get_discussions(cls.WORKSHEET_ID, case_model.row_id)
 
     @classmethod
     def attach_enrichment(
             cls,
             case_id: str,
-            enrichment_rowid: str
+            enrichment_row_id: str
     ) -> Union[str, None]:
         case_old = cls.get_by_id(case_id, lazy_load=True)
         if not case_old:
@@ -416,24 +419,24 @@ class Case(BaseWorksheetEntity[CaseModel]):
         for enrichment in case_old.enrichments or []:
             if isinstance(enrichment, str):
                 existing_enrichments.append(enrichment)
-            elif enrichment.rowid:
-                existing_enrichments.append(enrichment.rowid)
+            elif enrichment.row_id:
+                existing_enrichments.append(enrichment.row_id)
 
-        if enrichment_rowid in existing_enrichments:
-            return enrichment_rowid
+        if enrichment_row_id in existing_enrichments:
+            return enrichment_row_id
 
         case_new = CaseModel()
-        case_new.rowid = case_old.rowid
-        case_new.enrichments = [*existing_enrichments, enrichment_rowid]
+        case_new.row_id = case_old.row_id
+        case_new.enrichments = [*existing_enrichments, enrichment_row_id]
         cls.update(case_new)
 
-        return enrichment_rowid
+        return enrichment_row_id
 
     @classmethod
     def attach_ticket(
             cls,
             case_id: str,
-            ticket_rowid: str
+            ticket_row_id: str
     ) -> Union[str, None]:
         case_old = cls.get_by_id(case_id, lazy_load=True)
         if not case_old:
@@ -443,18 +446,18 @@ class Case(BaseWorksheetEntity[CaseModel]):
         for ticket in case_old.tickets or []:
             if isinstance(ticket, str):
                 existing_tickets.append(ticket)
-            elif ticket.rowid:
-                existing_tickets.append(ticket.rowid)
+            elif ticket.row_id:
+                existing_tickets.append(ticket.row_id)
 
-        if ticket_rowid in existing_tickets:
-            return ticket_rowid
+        if ticket_row_id in existing_tickets:
+            return ticket_row_id
 
         case_new = CaseModel()
-        case_new.rowid = case_old.rowid
-        case_new.tickets = [*existing_tickets, ticket_rowid]
+        case_new.row_id = case_old.row_id
+        case_new.tickets = [*existing_tickets, ticket_row_id]
         cls.update(case_new)
 
-        return ticket_rowid
+        return ticket_row_id
 
 
 class Message(BaseWorksheetEntity[MessageModel]):
@@ -504,11 +507,11 @@ class Playbook(BaseWorksheetEntity[PlaybookModel]):
         return cls.list(filter_model, lazy_load=True)
 
     @classmethod
-    def update_job_status_and_remark(cls, rowid: str, job_status: PlaybookJobStatus, remark: str) -> str:
+    def update_job_status_and_remark(cls, row_id: str, job_status: PlaybookJobStatus, remark: str) -> str:
         """更新 playbook 的 job_status 和 remark 字段
 
         Args:
-            rowid: playbook 记录ID
+            row_id: playbook 记录ID
             job_status: 新的作业状态
             remark: 备注信息
 
@@ -516,37 +519,37 @@ class Playbook(BaseWorksheetEntity[PlaybookModel]):
             更新后的记录ID
         """
         playbook_model_tmp = PlaybookModel()
-        playbook_model_tmp.rowid = rowid
+        playbook_model_tmp.row_id = row_id
         playbook_model_tmp.job_status = job_status
         playbook_model_tmp.remark = remark
 
-        rowid = Playbook.update(playbook_model_tmp)
-        return rowid
+        row_id = Playbook.update(playbook_model_tmp)
+        return row_id
 
     @classmethod
-    def add_pending_playbook(cls, type: PlaybookType, name, user_input=None, source_rowid=None, record_id=None) -> PlaybookModel:
-        if source_rowid is None:
+    def add_pending_playbook(cls, type: PlaybookType, name, user_input=None, source_row_id=None, record_id=None) -> PlaybookModel:
+        if source_row_id is None:
             if record_id is None:
-                raise Exception("id is required when source_rowid is None")
+                raise Exception("id is required when source_row_id is None")
             else:
                 if type == PlaybookType.CASE:
                     record = Case.get_by_id(record_id)
-                    source_rowid = record.rowid
+                    source_row_id = record.row_id
                 elif type == PlaybookType.ALERT:
                     record = Alert.get_by_id(record_id)
-                    source_rowid = record.rowid
+                    source_row_id = record.row_id
                 elif type == PlaybookType.ARTIFACT:
                     record = Artifact.get_by_id(record_id)
-                    source_rowid = record.rowid
+                    source_row_id = record.row_id
 
         model = PlaybookModel()
-        model.source_rowid = source_rowid
+        model.source_row_id = source_row_id
         model.job_status = PlaybookJobStatus.PENDING
         model.type = type
         model.name = name
         model.user_input = user_input
-        rowid = Playbook.create(model)
-        model_create = Playbook.get(rowid, lazy_load=True)
+        row_id = Playbook.create(model)
+        model_create = Playbook.get(row_id, lazy_load=True)
         return model_create
 
 
@@ -604,7 +607,7 @@ class Knowledge(BaseWorksheetEntity[KnowledgeModel]):
             return None
 
         knowledge_new = KnowledgeModel()
-        knowledge_new.rowid = knowledge_old.rowid
+        knowledge_new.row_id = knowledge_old.row_id
         if title is not None:
             knowledge_new.title = title
         if body is not None:

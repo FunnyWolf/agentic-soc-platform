@@ -43,6 +43,7 @@ dependencies = [
     "urllib3>=2.6.0",
     "uvicorn>=0.42.0",
     "fastmcp>=3.2.0",
+    "python-dateutil>=2.9.0.post0",
 ]
 [[tool.uv.index]]
 url = "https://mirrors.aliyun.com/pypi/simple/"

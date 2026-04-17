@@ -102,7 +102,7 @@ class Playbook(LanggraphPlaybook):
 
     def init(self):
         def preprocess_node(state: AgentState):
-            case = Case.get(self.param_source_rowid)
+            case = Case.get(self.param_source_row_id)
             content = f"Current Case Data (includes latest alert): {case.model_dump_json_for_ai()}"
             return {"case": case, "messages": [HumanMessage(content=content)]}
 
@@ -147,7 +147,7 @@ class Playbook(LanggraphPlaybook):
             result_data = analyze_call["args"]
             analyze_result = AnalyzeResult(**result_data)
 
-            case_new = CaseModel(rowid=self.param_source_rowid,
+            case_new = CaseModel(row_id=self.param_source_row_id,
                                  severity_ai=analyze_result.new_severity,
                                  confidence_ai=analyze_result.confidence,
                                  comment_ai=analyze_result.analysis_rationale,
@@ -156,7 +156,7 @@ class Playbook(LanggraphPlaybook):
                                  )
             Case.update(case_new)
 
-            self.send_notice("Case_L3_SOC_Analyst_Agent Finish", f"rowid:{self.param_source_rowid}")
+            self.send_notice("Case_L3_SOC_Analyst_Agent Finish", f"row_id:{self.param_source_row_id}")
             self.update_playbook_status(PlaybookJobStatus.SUCCESS, "SOC analysis completed with potential tool-assisted enrichment.")
             return {"analyze_result": result_data}
 
@@ -195,7 +195,7 @@ if __name__ == "__main__":
 
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ASP.settings")
     django.setup()
-    model = PlaybookModel(source_rowid='f46e781f-e95c-4bac-a1c7-be45fccd3b4c')
+    model = PlaybookModel(source_row_id='f46e781f-e95c-4bac-a1c7-be45fccd3b4c')
     module = Playbook()
     module._playbook_model = model
 

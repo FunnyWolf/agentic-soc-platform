@@ -24,6 +24,6 @@ if __name__ == "__main__":
         row_ids = []
         rows = WorksheetRow.list(worksheet_id, filter=filter)
         for row in rows:
-            row_ids.append(row["rowid"])
+            row_ids.append(row["row_id"])
         if row_ids:
             WorksheetRow.batch_delete(worksheet_id=worksheet_id, row_ids=row_ids)

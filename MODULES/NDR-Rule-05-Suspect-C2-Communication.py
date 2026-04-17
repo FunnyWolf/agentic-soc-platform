@@ -331,8 +331,6 @@ class Module(LanggraphModule):
                     labels.append("high-priority-incident")
             alert_model.labels = labels
 
-            alert_model.uid = f"c2-{get_current_time_str()}"
-
             saved_alert = Alert.create(alert_model)
 
             self.logger.info(

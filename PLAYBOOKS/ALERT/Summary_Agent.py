@@ -48,7 +48,7 @@ class Playbook(LanggraphPlaybook):
 
     def init(self):
         def preprocess_node(state: AgentState):
-            alert = Alert.get(self.param_source_rowid)
+            alert = Alert.get(self.param_source_row_id)
             return {"alert": alert}
 
         def extract_keywords_node(state: AgentState):
@@ -123,7 +123,7 @@ class Playbook(LanggraphPlaybook):
 
         def output_node(state: AgentState):
             summary_ai = state.summary_ai
-            model = AlertModel(rowid=self.param_source_rowid, summary_ai=summary_ai)
+            model = AlertModel(row_id=self.param_source_row_id, summary_ai=summary_ai)
             Alert.update(model)
             self.agent_state = state
             return state
@@ -160,7 +160,7 @@ if __name__ == "__main__":
 
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ASP.settings")
     django.setup()
-    model = PlaybookModel(source_rowid='03e21470-edd8-4b19-8ffb-628d5203a1c3')
+    model = PlaybookModel(source_row_id='03e21470-edd8-4b19-8ffb-628d5203a1c3')
     module = Playbook()
     module._playbook_model = model
 

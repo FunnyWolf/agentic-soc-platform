@@ -33,7 +33,7 @@ Case is the core investigation object in ASP. One case can have one or more aler
 
 ## Additional Information
 
-- `rowid` is the UUID for each case record and is used for data association.
+- `row_id` is the UUID for each case record and is used for data association.
 - `case_id` is the human-readable unique ID for each case record.
 
 ## Decision Flow
@@ -111,7 +111,7 @@ Common update targets:
 
 Preferred response structure:
 
-- `Updated case`: case ID or returned rowid
+- `Updated case`: case ID or returned row_id
 - `Changed fields`: only the fields sent in the request
 
 ## Clarification Rules

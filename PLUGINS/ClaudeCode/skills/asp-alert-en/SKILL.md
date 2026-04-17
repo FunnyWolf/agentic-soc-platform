@@ -35,7 +35,7 @@ Note: alerts only support `severity_ai`, `confidence_ai`, and `comment_ai` updat
 
 ## Additional Information
 
-- `rowid` is the UUID for each alert record and is used for data association.
+- `row_id` is the UUID for each alert record and is used for data association.
 - `alert_id` is the human-readable unique ID for each alert record.
 
 ## Decision Flow

@@ -36,14 +36,14 @@ class BaseWorksheetEntity(ABC, Generic[T]):
     @classmethod
     def get(
             cls,
-            rowid: str,
+            row_id: str,
             include_system_fields: bool = True,
             lazy_load: bool = False
     ) -> T:
         """获取单条记录
 
         Args:
-            rowid: 记录ID
+            row_id: 记录ID
             include_system_fields: 是否包含系统字段
             lazy_load: 是否延迟加载关联数据（True时不加载关联）
 
@@ -52,7 +52,7 @@ class BaseWorksheetEntity(ABC, Generic[T]):
         """
         result = WorksheetRow.get(
             cls.WORKSHEET_ID,
-            rowid,
+            row_id,
             include_system_fields=include_system_fields
         )
         model = cls.MODEL_CLASS(**result)
@@ -107,51 +107,53 @@ class BaseWorksheetEntity(ABC, Generic[T]):
         result = WorksheetRow.list(
             cls.WORKSHEET_ID,
             filter_dict,
-            fields=["rowid"],
+            fields=["row_id"],
             include_system_fields=include_system_fields
         )
-        rowids = []
+        row_ids = []
         for item in result:
-            rowids.append(item["rowid"])
+            row_ids.append(item["row_id"])
 
         model = cls._prepare_for_save(model)
 
         fields = model_to_fields(model)
-        result = WorksheetRow.batch_update(cls.WORKSHEET_ID, rowids, fields)
+        result = WorksheetRow.batch_update(cls.WORKSHEET_ID, row_ids, fields)
         return result
 
     @classmethod
-    def list_by_rowids(
+    def list_by_row_ids(
             cls,
-            rowids: Union[List[str], List[BaseSystemModel], None],
+            row_ids: List[Any],
             include_system_fields: bool = True,
             lazy_load: bool = False
     ) -> Union[List[T], List[str], None]:
         """按ID列表查询
 
         Args:
-            rowids: 记录ID列表
+            row_ids: 记录ID列表
             include_system_fields: 是否包含系统字段
             lazy_load: 是否延迟加载关联数据
 
         Returns:
-            模型实例列表或原始rowids列表
+            模型实例列表或原始row_ids列表
         """
-        if rowids is not None and rowids != []:
-            if isinstance(rowids[0], BaseSystemModel):
-                return rowids
+
+        if row_ids is not None and row_ids != []:
+            if isinstance(row_ids[0], BaseSystemModel):
+                return row_ids
+
             filter_model = Group(
                 logic="AND",
                 children=[
                     Condition(
-                        field="rowid",
+                        field="row_id",
                         operator=Operator.IN,
-                        value=rowids
+                        value=row_ids
                     )
                 ]
             )
             return cls.list(filter_model, include_system_fields=include_system_fields, lazy_load=lazy_load)
-        return rowids
+        return row_ids
 
     @classmethod
     def create(cls, model: T) -> str:
@@ -166,30 +168,30 @@ class BaseWorksheetEntity(ABC, Generic[T]):
         model = cls._prepare_for_save(model)
 
         fields = model_to_fields(model)
-        rowid = WorksheetRow.create(cls.WORKSHEET_ID, fields)
-        return rowid
+        row_id = WorksheetRow.create(cls.WORKSHEET_ID, fields)
+        return row_id
 
     @classmethod
     def update(cls, model: T) -> str:
         """更新记录
 
         Args:
-            model: 模型实例（必须包含rowid）
+            model: 模型实例（必须包含row_id）
 
         Returns:
             更新的记录ID
 
         Raises:
-            ValueError: 当rowid为None时
+            ValueError: 当row_id为None时
         """
-        if model.rowid is None:
-            raise ValueError(f"{cls.__name__} rowid is None, cannot update.")
+        if model.row_id is None:
+            raise ValueError(f"{cls.__name__} row_id is None, cannot update.")
 
         model = cls._prepare_for_save(model)
 
         fields = model_to_fields(model)
-        rowid = WorksheetRow.update(cls.WORKSHEET_ID, model.rowid, fields)
-        return rowid
+        row_id = WorksheetRow.update(cls.WORKSHEET_ID, model.row_id, fields)
+        return row_id
 
     @classmethod
     def update_or_create(cls, model: T) -> str:
@@ -205,12 +207,12 @@ class BaseWorksheetEntity(ABC, Generic[T]):
 
         fields = model_to_fields(model)
 
-        if model.rowid is None:
-            rowid = WorksheetRow.create(cls.WORKSHEET_ID, fields)
+        if model.row_id is None:
+            row_id = WorksheetRow.create(cls.WORKSHEET_ID, fields)
         else:
-            rowid = WorksheetRow.update(cls.WORKSHEET_ID, model.rowid, fields)
+            row_id = WorksheetRow.update(cls.WORKSHEET_ID, model.row_id, fields)
 
-        return rowid
+        return row_id
 
     @classmethod
     def batch_update_or_create(cls, model_list: List[Union[T, str]]) -> Union[List[str], None]:
@@ -228,20 +230,20 @@ class BaseWorksheetEntity(ABC, Generic[T]):
         if model_list is None:
             return model_list
 
-        rowids = []
+        row_ids = []
         for model in model_list:
             if isinstance(model, str):
-                rowids.append(model)  # just link
+                row_ids.append(model)  # just link
             elif isinstance(model, cls.MODEL_CLASS):
-                rowid = cls.update_or_create(model)
-                rowids.append(rowid)
+                row_id = cls.update_or_create(model)
+                row_ids.append(row_id)
             else:
                 raise TypeError(
                     f"Unsupported {cls.__name__} data type: {type(model).__name__}. "
                     f"Expected str or {cls.MODEL_CLASS.__name__}"
                 )
 
-        return rowids
+        return row_ids
 
     @classmethod
     def _load_relations(cls, model: T, include_system_fields: bool = True) -> T:
@@ -287,16 +289,16 @@ class BaseSimpleEntity(ABC):
         return WorksheetRow.list(cls.WORKSHEET_ID, filter_dict, include_system_fields=False)
 
     @classmethod
-    def get(cls, rowid: str) -> Dict:
+    def get(cls, row_id: str) -> Dict:
         """获取单条记录
 
         Args:
-            rowid: 记录ID
+            row_id: 记录ID
 
         Returns:
             字典
         """
-        return WorksheetRow.get(cls.WORKSHEET_ID, rowid, include_system_fields=False)
+        return WorksheetRow.get(cls.WORKSHEET_ID, row_id, include_system_fields=False)
 
     @classmethod
     def create(cls, fields: List[Dict]) -> str:
@@ -311,14 +313,14 @@ class BaseSimpleEntity(ABC):
         return WorksheetRow.create(cls.WORKSHEET_ID, fields)
 
     @classmethod
-    def update(cls, rowid: str, fields: List[Dict]) -> str:
+    def update(cls, row_id: str, fields: List[Dict]) -> str:
         """更新记录
 
         Args:
-            rowid: 记录ID
+            row_id: 记录ID
             fields: 字段列表
 
         Returns:
             更新的记录ID
         """
-        return WorksheetRow.update(cls.WORKSHEET_ID, rowid, fields)
+        return WorksheetRow.update(cls.WORKSHEET_ID, row_id, fields)

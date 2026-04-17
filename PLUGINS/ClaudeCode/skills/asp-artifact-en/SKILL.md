@@ -31,7 +31,7 @@ Artifacts are created automatically by system processes. You can list and analyz
 
 ## Additional Information
 
-- `rowid` is the UUID for each artifact record and is used for data association.
+- `row_id` is the UUID for each artifact record and is used for data association.
 - `artifact_id` is the human-readable unique ID for each artifact record.
 
 ## Decision Flow
@@ -47,7 +47,7 @@ Artifacts are created automatically by system processes. You can list and analyz
 1. Extract the narrowest useful filters from the request.
 2. Call `list_artifacts`.
 3. Parse the returned JSON strings.
-4. Present a compact artifact view. If the user will likely attach or reuse the artifact next, surface the artifact rowid explicitly.
+4. Present a compact artifact view. If the user will likely attach or reuse the artifact next, surface the artifact row_id explicitly.
 
 Preferred response structure:
 

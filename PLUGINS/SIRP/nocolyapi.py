@@ -27,8 +27,8 @@ adapter = HTTPAdapter(
 HTTP_SESSION.mount('http://', adapter)
 HTTP_SESSION.mount('https://', adapter)
 
-SYSTEM_FIELDS = ['rowid', 'ownerid', 'caid', 'ctime', 'utime', 'uaid', 'wfname', 'wfcuaids', 'wfcaid', 'wfctime', 'wfrtime', 'wfcotime', 'wfdtime', 'wfftime',
-                 'wfstatus']
+SYSTEM_FIELDS = ['_initiatedBy', '_owner', '_updatedAt', '_createdAt', '_remainingTime', '_createdBy', '_updatedBy', '_processName', '_nodeAssignees',
+                 '_initiatedAt', '_nodeStartedAt', '_approvalCompletedAt', '_dueAt', '_processStatus']
 
 
 class Worksheet(object):
@@ -53,10 +53,7 @@ class Worksheet(object):
             fields_list: List[FieldType] = response_data.get("data").get("fields")
             fields_dict = {}
             for field in fields_list:
-                if field["id"] not in SYSTEM_FIELDS:
-                    fields_dict[field["alias"]] = field
-                else:
-                    fields_dict[field["id"]] = field
+                fields_dict[field["alias"]] = field
             Xcache.set_sirp_fields(worksheet_id, fields_dict)
             return fields_dict
         else:
@@ -68,26 +65,27 @@ class WorksheetRow(object):
         pass
 
     @staticmethod
-    def _format_input_row(row, fields, include_system_fields=True) -> dict:
+    def _format_input_row(row, fields_config, include_system_fields=True) -> dict:
         data_new = {}
-        for alias in row:
-            if alias in SYSTEM_FIELDS:
-                if include_system_fields or alias == "rowid":
-                    data_new[alias] = row[alias]
+        for alias_key_in_row in row:
+            if alias_key_in_row == "rowId":  # rowId 特殊处理
+                data_new["row_id"] = row[alias_key_in_row]
+            elif alias_key_in_row in SYSTEM_FIELDS:
+                if include_system_fields:
+                    data_new[f"row{alias_key_in_row}"] = row[alias_key_in_row]
                 else:
                     continue
             else:
-                field = fields.get(alias)
+                field_config = fields_config.get(alias_key_in_row)
 
-                if field is None:
-                    logger.warning(f"field {alias} not found in fields")
-                    for key in fields:
-                        if fields[key]['id'] == alias:
-                            logger.warning(f"error field  is '{fields[key]['name']}'")
+                if field_config is None:
+                    logger.warning(f"field {alias_key_in_row} not found in fields")
+                    for alias_key_in_field_config in fields_config:
+                        if fields_config[alias_key_in_field_config]['id'] == alias_key_in_row:
+                            logger.warning(f"error field  is '{fields_config[alias_key_in_field_config]['name']}'")
                             logger.warning(f"row data : {row}")
-
                     continue
-                data_new[alias] = WorksheetRow._format_input_value(field, row[alias])
+                data_new[alias_key_in_row] = WorksheetRow._format_input_value(field_config, row[alias_key_in_row])
         return data_new
 
     @staticmethod
@@ -148,18 +146,22 @@ class WorksheetRow(object):
                 WorksheetRow._translate_filter_names_to_ids(child, fields_config)
 
         elif filter_data.get("type") == "condition":
+
+            if filter_data["field"] == "row_id":
+                filter_data["field"] = "rowId"
+
             if filter_data.get("operator") == "in" and isinstance(filter_data.get("value"), list):
                 field_key = filter_data.get("field")
 
-                target_field = fields_config.get(field_key)
-                if not target_field:
+                target_field_config = fields_config.get(field_key)
+                if not target_field_config:
                     for f in fields_config.values():
                         if f.get("id") == field_key:
-                            target_field = f
+                            target_field_config = f
                             break
 
-                if target_field and target_field.get("options"):
-                    value_to_key = {opt["value"]: opt["key"] for opt in target_field["options"]}
+                if target_field_config and target_field_config.get("options"):
+                    value_to_key = {opt["value"]: opt["key"] for opt in target_field_config["options"]}
                     filter_data["value"] = [value_to_key.get(v, v) for v in filter_data["value"]]
 
     @staticmethod
@@ -188,7 +190,10 @@ class WorksheetRow(object):
         page_index = 1
         page_size = 1000
         fields_config = Worksheet.get_fields(worksheet_id)
+
         WorksheetRow._translate_filter_names_to_ids(filter, fields_config)
+        fields = [t.replace("row_id", "rowId") for t in fields]
+
         while True:
             data = {
                 "filter": filter,
@@ -305,7 +310,7 @@ class WorksheetRow(object):
 
             response_data = response.json()
             if response_data.get("success"):
-                return response_data.get("data")  # {"rowIds":[rowid1,rowid2]}
+                return response_data.get("data")  # {"rowIds":[row_id1,row_id2]}
             else:
                 raise Exception(f"error_code: {response_data.get('error_code')} error_msg: {response_data.get('error_msg')} data: {response_data.get('data')}")
         except Exception as e:
@@ -313,7 +318,7 @@ class WorksheetRow(object):
 
     @staticmethod
     def batch_update(worksheet_id: str,
-                     rowids: List[str],
+                     row_ids: List[str],
                      fields: List[Dict],
                      trigger_workflow: bool = True) -> Dict:
 
@@ -323,7 +328,7 @@ class WorksheetRow(object):
         fields = WorksheetRow._format_output_value(fields_config, fields)
 
         data = {
-            "rowIds": rowids,
+            "rowIds": row_ids,
             "fields": fields,
             "triggerWorkflow": trigger_workflow
         }
@@ -336,16 +341,16 @@ class WorksheetRow(object):
 
             response_data = response.json()
             if response_data.get("success"):
-                return response_data.get("data")  # {"failedRowIds":[rowid1,rowid2], "successfulRowIds":[rowid3,rowid4]}
+                return response_data.get("data")  # {"failedRowIds":[row_id1,row_id2], "successfulRowIds":[row_id3,row_id4]}
             else:
                 raise Exception(f"error_code: {response_data.get('error_code')} error_msg: {response_data.get('error_msg')} data: {response_data.get('data')}")
         except Exception as e:
             raise e
 
     @staticmethod
-    def delete(worksheet_id: str, rowid: List, trigger_workflow: bool = True):
+    def delete(worksheet_id: str, row_id: List, trigger_workflow: bool = True):
 
-        url = f"{SIRP_URL}/api/v3/app/worksheets/{worksheet_id}/rows/{rowid}"
+        url = f"{SIRP_URL}/api/v3/app/worksheets/{worksheet_id}/rows/{row_id}"
 
         data = {
             "triggerWorkflow": trigger_workflow,
@@ -368,7 +373,7 @@ class WorksheetRow(object):
         url = f"{SIRP_URL}/api/v3/app/worksheets/{worksheet_id}/rows/batch"
 
         data = {
-            "rowids": row_ids,
+            "rowIds": row_ids,
             "triggerWorkflow": trigger_workflow,
         }
 
@@ -380,6 +385,8 @@ class WorksheetRow(object):
         response_data = response.json()
         if response_data.get("success"):
             return response_data.get("data")
+        elif response_data.get("error_code") == 0:
+            return True
         else:
             raise Exception(f"error_code: {response_data.get('error_code')} error_msg: {response_data.get('error_msg')}")
 
@@ -444,13 +451,6 @@ class WorksheetRow(object):
             return rows_new
         else:
             raise Exception(f"error_code: {response_data.get('error_code')} error_msg: {response_data.get('error_msg')}")
-
-    @staticmethod
-    def get_rowid_list_from_rowid(rowid):
-        # 多行数据获取列表
-        tmp = rowid.split("_")
-        rowid_list = tmp[0].split(",")
-        return rowid_list
 
 
 class OptionSet(object):

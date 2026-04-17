@@ -94,7 +94,7 @@ class MainMonitor(object):
 
         for model in models:
             module_config = Xcache.get_module_config_by_name_and_type(model.type, model.name)
-            model_tmp = PlaybookModel(rowid=model.rowid)
+            model_tmp = PlaybookModel(row_id=model.row_id)
             if module_config is None:
                 PlaybookLoader.load_all_playbook_config()  # try again
                 module_config = Xcache.get_module_config_by_name_and_type(model.type, model.name)
@@ -137,25 +137,25 @@ class MainMonitor(object):
             for model in models:
                 payload_content = f"# {model.title}\n\n{model.body}"
                 if model.action == KnowledgeAction.STORE:
-                    logger.info(f"Knowledge storing,rowid: {model.rowid}")
+                    logger.info(f"Knowledge storing,row_id: {model.row_id}")
                     try:
-                        doc_id = embedding_api_singleton_qdrant.add_document(SIRP_KNOWLEDGE_COLLECTION, model.rowid, payload_content, {"rowid": model.rowid})
+                        doc_id = embedding_api_singleton_qdrant.add_document(SIRP_KNOWLEDGE_COLLECTION, model.row_id, payload_content, {"row_id": model.row_id})
                     except Exception as E:
                         logger.exception(E)
 
                     model.action = KnowledgeAction.DONE
                     model.using = True
-                    logger.info(f"Knowledge stored,rowid: {model.rowid}")
+                    logger.info(f"Knowledge stored,row_id: {model.row_id}")
                 elif model.action == KnowledgeAction.REMOVE:
-                    logger.info(f"Knowledge removing,rowid: {model.rowid}")
+                    logger.info(f"Knowledge removing,row_id: {model.row_id}")
                     try:
-                        result = embedding_api_singleton_qdrant.delete_document(SIRP_KNOWLEDGE_COLLECTION, model.rowid)
+                        result = embedding_api_singleton_qdrant.delete_document(SIRP_KNOWLEDGE_COLLECTION, model.row_id)
                     except Exception as E:
                         logger.exception(E)
 
                     model.action = KnowledgeAction.DONE
                     model.using = False
-                    logger.info(f"Knowledge removed,rowid: {model.rowid}")
+                    logger.info(f"Knowledge removed,row_id: {model.row_id}")
                 else:
                     logger.error(f"Unknown knowledge action: {model.action}")
                     continue

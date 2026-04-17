@@ -99,7 +99,7 @@ Then add one short explanation when needed.
 
 Preferred response structure:
 
-- `Updated knowledge`: knowledge ID or returned rowid
+- `Updated knowledge`: knowledge ID or returned row_id
 
 ## Clarification Rules
 

@@ -283,7 +283,7 @@ class Module(LanggraphModule):
                 labels.append("confirmed-phishing")
             alert_model.labels = labels
 
-            alert_model.uid = f"phishing-{get_current_time_str()}"
+
 
             saved_alert = Alert.create(alert_model)
 

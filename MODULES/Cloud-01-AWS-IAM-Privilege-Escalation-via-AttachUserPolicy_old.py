@@ -15,7 +15,7 @@ from PLUGINS.LLM.llmapi import LLMAPI
 from PLUGINS.SIRP.grouprule import Correlation, CorrelationConfig
 from PLUGINS.SIRP.sirpapi import Alert, Case
 from PLUGINS.SIRP.sirpmodel import AlertModel, ArtifactModel, ArtifactType, ArtifactRole, Severity, AlertStatus, AlertAnalyticType, ProductCategory, Confidence, \
-    ImpactLevel, AlertRiskLevel, Disposition, AlertAction, AlertPolicyType, CaseModel, CaseStatus, CasePriority
+    Impact, AlertRiskLevel, Disposition, AlertAction, AlertPolicyType, CaseModel, CaseStatus, CasePriority
 
 
 class AnalyzeResult(BaseModel):
@@ -176,7 +176,7 @@ class Module(LanggraphModule):
                 policy_name="AWS IAM Access Policy",
                 policy_type=AlertPolicyType.IDENTITY_POLICY,
                 policy_desc="IAM identity-based policy that grants permissions to AWS services",
-                impact=ImpactLevel.CRITICAL if severity in [Severity.CRITICAL, Severity.HIGH] else ImpactLevel.HIGH,
+                impact=Impact.CRITICAL if severity in [Severity.CRITICAL, Severity.HIGH] else Impact.HIGH,
                 confidence=Confidence.HIGH,
                 risk_level=AlertRiskLevel.CRITICAL if severity == Severity.CRITICAL else AlertRiskLevel.HIGH,
                 risk_details=f"Unauthorized administrator policy attached to {target_user} - potential backdoor account creation or privilege escalation attack"
@@ -184,22 +184,22 @@ class Module(LanggraphModule):
 
             alert_model.artifacts = artifacts
 
-            saved_alert_rowid = Alert.create(alert_model)
-            alert_model.rowid = saved_alert_rowid
+            saved_alert_row_id = Alert.create(alert_model)
+            alert_model.row_id = saved_alert_row_id
 
-            self.logger.debug(f"Alert created with Rowid: {saved_alert_rowid}")
+            self.logger.debug(f"Alert created with Rowid: {saved_alert_row_id}")
 
             try:
                 existing_cases = Case.get_by_correlation_uid(correlation_uid, lazy_load=True)
 
                 if existing_cases and len(existing_cases) > 0:
                     existing_case = existing_cases[0]
-                    self.logger.debug(f"Found existing case with correlation_uid: {correlation_uid}, Case ID: {existing_case.rowid}")
+                    self.logger.debug(f"Found existing case with correlation_uid: {correlation_uid}, Case ID: {existing_case.row_id}")
 
-                    update_case = CaseModel(alerts=[*existing_case.alerts, saved_alert_rowid], rowid=existing_case.rowid)
+                    update_case = CaseModel(alerts=[*existing_case.alerts, saved_alert_row_id], row_id=existing_case.row_id)
                     Case.update(update_case)
 
-                    self.logger.debug(f"Alert {saved_alert_rowid} added to existing case {existing_case.rowid}")
+                    self.logger.debug(f"Alert {saved_alert_row_id} added to existing case {existing_case.row_id}")
 
                 else:
                     self.logger.debug(f"No existing case found for correlation_uid: {correlation_uid}, creating new case")
@@ -207,7 +207,7 @@ class Module(LanggraphModule):
                     new_case = CaseModel(
                         title=f"AWS IAM Privilege Escalation: {principal_user} → {target_user}",
                         severity=severity,
-                        impact=ImpactLevel.CRITICAL if severity in [Severity.CRITICAL, Severity.HIGH] else ImpactLevel.HIGH,
+                        impact=Impact.CRITICAL if severity in [Severity.CRITICAL, Severity.HIGH] else Impact.HIGH,
                         priority=CasePriority.CRITICAL if severity == Severity.CRITICAL else CasePriority.HIGH,
                         confidence=Confidence.HIGH,
                         status=CaseStatus.NEW,
@@ -215,11 +215,11 @@ class Module(LanggraphModule):
                         category=ProductCategory.CLOUD,
                         tags=["iam-privilege-escalation", "aws-cloudtrail", f"account-{account_id}"],
                         correlation_uid=correlation_uid,
-                        alerts=[saved_alert_rowid]
+                        alerts=[saved_alert_row_id]
                     )
 
                     case_uid = Case.create(new_case)
-                    self.logger.debug(f"New case created with UID: {case_uid}, Alert: {saved_alert_rowid}")
+                    self.logger.debug(f"New case created with UID: {case_uid}, Alert: {saved_alert_row_id}")
 
             except Exception as e:
                 self.logger.error(f"Error creating/updating case for correlation_uid {correlation_uid}: {str(e)}")
@@ -275,12 +275,12 @@ class Module(LanggraphModule):
                     labels.append("high-priority-incident")
             alert_model.labels = labels
 
-            alert_model.uid = f"iam-priv-esc-{get_current_time_str()}"
 
-            update_alert_rowid = Alert.update(alert_model)
+
+            update_alert_row_id = Alert.update(alert_model)
 
             self.logger.info(
-                f"AWS IAM Privilege Escalation Alert saved with RowID: {update_alert_rowid}, Severity: {analyze_result.new_severity}, Confidence: {analyze_result.confidence}")
+                f"AWS IAM Privilege Escalation Alert saved with RowID: {update_alert_row_id}, Severity: {analyze_result.new_severity}, Confidence: {analyze_result.confidence}")
 
             return {}
 

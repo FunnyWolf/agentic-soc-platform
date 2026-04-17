@@ -16,7 +16,7 @@ class Playbook(BasePlaybook):
 
     def run(self):
         try:
-            artifact = Artifact.get(self.param_source_rowid)
+            artifact = Artifact.get(self.param_source_row_id)
             self.logger.info(f"Querying threat intelligence for : {artifact}")
 
             if artifact.type in ["IP Address"]:
@@ -38,7 +38,7 @@ class Playbook(BasePlaybook):
                 enrichment = EnrichmentModel(name="TI Enrichment", type="Threat Intelligence", provider="OTX", value=artifact.value,
                                              data=json.dumps(ti_result))
                 enrichments.append(enrichment)
-            model_tmp = ArtifactModel(rowid=artifact.rowid, enrichments=enrichments)
+            model_tmp = ArtifactModel(row_id=artifact.row_id, enrichments=enrichments)
             Artifact.update(model_tmp)
 
             self.update_playbook_status(PlaybookJobStatus.SUCCESS, "Threat intelligence enrichment completed.")
@@ -54,7 +54,7 @@ if __name__ == "__main__":
 
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ASP.settings")
     django.setup()
-    model = PlaybookModel(source_rowid='73ed8a06-38e9-4d03-8d17-74b578f0cafa')
+    model = PlaybookModel(source_row_id='73ed8a06-38e9-4d03-8d17-74b578f0cafa')
     module = Playbook()
     module._playbook_model = model
 

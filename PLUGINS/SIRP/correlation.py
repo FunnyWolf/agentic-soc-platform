@@ -1,6 +1,6 @@
 import hashlib
 from datetime import datetime, timezone
-from typing import List, Optional, Union
+from typing import List, Union
 
 from typing import Literal
 
@@ -26,27 +26,12 @@ class Correlation(object):
         return dt.strftime('%Y%m%d%H%M')
 
     @classmethod
-    def _parse_timestamp(cls, timestamp: Optional[Union[int, float, str, datetime]]) -> datetime:
-        if timestamp is None:
-            return datetime.now(timezone.utc)
-        elif isinstance(timestamp, datetime):
-            return timestamp if timestamp.tzinfo else timestamp.replace(tzinfo=timezone.utc)
-        elif isinstance(timestamp, str):
-            try:
-                return datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
-            except ValueError:
-                return datetime.now(timezone.utc)
-        else:
-            return datetime.fromtimestamp(timestamp, tz=timezone.utc)
-
-    @classmethod
     def generate_correlation_uid(cls,
                                  rule_id: str,
                                  time_window: ValidTimeWindows = "24h",
-                                 timestamp: Optional[Union[int, float, str, datetime]] = None,
+                                 timestamp: datetime = datetime.now(timezone.utc),
                                  keys: List[Union[str, None]] = None) -> str:
-        processing_dt = cls._parse_timestamp(timestamp)
-        time_bucket = cls._get_time_bucket(processing_dt, time_window)
+        time_bucket = cls._get_time_bucket(timestamp, time_window)
 
         key_parts = [rule_id, time_bucket]
 

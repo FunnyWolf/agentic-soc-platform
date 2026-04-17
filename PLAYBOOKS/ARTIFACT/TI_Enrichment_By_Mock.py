@@ -13,7 +13,7 @@ class Playbook(BasePlaybook):
         super().__init__()  # do not delete this code
 
     def run(self):
-        artifact = Artifact.get(self.param_source_rowid)
+        artifact = Artifact.get(self.param_source_row_id)
 
         # Simulate querying a threat intelligence database. In a real application, this should call an external API or database.
         if artifact.type not in ["IP Address", "Hash"]:
@@ -31,7 +31,7 @@ class Playbook(BasePlaybook):
             enrichment = EnrichmentModel(name="Mock TI Enrichment", type="Mock Threat Intelligence", provider="MockTIProvider", value=artifact.value,
                                          data=json.dumps(ti_result))
             enrichments.append(enrichment)
-        model_tmp = ArtifactModel(rowid=artifact.rowid, enrichments=enrichments)
+        model_tmp = ArtifactModel(row_id=artifact.row_id, enrichments=enrichments)
         Artifact.update(model_tmp)
         self.update_playbook_status(PlaybookJobStatus.SUCCESS, "Threat intelligence enrichment completed.")
         return
@@ -43,7 +43,7 @@ if __name__ == "__main__":
 
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ASP.settings")
     django.setup()
-    model = PlaybookModel(source_rowid='a966036e-b29e-4449-be48-23293bacac5d')
+    model = PlaybookModel(source_row_id='250b934c-360b-426e-8a4a-3de022efa99e')
     module = Playbook()
     module._playbook_model = model
     module.run()

@@ -41,7 +41,7 @@ class Playbook(LanggraphPlaybook):
     def init(self):
         def preprocess_node(state: AgentState):
             """Preprocess data"""
-            case = Case.get(self.param_source_rowid)
+            case = Case.get(self.param_source_row_id)
             return {"case": case}
 
         # Define node
@@ -78,7 +78,7 @@ class Playbook(LanggraphPlaybook):
 
             analyze_result: AnalyzeResult = state.analyze_result
 
-            case_new = CaseModel(rowid=self.param_source_rowid,
+            case_new = CaseModel(row_id=self.param_source_row_id,
                                  severity_ai=analyze_result.new_severity,
                                  confidence_ai=analyze_result.confidence,
                                  comment_ai=analyze_result.analysis_rationale,
@@ -87,7 +87,7 @@ class Playbook(LanggraphPlaybook):
                                  )
             Case.update(case_new)
 
-            self.send_notice("Case_L3_SOC_Analyst_Agent Finish", f"rowid:{self.param_source_rowid}")
+            self.send_notice("Case_L3_SOC_Analyst_Agent Finish", f"row_id:{self.param_source_row_id}")
             self.update_playbook_status(PlaybookJobStatus.SUCCESS, "Get suggestion by ai agent completed.")
             return state
 
@@ -117,7 +117,7 @@ if __name__ == "__main__":
 
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ASP.settings")
     django.setup()
-    model = PlaybookModel(source_rowid='141a4bd0-f3cf-4e0c-91b6-f8d9fff6f653')
+    model = PlaybookModel(source_row_id='141a4bd0-f3cf-4e0c-91b6-f8d9fff6f653')
     module = Playbook()
     module._playbook_model = model
 

@@ -34,7 +34,7 @@ Case。
 
 ## 补充信息
 
-- rowid 为每条 case 记录的UUID,用于数据关联. case_id 是每条 case 记录人类可读的唯一ID
+- row_id 为每条 case 记录的UUID,用于数据关联. case_id 是每条 case 记录人类可读的唯一ID
 
 ## 决策流程
 
@@ -112,7 +112,7 @@ Case。
 
 首选回复结构：
 
-- `Updated case`：case ID 或返回的 rowid
+- `Updated case`：case ID 或返回的 row_id
 - `Changed fields`：只列实际提交的字段
 
 ## 澄清规则

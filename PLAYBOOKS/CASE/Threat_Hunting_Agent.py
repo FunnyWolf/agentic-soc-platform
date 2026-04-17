@@ -319,7 +319,7 @@ class Playbook(LanggraphPlaybook):
             """Intent recognition: determine the overall goal"""
             self.logger.debug("Intent Node Invoked")
 
-            case: CaseModel = Case.get(rowid=self.param_source_rowid)
+            case: CaseModel = Case.get(row_id=self.param_source_row_id)
 
             user_intent = self.param_user_input
 
@@ -510,7 +510,7 @@ class Playbook(LanggraphPlaybook):
             llm = llm_api.get_model(tag=["powerful"])
             response = llm.invoke(messages)
 
-            case_new = CaseModel(rowid=self.param_source_rowid, threat_hunting_report_ai=response.content)
+            case_new = CaseModel(row_id=self.param_source_row_id, threat_hunting_report_ai=response.content)
             Case.update(case_new)
 
             for message in messages:
@@ -558,9 +558,9 @@ if __name__ == "__main__":
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ASP.settings")
     django.setup()
     model = PlaybookModel(
-                          source_rowid='141a4bd0-f3cf-4e0c-91b6-f8d9fff6f653',
+                          source_row_id='141a4bd0-f3cf-4e0c-91b6-f8d9fff6f653',
                           user_input="Has the host in the case been infected",
-                          rowid="401ca83c-4579-4e6f-8329-2e61a6c3405a")
+                          row_id="401ca83c-4579-4e6f-8329-2e61a6c3405a")
     module = Playbook()
     module._playbook_model = model
 

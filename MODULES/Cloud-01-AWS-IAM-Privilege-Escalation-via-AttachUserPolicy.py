@@ -1,14 +1,15 @@
 import json
 from typing import List
 
-from Lib.api import get_current_time_str
+from dateutil import parser
+
 from Lib.basemodule import BaseModule
 from PLUGINS.SIRP.correlation import Correlation
 from PLUGINS.SIRP.sirpapi import Alert, Case
 from PLUGINS.SIRP.sirpmodel import (
     AlertModel, ArtifactModel, ArtifactType, ArtifactRole, Severity,
     AlertStatus, AlertAnalyticType, ProductCategory, Confidence,
-    ImpactLevel, AlertRiskLevel, Disposition, AlertAction,
+    Impact, AlertRiskLevel, Disposition, AlertAction,
     AlertPolicyType, CaseModel, CaseStatus, CasePriority
 )
 
@@ -73,8 +74,7 @@ class Module(BaseModule):
             disposition = Disposition.DETECTED
             action = AlertAction.OBSERVED
 
-        event_time_formatted = event_time if event_time else get_current_time_str()
-
+        event_time_formatted = parser.parse(event_time)
         # 2. 提取符合标准的 Artifact (Artifact Extraction)
         artifacts: List[ArtifactModel] = []
 
@@ -124,7 +124,6 @@ class Module(BaseModule):
             rule_name="AWS IAM Privilege Escalation via AttachUserPolicy",
             source_uid=event_id,
             correlation_uid=correlation_uid,
-            count=1,
             analytic_type=AlertAnalyticType.RULE,
             analytic_name="CloudTrail IAM Security Rule",
             analytic_desc="Detects AttachUserPolicy API calls which can be used for privilege escalation or maintaining persistence.",
@@ -152,7 +151,7 @@ class Module(BaseModule):
             sub_technique="T1098.003 - Additional Cloud Credentials",
             mitigation="Implement Least Privilege, Use Permission Boundaries, Monitor for sensitive IAM API calls.",
             policy_type=AlertPolicyType.IDENTITY_POLICY,
-            impact=ImpactLevel.CRITICAL if outcome == "success" else ImpactLevel.MEDIUM,
+            impact=Impact.CRITICAL if outcome == "success" else Impact.MEDIUM,
             confidence=Confidence.HIGH,
             risk_level=AlertRiskLevel.HIGH if outcome == "success" else AlertRiskLevel.MEDIUM,
             risk_details=f"High risk of administrative takeover if the attached policy contains broad permissions. "
@@ -161,8 +160,8 @@ class Module(BaseModule):
         alert_model.artifacts = artifacts
 
         # 保存告警
-        saved_alert_rowid = Alert.create(alert_model)
-        self.logger.info(f"Alert created: {saved_alert_rowid} with disposition {disposition}")
+        saved_alert_row_id = Alert.create(alert_model)
+        self.logger.info(f"Alert created: {saved_alert_row_id} with disposition {disposition}")
 
         # 5. Case 处理 (Case Management)
         try:
@@ -170,15 +169,15 @@ class Module(BaseModule):
             if existing_case:
                 # 附加到已有 Case
                 update_case = CaseModel(
-                    alerts=[*existing_case.alerts, saved_alert_rowid],
-                    rowid=existing_case.rowid
+                    alerts=[*existing_case.alerts, saved_alert_row_id],
+                    row_id=existing_case.row_id
                 )
                 Case.update(update_case)
             else:
                 new_case = CaseModel(
                     title=f"Potential IAM Privilege Escalation in Account {account_id}",
                     severity=severity,
-                    impact=ImpactLevel.HIGH if outcome == "success" else ImpactLevel.MEDIUM,
+                    impact=Impact.HIGH if outcome == "success" else Impact.MEDIUM,
                     priority=CasePriority.HIGH if outcome == "success" else CasePriority.MEDIUM,
                     confidence=Confidence.HIGH,
                     status=CaseStatus.NEW,
@@ -187,7 +186,7 @@ class Module(BaseModule):
                     category=ProductCategory.CLOUD,
                     tags=["iam", "aws", "privesc"],
                     correlation_uid=correlation_uid,
-                    alerts=[saved_alert_rowid]
+                    alerts=[saved_alert_row_id]
                 )
                 Case.create(new_case)
         except Exception as e:

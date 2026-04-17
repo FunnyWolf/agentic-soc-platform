@@ -24,7 +24,7 @@ class Playbook(LanggraphPlaybook):
     def init(self):
         def preprocess_node(state: AgentState):
             """Preprocess data"""
-            alert = Alert.get(self.param_source_rowid)
+            alert = Alert.get(self.param_source_row_id)
             return {"alert": alert}
 
         # Define node
@@ -58,10 +58,10 @@ class Playbook(LanggraphPlaybook):
         def output_node(state: AgentState):
             """Process analysis results"""
             suggestion = state.suggestion
-            model = AlertModel(rowid=self.param_source_rowid, summary_ai=suggestion)
+            model = AlertModel(row_id=self.param_source_row_id, summary_ai=suggestion)
             Alert.update(model)
 
-            self.send_notice("Alert_Suggestion_Gen_By_LLM output_node Finish", f"rowid:{self.param_source_rowid}")
+            self.send_notice("Alert_Suggestion_Gen_By_LLM output_node Finish", f"row_id:{self.param_source_row_id}")
             self.update_playbook_status(PlaybookJobStatus.SUCCESS, "Get suggestion by ai agent completed.")
 
             self.agent_state = state
@@ -94,7 +94,7 @@ if __name__ == "__main__":
 
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ASP.settings")
     django.setup()
-    model = PlaybookModel( source_rowid='89f83414-a0fc-43bf-a15d-afab4309153a')
+    model = PlaybookModel(source_row_id='89f83414-a0fc-43bf-a15d-afab4309153a')
     module = Playbook()
     module._playbook_model = model
 

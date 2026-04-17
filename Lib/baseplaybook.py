@@ -31,8 +31,8 @@ class BasePlaybook(BaseAPI):
         self._playbook_model: PlaybookModel = None
 
     @property
-    def param_source_rowid(self):
-        return self._playbook_model.source_rowid
+    def param_source_row_id(self):
+        return self._playbook_model.source_row_id
 
     @property
     def param_user_input(self):
@@ -40,11 +40,11 @@ class BasePlaybook(BaseAPI):
 
     def update_playbook_status(self, job_status: PlaybookJobStatus, remark: str):
         model_tmp = PlaybookModel()
-        model_tmp.rowid = self._playbook_model.rowid
+        model_tmp.row_id = self._playbook_model.row_id
         model_tmp.job_status = job_status
         model_tmp.remark = remark
-        rowid = Playbook.update(model_tmp)
-        return rowid
+        row_id = Playbook.update(model_tmp)
+        return row_id
 
     def send_notice(self, title: str, body: str) -> bool:
         result = Notice.send(self._playbook_model.user, title, body)
@@ -72,7 +72,7 @@ class LanggraphPlaybook(BasePlaybook):
     def add_message_to_playbook(self, message: BaseMessage | BaseModel, node=None):
 
         message_model = MessageModel()
-        message_model.playbook = [self._playbook_model.rowid]
+        message_model.playbook = [self._playbook_model.row_id]
         message_model.node = node
 
         # handle content
