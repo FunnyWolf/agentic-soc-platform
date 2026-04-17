@@ -577,15 +577,13 @@ class AlertModel(BaseSystemModel):
     sub_technique: Optional[str] = Field(default="", description="映射的 MITRE 子技术 (Mapped MITRE sub-technique)")
     mitigation: Optional[str] = Field(default="", description="建议的缓解措施 (Suggested mitigation)")
 
-    product_category: Optional[ProductCategory] = Field(default=None,
-                                                        description="原始产品类别 (Source product category)")
+    product_category: Optional[ProductCategory] = Field(default=None, description="原始产品类别 (Source product category)")
     product_vendor: Optional[str] = Field(default=None, description="原始厂商 (Source vendor)", json_schema_extra={"type": 2})
     product_name: Optional[str] = Field(default=None, description="原始产品名称 (Source product name)", json_schema_extra={"type": 2})
     product_feature: Optional[str] = Field(default=None, description="原始产品功能 (Source product feature)", json_schema_extra={"type": 2})
 
     policy_name: Optional[str] = Field(default="", description="触发策略名称 (Trigger policy name)")
-    policy_type: Optional[AlertPolicyType] = Field(default=None,
-                                                   description="触发策略类型 (Trigger policy type)")
+    policy_type: Optional[AlertPolicyType] = Field(default=None, description="触发策略类型 (Trigger policy type)")
     policy_desc: Optional[str] = Field(default="", description="触发策略描述 (Trigger policy description)")
 
     risk_level: Optional[AlertRiskLevel] = Field(default=None, description="评估的风险等级 (Assessed risk level)")
