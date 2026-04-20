@@ -10,8 +10,9 @@ from PLUGINS.SIRP.CONFIG import SIRP_NOTICE_WEBHOOK
 from PLUGINS.SIRP.nocolyapi import WorksheetRow
 from PLUGINS.SIRP.nocolymodel import Condition, Group, Operator
 from PLUGINS.SIRP.sirpbase import BaseWorksheetEntity
-from PLUGINS.SIRP.sirpmodel import EnrichmentModel, ArtifactModel, AlertModel, CaseModel, TicketModel, MessageModel, PlaybookModel, PlaybookJobStatus, \
-    KnowledgeAction, KnowledgeModel, Severity, Confidence, PlaybookType, AccountModel
+from PLUGINS.SIRP.sirpbasemodel import AutoAccount
+from PLUGINS.SIRP.sirpcoremodel import Severity, Confidence, EnrichmentModel, TicketModel, ArtifactModel, AlertModel, CaseModel
+from PLUGINS.SIRP.sirpextramodel import PlaybookType, PlaybookJobStatus, KnowledgeAction, MessageModel, PlaybookModel, KnowledgeModel
 
 
 class Enrichment(BaseWorksheetEntity[EnrichmentModel]):
@@ -646,14 +647,14 @@ class Knowledge(BaseWorksheetEntity[KnowledgeModel]):
 
 class Notice(object):
     @staticmethod
-    def send(user: Union[AccountModel, List[AccountModel]], title, body=None):
-        if isinstance(user, AccountModel):
+    def send(user: AutoAccount, title, body=None):
+        if isinstance(user, AutoAccount):
             users = [user]
         elif isinstance(user, list):
             users = user
         else:
-            logger.error("user 参数必须是 AccountModel 实例或 AccountModel 实例列表")
+            logger.error("user 参数必须是 AutoAccount 实例或 AutoAccount 实例列表")
             return False
         for user in users:
-            result = requests.post(SIRP_NOTICE_WEBHOOK, json={"title": title, "body": body, "user": user.fullname})
+            result = requests.post(SIRP_NOTICE_WEBHOOK, json={"title": title, "body": body, "user": user})
         return True

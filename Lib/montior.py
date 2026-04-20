@@ -16,7 +16,7 @@ from Lib.xcache import Xcache
 from PLUGINS.Embeddings.embeddings_qdrant import embedding_api_singleton_qdrant, SIRP_KNOWLEDGE_COLLECTION
 from PLUGINS.Redis.redis_stream_api import RedisStreamAPI
 from PLUGINS.SIRP.sirpapi import Playbook, Knowledge
-from PLUGINS.SIRP.sirpmodel import PlaybookJobStatus, KnowledgeAction, PlaybookModel
+from PLUGINS.SIRP.sirpextramodel import PlaybookJobStatus, KnowledgeAction, PlaybookModel
 
 
 class MainMonitor(object):

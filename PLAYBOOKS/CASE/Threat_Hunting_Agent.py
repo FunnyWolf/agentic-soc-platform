@@ -16,7 +16,8 @@ from Lib.api import get_current_time_str
 from Lib.baseplaybook import LanggraphPlaybook
 from PLUGINS.LLM.llmapi import LLMAPI
 from PLUGINS.SIRP.sirpapi import Case
-from PLUGINS.SIRP.sirpmodel import PlaybookJobStatus, PlaybookModel, CaseModel
+from PLUGINS.SIRP.sirpextramodel import PlaybookJobStatus, PlaybookModel
+from PLUGINS.SIRP.sirpcoremodel import CaseModel
 
 MAX_ITERATIONS = 3
 MAX_ITERATIONS_OF_FUNCTIONS_CALL = 2

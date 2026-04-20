@@ -13,7 +13,8 @@ from Lib.basemodule import LanggraphModule
 from Lib.llmapi import BaseAgentState
 from PLUGINS.LLM.llmapi import LLMAPI
 from PLUGINS.SIRP.sirpapi import Alert
-from PLUGINS.SIRP.sirpmodel import AlertModel, ArtifactModel, ArtifactType, ArtifactRole, Severity, AlertStatus, AlertAnalyticType, ProductCategory, Confidence
+from PLUGINS.SIRP.sirpcoremodel import ArtifactType, ArtifactRole, Severity, Confidence, AlertAnalyticType, ProductCategory, AlertStatus, ArtifactModel, \
+    AlertModel
 
 
 class AnalyzeResult(BaseModel):

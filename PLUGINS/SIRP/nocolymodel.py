@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from datetime import datetime
 from enum import Enum
 from typing import Optional, Any, Union, TypedDict, Literal, List
 
@@ -74,38 +73,3 @@ class Operator(str, Enum):
     NOT_BETWEEN = "notbetween"  # 不在范围内 ["10", "20"]
     IS_EMPTY = "isempty"  # 为空 (不需要 value)
     IS_NOT_EMPTY = "isnotempty"  # 不为空 (不需要 value)
-
-
-class AttachmentModel(BaseModel):
-    DownloadUrl: Optional[str] = Field(default=None, description="文件的下载地址")
-    WaterMarkInfo: Optional[Any] = Field(default=None, description="文件水印信息")
-    allow_down: Optional[bool] = Field(default=None, description="是否允许下载")
-    allow_edit: Optional[bool] = Field(default=None, description="是否允许编辑")
-    allow_view: Optional[bool] = Field(default=None, description="是否允许预览")
-    createTime: Optional[Union[datetime, str]] = Field(default=None, description="文件创建时间")
-    duration: Optional[float] = Field(default=None, description="音视频文件的时长（秒）")
-    file_id: Optional[str] = Field(default=None, description="文件的唯一ID")
-    file_name: Optional[str] = Field(default=None, description="文件名")
-    file_path: Optional[str] = Field(default=None, description="文件在服务器上的存储路径")
-    file_size: Optional[int] = Field(default=None, description="文件大小（字节）")
-    file_type: Optional[int] = Field(default=None, description="文件类型的一种数字表示")
-    height: Optional[int] = Field(default=None, description="图片或视频的高度（像素）")
-    is_delete: Optional[bool] = Field(default=None, description="文件是否已被删除")
-    is_knowledge: Optional[bool] = Field(default=None, description="是否为知识库文件")
-    large_thumbnail_name: Optional[str] = Field(default=None, description="大缩略图名称")
-    large_thumbnail_path: Optional[str] = Field(default=None, description="大缩略图路径")
-    node_id: Optional[str] = Field(default="", description="关联的节点ID")
-    origin_link_url: Optional[str] = Field(default=None, description="原始链接URL")
-    original_file_full_path: Optional[str] = Field(default=None, description="原始文件的完整路径")
-    original_file_name: Optional[str] = Field(default=None, description="原始文件名")
-    preview_url: Optional[str] = Field(default=None, description="文件的预览地址")
-    share_folder_url: Optional[str] = Field(default=None, description="共享文件夹地址")
-    short_link_url: Optional[str] = Field(default=None, description="短链接地址")
-    thumbnail_name: Optional[str] = Field(default="", description="缩略图名称")
-    thumbnail_path: Optional[str] = Field(default="", description="缩略图路径")
-    width: Optional[int] = Field(default=None, description="图片或视频的宽度（像素）")
-
-
-class AttachmentCreateModel(BaseModel):
-    name: Optional[str] = Field(default=None, description="文件名")
-    url: Optional[str] = Field(default=None, description="文件base64格式的值(不是url)")

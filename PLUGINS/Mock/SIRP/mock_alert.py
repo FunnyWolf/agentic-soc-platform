@@ -2,8 +2,8 @@ from PLUGINS.Mock.SIRP.mock_api import past_10m, past_5m, now, past_1d_18h, past
     past_30m, past_2h
 from PLUGINS.Mock.SIRP.mock_artifact import *
 from PLUGINS.Mock.SIRP.mock_enrichment import *
-from PLUGINS.SIRP.sirpmodel import AlertModel, Severity, Impact, Disposition, AlertAction, Confidence, AlertAnalyticType, AlertAnalyticState, \
-    ProductCategory, AlertRiskLevel, AlertStatus, AlertPolicyType
+from PLUGINS.SIRP.sirpcoremodel import Severity, Impact, Disposition, AlertAction, Confidence, AlertAnalyticType, AlertAnalyticState, ProductCategory, \
+    AlertPolicyType, AlertRiskLevel, AlertStatus, AlertModel
 
 alert_user_reported_phishing = AlertModel(
     title="User Reported Phishing Email via Outlook Plugin",

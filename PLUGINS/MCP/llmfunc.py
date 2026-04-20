@@ -10,9 +10,9 @@ from PLUGINS.SIEM.models import AdaptiveQueryInput, KeywordSearchInput, SchemaEx
 from PLUGINS.SIEM.tools import SIEMToolKit
 from PLUGINS.SIRP.nocolymodel import Group, Condition, Operator
 from PLUGINS.SIRP.sirpapi import Alert, Artifact, Case, Enrichment, Knowledge, Playbook, Ticket
-from PLUGINS.SIRP.sirpmodel import ArtifactModel, ArtifactReputationScore, ArtifactRole, ArtifactType, AlertStatus, EnrichmentModel, Severity, \
-    CaseStatus, CaseVerdict, Confidence, \
-    AttackStage, KnowledgeAction, KnowledgeSource, PlaybookJobStatus, PlaybookType, TicketStatus, TicketType, TicketModel
+from PLUGINS.SIRP.sirpextramodel import PlaybookType, KnowledgeSource, PlaybookJobStatus, KnowledgeAction
+from PLUGINS.SIRP.sirpcoremodel import TicketStatus, TicketType, ArtifactType, ArtifactRole, ArtifactReputationScore, Severity, AttackStage, Confidence, \
+    AlertStatus, CaseStatus, CaseVerdict, EnrichmentModel, TicketModel, ArtifactModel
 
 
 def _dump_models_for_ai(models, limit: int) -> list[dict]:
@@ -22,18 +22,23 @@ def _dump_models_for_ai(models, limit: int) -> list[dict]:
 # redis stream
 
 def read_message_by_id(
-        stream_name: Annotated[str, Field(description="Stream name, usually the module name, e.g. 'Cloud-01-AWS-IAM-Privilege-Escalation-via-AttachUserPolicy' (Stream 名称,通常为 Module 名称)")],
+        stream_name: Annotated[str, Field(
+            description="Stream name, usually the module name, e.g. 'Cloud-01-AWS-IAM-Privilege-Escalation-via-AttachUserPolicy' (Stream 名称,通常为 Module 名称)")],
         message_id: Annotated[str, Field(description="Message ID (Entry ID), e.g. '1776309110392-0' (消息 ID)")],
-) -> Annotated[dict, Field(description="Message read from Redis stream by message ID (通过消息 ID 从 Redis Stream 读取的消息 dict)")]:
+) -> Annotated[dict, Field(
+    description="Message read from Redis stream by message ID, or empty dict if not found (通过消息 ID 从 Redis Stream 精确读取的消息 dict,不存在时返回空 dict)")]:
+    """Read one message from a Redis stream by its exact message ID (non-blocking). (按消息 ID 从 Redis Stream 精确读取一条消息,非阻塞)"""
     redis_stream_api = RedisStreamAPI()
     message = redis_stream_api.read_message_by_id(stream_name, message_id, timeout=1)
     return message
 
 
 def read_stream_head(
-        stream_name: Annotated[str, Field(description="Stream name, usually the module name, e.g. 'Cloud-01-AWS-IAM-Privilege-Escalation-via-AttachUserPolicy' (Stream 名称,通常为 Module 名称)")],
+        stream_name: Annotated[str, Field(
+            description="Stream name, usually the module name, e.g. 'Cloud-01-AWS-IAM-Privilege-Escalation-via-AttachUserPolicy' (Stream 名称,通常为 Module 名称)")],
         n: Annotated[int, Field(description="Number of messages to read from the head (从头读取的消息数量)")] = 3) -> Annotated[
-    list[dict], Field(description="First n messages from Redis stream as list of dict (前 n 条消息)")]:
+    list[dict], Field(description="First n messages from Redis stream as list of dict (前 n 条消息列表)")]:
+    """Read the first n messages from a Redis stream (non-blocking). Useful for inspecting stream contents or understanding message structure. (从 Redis Stream 头部读取前 n 条消息,非阻塞。常用于查看 Stream 内容或了解消息结构)"""
     redis_stream_api = RedisStreamAPI()
     messages = redis_stream_api.read_stream_head(stream_name, n, timeout=1)
     return messages
@@ -81,7 +86,8 @@ def list_cases(
 
 def get_case_discussions(
         case_id: Annotated[str, Field(description="Case ID, e.g. case_000005 (Case ID)")]
-) -> Annotated[Optional[list[str]], Field(description="Case discussions as JSON string list, or None if case not found (Case 讨论记录 JSON 字符串列表,Case 不存在时返回 None)")]:
+) -> Annotated[Optional[list[str]], Field(
+    description="Case discussions as JSON string list, or None if case not found (Case 讨论记录 JSON 字符串列表,Case 不存在时返回 None)")]:
     """Get case discussions by case ID. (通过 Case ID 获取讨论记录)"""
     discussions = Case.get_discussions(case_id)
     if discussions is None:
@@ -144,7 +150,8 @@ def list_alerts(
 
 def get_alert_discussions(
         alert_id: Annotated[str, Field(description="Alert ID, e.g. alert_000001 (Alert ID)")]
-) -> Annotated[Optional[list[str]], Field(description="Alert discussions as JSON string list, or None if alert not found (Alert 讨论记录 JSON 字符串列表,Alert 不存在时返回 None)")]:
+) -> Annotated[Optional[list[str]], Field(
+    description="Alert discussions as JSON string list, or None if alert not found (Alert 讨论记录 JSON 字符串列表,Alert 不存在时返回 None)")]:
     """Get alert discussions by alert ID. (通过 Alert ID 获取讨论记录)"""
     discussions = Alert.get_discussions(alert_id)
     if discussions is None:
@@ -194,7 +201,8 @@ def create_artifact(
 def attach_artifact_to_alert(
         alert_id: Annotated[str, Field(description="Target alert ID to receive the existing artifact (接收 Artifact 的目标 Alert ID)")],
         artifact_row_id: Annotated[str, Field(description="Artifact record row ID returned by create_artifact (由 create_artifact 返回的 Artifact 行 ID)")]
-) -> Annotated[Optional[str], Field(description="Attached artifact record row ID, or None if alert not found (挂载后的 Artifact 行 ID,Alert 不存在时返回 None)")]:
+) -> Annotated[
+    Optional[str], Field(description="Attached artifact record row ID, or None if alert not found (挂载后的 Artifact 行 ID,Alert 不存在时返回 None)")]:
     """Attach one existing artifact record to an existing alert. (将已有 Artifact 挂载到已有 Alert)"""
     return Alert.attach_artifact(
         alert_id=alert_id,
@@ -258,9 +266,12 @@ def create_enrichment(
 
 
 def attach_enrichment_to_target(
-        target_id: Annotated[str, Field(description="Target object ID to receive the enrichment; must start with case_, alert_, or artifact_ (接收富化的目标对象 ID,须以 case_、alert_ 或 artifact_ 开头)")],
-        enrichment_row_id: Annotated[str, Field(description="Enrichment record row ID returned by create_enrichment (由 create_enrichment 返回的 Enrichment 行 ID)")]
-) -> Annotated[Optional[str], Field(description="Attached enrichment record row ID, or None if target not found (挂载后的 Enrichment 行 ID,目标不存在时返回 None)")]:
+        target_id: Annotated[str, Field(
+            description="Target object ID to receive the enrichment; must start with case_, alert_, or artifact_ (接收富化的目标对象 ID,须以 case_、alert_ 或 artifact_ 开头)")],
+        enrichment_row_id: Annotated[
+            str, Field(description="Enrichment record row ID returned by create_enrichment (由 create_enrichment 返回的 Enrichment 行 ID)")]
+) -> Annotated[
+    Optional[str], Field(description="Attached enrichment record row ID, or None if target not found (挂载后的 Enrichment 行 ID,目标不存在时返回 None)")]:
     """Attach one existing enrichment record to an existing case, alert, or artifact. (将已有富化记录挂载到 Case、Alert 或 Artifact)"""
     normalized_target_id = target_id.strip().lower()
 
@@ -359,18 +370,21 @@ def update_ticket(
 
 # Playbook
 def list_available_playbook_definitions(
-) -> Annotated[str, Field(description="Runnable playbook definitions as JSON string, not playbook run records (可执行的 Playbook 定义列表 JSON 字符串,非 Playbook 执行记录)")]:
+) -> Annotated[str, Field(
+    description="Runnable playbook definitions as JSON string, not playbook run records (可执行的 Playbook 定义列表 JSON 字符串,非 Playbook 执行记录)")]:
     """List all runnable built-in playbook definitions, not playbook run records. (列出所有可执行的内置 Playbook 定义,非 Playbook 执行记录)"""
     result = PlaybookLoader.list_playbook_config()
     return json.dumps(result, ensure_ascii=False)
 
 
 def list_playbook_runs(
-        row_id: Annotated[Optional[str], Field(description="Playbook run row ID filter, e.g. 03c26478-b213-44c8-b651-3cc88abaac01 (Playbook 执行记录行 ID 过滤)")] = None,
+        row_id: Annotated[
+            Optional[str], Field(description="Playbook run row ID filter, e.g. 03c26478-b213-44c8-b651-3cc88abaac01 (Playbook 执行记录行 ID 过滤)")] = None,
         playbook_id: Annotated[Optional[str], Field(description="Playbook run ID filter, e.g. playbook_000001 (Playbook 执行记录 ID 过滤)")] = None,
         job_status: Annotated[Optional[list[PlaybookJobStatus]], Field(description="Playbook job status filter (Playbook 任务状态过滤)")] = None,
         type: Annotated[Optional[list[PlaybookType]], Field(description="Playbook type filter (Playbook 类型过滤)")] = None,
-        source_id: Annotated[Optional[str], Field(description="Playbook target record ID filter, e.g. case_000001, alert_000001, artifact_000001 (Playbook 目标记录 ID 过滤)")] = None,
+        source_id: Annotated[Optional[str], Field(
+            description="Playbook target record ID filter, e.g. case_000001, alert_000001, artifact_000001 (Playbook 目标记录 ID 过滤)")] = None,
         limit: Annotated[int, Field(description="Max playbook runs to return (最多返回条数)")] = 10
 ) -> Annotated[list[dict], Field(description="Matching playbook run records as AI-friendly JSON list (匹配的 Playbook 执行记录列表)")]:
     """List playbook run records with optional filters. (列出 Playbook 执行记录,支持多条件过滤)"""
@@ -394,9 +408,11 @@ def list_playbook_runs(
 
 def execute_playbook(
         type: Annotated[PlaybookType, Field(description="Target object type for the playbook run (Playbook 执行的目标对象类型)")],
-        name: Annotated[str, Field(description="Runnable playbook definition name from list_available_playbook_definitions, not a playbook run ID (来自 list_available_playbook_definitions 的 Playbook 定义名称,非执行记录 ID)")],
+        name: Annotated[str, Field(
+            description="Runnable playbook definition name from list_available_playbook_definitions, not a playbook run ID (来自 list_available_playbook_definitions 的 Playbook 定义名称,非执行记录 ID)")],
         record_id: Annotated[str, Field(description="Target record ID, e.g. case_000001, alert_000001, artifact_000001 (目标记录 ID)")],
-        user_input: Annotated[Optional[str], Field(description="Optional extra natural-language input for this playbook run (本次执行的可选补充自然语言输入)")] = None
+        user_input: Annotated[
+            Optional[str], Field(description="Optional extra natural-language input for this playbook run (本次执行的可选补充自然语言输入)")] = None
 ) -> Annotated[str, Field(description="Created pending playbook run record as AI-friendly JSON string (创建的待执行 Playbook 记录 JSON 字符串)")]:
     """Create one pending playbook run record from a runnable playbook definition. (根据 Playbook 定义创建一条待执行记录)"""
     result = Playbook.add_pending_playbook(
@@ -467,7 +483,8 @@ def search_knowledge(
 
 
 def siem_explore_schema(
-        target_index: Annotated[Optional[str], Field(description="Target SIEM index to inspect; omit to list all available indices (目标 SIEM 索引名称,不填则列出所有可用索引)")] = None
+        target_index: Annotated[Optional[str], Field(
+            description="Target SIEM index to inspect; omit to list all available indices (目标 SIEM 索引名称,不填则列出所有可用索引)")] = None
 ) -> Annotated[str, Field(description="Schema exploration result as JSON string (索引 Schema 探查结果 JSON 字符串)")]:
     """Explore available SIEM indices or inspect one index schema. (探查可用的 SIEM 索引列表或指定索引的 Schema)"""
     input_data = SchemaExplorerInput(target_index=target_index)
@@ -480,7 +497,8 @@ def siem_keyword_search(
         time_range_start: Annotated[str, Field(description="UTC start time in ISO8601, e.g. 2026-02-04T06:00:00Z (UTC 开始时间,ISO8601 格式)")],
         time_range_end: Annotated[str, Field(description="UTC end time in ISO8601, e.g. 2026-02-04T07:00:00Z (UTC 结束时间,ISO8601 格式)")],
         time_field: Annotated[str, Field(description="Time field used for range filtering (用于时间范围过滤的字段名)")] = "@timestamp",
-        index_name: Annotated[Optional[str], Field(description="Target SIEM index or source; None means all indices (目标 SIEM 索引或数据源,None 表示全部索引)")] = None
+        index_name: Annotated[
+            Optional[str], Field(description="Target SIEM index or source; None means all indices (目标 SIEM 索引或数据源,None 表示全部索引)")] = None
 ) -> Annotated[list[str], Field(description="Search hits as JSON strings (命中的事件列表,每条为 JSON 字符串)")]:
     """Search SIEM events by keyword and time range. (按关键词和时间范围搜索 SIEM 事件)"""
     input_data = KeywordSearchInput(
@@ -499,8 +517,10 @@ def siem_adaptive_query(
         time_range_start: Annotated[str, Field(description="UTC start time in ISO8601, e.g. 2026-02-04T06:00:00Z (UTC 开始时间,ISO8601 格式)")],
         time_range_end: Annotated[str, Field(description="UTC end time in ISO8601, e.g. 2026-02-04T07:00:00Z (UTC 结束时间,ISO8601 格式)")],
         time_field: Annotated[str, Field(description="Time field used for range filtering (用于时间范围过滤的字段名)")] = "@timestamp",
-        filters: Annotated[Optional[dict[str, str | list[str]]], Field(description="Exact-match filters; values can be a string or string list (精确匹配过滤条件,值可以是字符串或字符串列表)")] = None,
-        aggregation_fields: Annotated[Optional[list[str]], Field(description="Fields used for top-N aggregation statistics; omit to use defaults (用于 Top-N 聚合统计的字段列表,不填使用默认值)")] = None
+        filters: Annotated[Optional[dict[str, str | list[str]]], Field(
+            description="Exact-match filters; values can be a string or string list (精确匹配过滤条件,值可以是字符串或字符串列表)")] = None,
+        aggregation_fields: Annotated[Optional[list[str]], Field(
+            description="Fields used for top-N aggregation statistics; omit to use defaults (用于 Top-N 聚合统计的字段列表,不填使用默认值)")] = None
 ) -> Annotated[str, Field(description="Adaptive query result as JSON string (自适应查询结果 JSON 字符串)")]:
     """Query SIEM data with exact-match filters and optional aggregations. (对 SIEM 数据执行精确匹配过滤和可选聚合查询)"""
     input_data = AdaptiveQueryInput(
@@ -517,7 +537,8 @@ def siem_adaptive_query(
 
 def get_current_time(
         time_format: Annotated[
-            Optional[str], Field(description="Optional Python strftime format string; if omitted, returns ISO8601 with timezone (可选的 Python strftime 格式字符串,不填则返回带时区的 ISO8601 时间)")] = None
+            Optional[str], Field(
+                description="Optional Python strftime format string; if omitted, returns ISO8601 with timezone (可选的 Python strftime 格式字符串,不填则返回带时区的 ISO8601 时间)")] = None
 ) -> Annotated[str, Field(description="Current local time string with timezone (带时区的当前本地时间字符串)")]:
     """Get current system time. (获取当前系统时间)"""
     current_time = datetime.now().astimezone()

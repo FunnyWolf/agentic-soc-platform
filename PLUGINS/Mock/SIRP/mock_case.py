@@ -1,10 +1,7 @@
 from PLUGINS.Mock.SIRP.mock_alert import *
 from PLUGINS.Mock.SIRP.mock_enrichment import *
 from PLUGINS.Mock.SIRP.mock_ticket import *
-from PLUGINS.SIRP.sirpmodel import (
-    CaseModel, CaseStatus,
-    CasePriority, CaseVerdict, AttackStage
-)
+from PLUGINS.SIRP.sirpcoremodel import Severity, AttackStage, Impact, Confidence, ProductCategory, CasePriority, CaseStatus, CaseVerdict, CaseModel
 
 # === Case 1: Phishing Email Attack (100% Coverage) ===
 case1_phishing = CaseModel(

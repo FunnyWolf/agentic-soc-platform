@@ -14,8 +14,8 @@ from Lib.llmapi import BaseAgentState
 from PLUGINS.LLM.llmapi import LLMAPI
 from PLUGINS.SIRP.grouprule import Correlation, CorrelationConfig
 from PLUGINS.SIRP.sirpapi import Alert, Case
-from PLUGINS.SIRP.sirpmodel import AlertModel, ArtifactModel, ArtifactType, ArtifactRole, Severity, AlertStatus, AlertAnalyticType, ProductCategory, Confidence, \
-    Impact, AlertRiskLevel, Disposition, AlertAction, AlertPolicyType, CaseModel, CaseStatus, CasePriority
+from PLUGINS.SIRP.sirpcoremodel import ArtifactType, ArtifactRole, Severity, Impact, Disposition, AlertAction, Confidence, AlertAnalyticType, ProductCategory, \
+    AlertPolicyType, AlertRiskLevel, AlertStatus, CasePriority, CaseStatus, ArtifactModel, AlertModel, CaseModel
 
 
 class AnalyzeResult(BaseModel):

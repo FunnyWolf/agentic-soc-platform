@@ -6,7 +6,8 @@ from Lib.baseplaybook import LanggraphPlaybook
 from Lib.llmapi import BaseAgentState
 from PLUGINS.LLM.llmapi import LLMAPI
 from PLUGINS.SIRP.sirpapi import Alert
-from PLUGINS.SIRP.sirpmodel import PlaybookJobStatus, AlertModel, PlaybookModel
+from PLUGINS.SIRP.sirpextramodel import PlaybookJobStatus, PlaybookModel
+from PLUGINS.SIRP.sirpcoremodel import AlertModel
 
 
 class AgentState(BaseAgentState):

@@ -1,4 +1,4 @@
-from PLUGINS.SIRP.sirpmodel import TicketModel, TicketStatus, TicketType
+from PLUGINS.SIRP.sirpcoremodel import TicketStatus, TicketType, TicketModel
 
 ticket_jira = TicketModel(
     status=TicketStatus.IN_PROGRESS,

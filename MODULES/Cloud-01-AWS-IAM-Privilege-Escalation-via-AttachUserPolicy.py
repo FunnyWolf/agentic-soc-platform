@@ -6,17 +6,11 @@ from dateutil import parser
 from Lib.basemodule import BaseModule
 from PLUGINS.SIRP.correlation import Correlation
 from PLUGINS.SIRP.sirpapi import Alert, Case
-from PLUGINS.SIRP.sirpmodel import (
-    AlertModel, ArtifactModel, ArtifactType, ArtifactRole, Severity,
-    AlertStatus, AlertAnalyticType, ProductCategory, Confidence,
-    Impact, AlertRiskLevel, Disposition, AlertAction,
-    AlertPolicyType, CaseModel, CaseStatus, CasePriority
-)
+from PLUGINS.SIRP.sirpcoremodel import ArtifactType, ArtifactRole, Severity, Impact, Disposition, AlertAction, Confidence, AlertAnalyticType, ProductCategory, \
+    AlertPolicyType, AlertRiskLevel, AlertStatus, CasePriority, CaseStatus, ArtifactModel, AlertModel, CaseModel
 
 
 class Module(BaseModule):
-    THREAD_NUM = 2
-
     def __init__(self):
         super().__init__()
 
@@ -29,7 +23,7 @@ class Module(BaseModule):
         event_id = raw_alert.get("eventID", "")
         aws_region = raw_alert.get("awsRegion", "")
         source_ip = raw_alert.get("sourceIPAddress", "")
-        user_agent = raw_alert.get("userAgent", "Unknown")
+        user_agent = raw_alert.get("userAgent", "")
 
         # 用户身份信息
         user_identity = raw_alert.get("userIdentity", {})
@@ -117,9 +111,9 @@ class Module(BaseModule):
 
         # 3. 计算 correlation_uid (Correlation Logic)
         # 选择 [主体用户, 目标用户, 账号] 作为聚合键，这能有效捕获针对特定目标的持续攻击
-        rule_id = self.module_name
+
         correlation_uid = Correlation.generate_correlation_uid(
-            rule_id=rule_id,
+            rule_id=self.module_name,
             time_window="24h",
             keys=[principal_user, target_user, account_id],
             timestamp=event_time_formatted
@@ -133,7 +127,7 @@ class Module(BaseModule):
             status_detail=status_detail,
             disposition=disposition,
             action=action,
-            rule_id=rule_id,
+            rule_id=self.module_name,
             rule_name="AWS IAM Privilege Escalation via AttachUserPolicy",
             source_uid=event_id,
             correlation_uid=correlation_uid,

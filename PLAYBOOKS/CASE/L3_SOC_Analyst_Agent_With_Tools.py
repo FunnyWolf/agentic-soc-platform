@@ -11,8 +11,8 @@ from Lib.baseplaybook import LanggraphPlaybook
 from Lib.llmapi import BaseAgentState
 from PLUGINS.LLM.llmapi import LLMAPI
 from PLUGINS.SIRP.sirpapi import Case, Knowledge
-from PLUGINS.SIRP.sirpmodel import PlaybookJobStatus, CaseModel, PlaybookModel, AttackStage
-from PLUGINS.SIRP.sirpmodel import Severity, Confidence
+from PLUGINS.SIRP.sirpextramodel import PlaybookJobStatus, PlaybookModel
+from PLUGINS.SIRP.sirpcoremodel import Severity, AttackStage, Confidence, CaseModel
 
 
 class AgentState(BaseAgentState):

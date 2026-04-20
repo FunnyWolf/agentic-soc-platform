@@ -13,7 +13,8 @@ from PLUGINS.LLM.llmapi import LLMAPI
 from PLUGINS.SIEM.models import KeywordSearchInput, KeywordSearchOutput
 from PLUGINS.SIEM.tools import SIEMToolKit
 from PLUGINS.SIRP.sirpapi import Alert
-from PLUGINS.SIRP.sirpmodel import AlertModel, PlaybookModel
+from PLUGINS.SIRP.sirpextramodel import PlaybookModel
+from PLUGINS.SIRP.sirpcoremodel import AlertModel
 
 
 class SearchKeyword(BaseModel):

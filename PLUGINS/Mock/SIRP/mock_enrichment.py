@@ -1,6 +1,6 @@
 import json
 
-from PLUGINS.SIRP.sirpmodel import EnrichmentModel
+from PLUGINS.SIRP.sirpcoremodel import EnrichmentModel
 
 enrichment_otx_evil_domain = EnrichmentModel(
     name="OTX Pulse for evil-domain.com",

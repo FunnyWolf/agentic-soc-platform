@@ -5,7 +5,7 @@ from langgraph.graph import add_messages
 from pydantic import BaseModel
 
 from Lib.log import logger
-from PLUGINS.SIRP.sirpmodel import CaseModel, AlertModel, ArtifactModel
+from PLUGINS.SIRP.sirpcoremodel import ArtifactModel, AlertModel, CaseModel
 
 
 class BaseAgentState(BaseModel):

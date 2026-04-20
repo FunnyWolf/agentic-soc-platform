@@ -2,7 +2,8 @@ import json
 
 from Lib.baseplaybook import BasePlaybook
 from PLUGINS.SIRP.sirpapi import Artifact
-from PLUGINS.SIRP.sirpmodel import PlaybookModel, PlaybookJobStatus, EnrichmentModel, ArtifactModel
+from PLUGINS.SIRP.sirpextramodel import PlaybookJobStatus, PlaybookModel
+from PLUGINS.SIRP.sirpcoremodel import EnrichmentModel, ArtifactModel
 
 
 class Playbook(BasePlaybook):

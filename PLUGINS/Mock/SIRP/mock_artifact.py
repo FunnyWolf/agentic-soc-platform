@@ -1,5 +1,5 @@
 from PLUGINS.Mock.SIRP.mock_enrichment import *
-from PLUGINS.SIRP.sirpmodel import ArtifactModel, ArtifactType, ArtifactRole, ArtifactReputationScore
+from PLUGINS.SIRP.sirpcoremodel import ArtifactType, ArtifactRole, ArtifactReputationScore, ArtifactModel
 
 artifact_evil_email = ArtifactModel(
     name="no-reply@evil-domain.com",
