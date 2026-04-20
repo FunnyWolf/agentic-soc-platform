@@ -179,7 +179,6 @@ class Module(LanggraphModule):
                 impact=Impact.CRITICAL if severity in [Severity.CRITICAL, Severity.HIGH] else Impact.HIGH,
                 confidence=Confidence.HIGH,
                 risk_level=AlertRiskLevel.CRITICAL if severity == Severity.CRITICAL else AlertRiskLevel.HIGH,
-                risk_details=f"Unauthorized administrator policy attached to {target_user} - potential backdoor account creation or privilege escalation attack"
             )
 
             alert_model.artifacts = artifacts

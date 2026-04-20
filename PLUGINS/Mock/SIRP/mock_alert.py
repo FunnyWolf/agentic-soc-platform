@@ -39,11 +39,9 @@ alert_user_reported_phishing = AlertModel(
     policy_type=None,
     policy_desc="",
     risk_level=AlertRiskLevel.MEDIUM,
-    risk_details="Potential for credential theft.",
     status=AlertStatus.NEW,
     status_detail="Awaiting analyst review.",
     remediation="Based on the analysis, it is recommended to block the sender's domain 'evil-domain.com' and IP address at the email gateway and firewall. Purge the phishing email from all recipient mailboxes. Force password reset for the user who reported the email and any other potential recipients.",
-    comment="Initial report from user.",
     unmapped=json.dumps({"x-original-ip": "123.123.123.123"}),
     raw_data=json.dumps({"subject": "Urgent Payroll Update", "from": "no-reply@evil-domain.com", "to": "john.doe@example.com"}),
     comment_ai="A user reported a suspicious email with urgent language regarding payroll.",
@@ -85,11 +83,11 @@ alert_malware_blocked = AlertModel(
     policy_type=None,
     policy_desc="Blocks all inbound attachments with a VT score > 50.",
     risk_level=AlertRiskLevel.HIGH,
-    risk_details="Malware could lead to endpoint compromise.",
+
     status=AlertStatus.RESOLVED,
     status_detail="File was quarantined by the email gateway's automated policy.",
     remediation="The malware was blocked and quarantined, no immediate action required for this specific alert. It is recommended to add the file hash to the endpoint detection and response (EDR) system's blocklist to prevent execution from other vectors. Also, conduct a threat hunt to ensure no other systems were compromised.",
-    comment="Blocked 5 attempts to deliver this file to different users.",
+
     unmapped="",
     raw_data=json.dumps({"attachment_hash": "a1b2c3d4e5f6...", "recipient_count": 5}),
     comment_ai="The email gateway blocked a malicious attachment identified by its hash.",
@@ -132,11 +130,11 @@ alert_psexec_lateral = AlertModel(
     policy_type=AlertPolicyType.IDENTITY_POLICY,
     policy_desc="Monitors for suspicious service installations.",
     risk_level=AlertRiskLevel.HIGH,
-    risk_details="Indicates an attacker is moving through the network.",
+
     status=AlertStatus.ARCHIVED,
     status_detail="Alert has been correlated into Case-2 for incident response.",
     remediation="The SOAR playbook has successfully isolated the source host DC01 and destination host WS-FINANCE-05. Immediate investigation into the initial compromise vector on DC01 is required. It is recommended to dump memory and disk images from both systems for forensic analysis.",
-    comment="Clear indicator of lateral movement.",
+
     unmapped="",
     raw_data=json.dumps({"event_id": 4697, "service_name": "PSEXESVC", "source_host": "DC01"}),
     comment_ai="PsExec was used to move from DC01 to a finance workstation.",
@@ -179,11 +177,11 @@ alert_credential_dumping = AlertModel(
     policy_type=None,
     policy_desc="",
     risk_level=AlertRiskLevel.CRITICAL,
-    risk_details="Domain credentials may be compromised.",
+
     status=AlertStatus.ARCHIVED,
     status_detail="Alert has been correlated into Case-2, serving as a precursor to the lateral movement alert.",
     remediation="Enable LSA Protection (RunAsPPL) on domain controllers. Deploy Credential Guard to protect LSASS from memory access. Monitor for and alert on processes accessing LSASS memory, especially from untrusted processes.",
-    comment="This was likely the initial point of credential theft enabling lateral movement.",
+
     unmapped="",
     raw_data=json.dumps({"source_process": "mimikatz.exe", "target_process": "lsass.exe"}),
     comment_ai="Credential dumping tool Mimikatz was detected on the domain controller.",
@@ -226,11 +224,11 @@ alert_dns_tunnel_volume = AlertModel(
     policy_type=None,
     policy_desc="",
     risk_level=AlertRiskLevel.MEDIUM,
-    risk_details="Potential for covert C2 channel or data exfiltration.",
+
     status=AlertStatus.NEW,
     status_detail="The alert is currently under investigation. The affected host has been placed in a high-monitoring group to observe traffic without tipping off the potential attacker.",
     remediation="Configure DNS sinkholing for the suspicious domain 'c2.bad-actor-infra.net' to analyze C2 commands safely. Review and tighten egress DNS filtering rules. Perform packet capture on the affected host for deeper analysis of the DNS query contents.",
-    comment="",
+
     unmapped="",
     raw_data=json.dumps({"query_count": 245, "domain": "c2.bad-actor-infra.net"}),
     comment_ai="High volume of DNS TXT queries suggests a DNS tunnel.",
@@ -273,11 +271,11 @@ alert_dns_long_query = AlertModel(
     policy_type=AlertPolicyType.SERVICE_CONTROL_POLICY,
     policy_desc="Default policy allowing outbound DNS traffic.",
     risk_level=AlertRiskLevel.LOW,
-    risk_details="Suspicious but could be a false positive from non-standard software.",
+
     status=AlertStatus.NEW,
     status_detail="This alert corroborates the NDR alert for DNS tunneling. Awaiting further analysis from the primary alert.",
     remediation="Implement firewall policies to block or alert on DNS queries with label lengths exceeding RFC standards (63 characters). Ensure DNS traffic is logged comprehensively for threat hunting and historical analysis.",
-    comment="Correlates with the NDR alert, increasing confidence.",
+
     unmapped=json.dumps({"dns_flags": "RD"}),
     raw_data=json.dumps({"qname": "verylonglabelthatmightbeencodeddata.c2.bad-actor-infra.net"}),
     comment_ai="An unusually long DNS query was detected by the firewall.",
@@ -320,11 +318,11 @@ alert_brute_force_ssh = AlertModel(
     policy_type=None,
     policy_desc="",
     risk_level=AlertRiskLevel.HIGH,
-    risk_details="Potential account compromise.",
+
     status=AlertStatus.NEW,
     status_detail="Automated blocking applied. Pending analyst review.",
     remediation="Block the source IP 177.19.44.123 at the firewall. Review SSH logs for successful authentications from this IP. If any successful logins are found, reset passwords immediately.",
-    comment="Blocked after 245 attempts.",
+
     unmapped="",
     raw_data=json.dumps({"attempts": 245, "time_window": "15min", "source_ip": "177.19.44.123"}),
     comment_ai="SSH brute force attack from external IP was detected and blocked.",
@@ -367,11 +365,11 @@ alert_malware_execution = AlertModel(
     policy_type=AlertPolicyType.SERVICE_CONTROL_POLICY,
     policy_desc="Blocks ransomware execution patterns.",
     risk_level=AlertRiskLevel.CRITICAL,
-    risk_details="Ransomware can encrypt critical business files and demand ransom.",
+
     status=AlertStatus.IN_PROGRESS,
     status_detail="Endpoint isolated. Investigation in progress.",
     remediation="Isolate the affected endpoint immediately. Restore from clean backups. Scan all connected systems for the malware hash. Contact incident response team.",
-    comment="Host WS-FINANCE-02 isolated from network.",
+
     unmapped="",
     raw_data=json.dumps({"script_hash": "5f4dcc3b5aa7", "behaviors": ["file_encryption", "network_scan"]}),
     comment_ai="Ransomware malware was detected attempting to encrypt files.",
@@ -414,11 +412,11 @@ alert_unauthorized_access = AlertModel(
     policy_type=AlertPolicyType.SERVICE_CONTROL_POLICY,
     policy_desc="Restrict access to confidential shares.",
     risk_level=AlertRiskLevel.MEDIUM,
-    risk_details="Potential data theft or policy violation.",
+
     status=AlertStatus.NEW,
     status_detail="Awaiting user/manager clarification.",
     remediation="Contact the user to understand the business justification for off-hours access. If unauthorized, revoke access and review share permissions.",
-    comment="Access was denied by file share permissions.",
+
     unmapped="",
     raw_data=json.dumps({"user": "sarah.johnson", "share": "Z:\\CONFIDENTIAL", "time": "02:30 AM"}),
     comment_ai="User attempted unauthorized access to restricted files outside business hours.",
@@ -461,11 +459,10 @@ alert_data_exfiltration = AlertModel(
     policy_type=AlertPolicyType.SERVICE_CONTROL_POLICY,
     policy_desc="Alerts on large transfers of classified data.",
     risk_level=AlertRiskLevel.CRITICAL,
-    risk_details="Sensitive company data may be stolen.",
+
     status=AlertStatus.NEW,
     status_detail="Incident response activated.",
     remediation="Block the destination domain at the firewall. Perform forensic analysis on the source server. Review for other suspicious connections to similar domains.",
-    comment="Data volume: 2.3 GB transferred in 45 minutes.",
     unmapped="",
     raw_data=json.dumps({"destination": "check-version.exfil.xyz", "volume_gb": 2.3, "files_transferred": 847}),
     comment_ai="Large volume of data was being transferred to an external suspicious domain.",
@@ -508,11 +505,11 @@ alert_malicious_email_attachment = AlertModel(
     policy_type=AlertPolicyType.SERVICE_CONTROL_POLICY,
     policy_desc="Block emails with malicious macros.",
     risk_level=AlertRiskLevel.HIGH,
-    risk_details="Macro-based malware can compromise endpoints.",
+
     status=AlertStatus.RESOLVED,
     status_detail="Email was quarantined automatically by policy.",
     remediation="Block the sender domain. Review users who received similar emails. Deploy macro blocking policies across the organization.",
-    comment="Sender: unknown@badguy.net. Recipients: 12 users.",
+
     unmapped="",
     raw_data=json.dumps({"macro_language": "VBA", "powershell_command": "IEX (New-Object Net.WebClient)", "recipients": 12}),
     comment_ai="Email with malicious macro was detected and quarantined before users could open it.",
@@ -555,11 +552,11 @@ alert_privilege_escalation = AlertModel(
     policy_type=AlertPolicyType.IDENTITY_POLICY,
     policy_desc="Monitor and block privilege escalation attempts.",
     risk_level=AlertRiskLevel.CRITICAL,
-    risk_details="Successful privilege escalation allows attacker to gain system-level access.",
+
     status=AlertStatus.IN_PROGRESS,
     status_detail="Awaiting endpoint remediation.",
     remediation="Isolate endpoint. Review process execution logs. Check for indicators of post-exploitation activity. Apply latest Windows patches.",
-    comment="UAC bypass technique CVE-2019-1315 detected.",
+
     unmapped="",
     raw_data=json.dumps({"bypass_method": "CMSTP", "target_privilege": "SYSTEM", "cve": "CVE-2019-1315"}),
     comment_ai="Attacker attempted to escalate privileges using a known Windows UAC bypass.",
@@ -602,11 +599,11 @@ alert_cloud_config_change = AlertModel(
     policy_type=AlertPolicyType.SERVICE_CONTROL_POLICY,
     policy_desc="Prevent public S3 bucket policies.",
     risk_level=AlertRiskLevel.CRITICAL,
-    risk_details="Customer data could be exposed to the internet.",
+
     status=AlertStatus.NEW,
     status_detail="Awaiting security team response.",
     remediation="Revert the S3 bucket policy to private. Identify who made the change. Review CloudTrail logs for other policy changes. Enable MFA delete on the bucket.",
-    comment="Potentially malicious or misconfigured. Principal: arn:aws:iam::123456789012:role/lambda-execution",
+
     unmapped="",
     raw_data=json.dumps(
         {"bucket": "prod-customer-data", "action": "PutBucketPolicy", "principal": "lambda-execution", "effect": "Allow", "principal_service": "*"}),
@@ -649,11 +646,11 @@ alert_brute_force_siem = AlertModel(
     policy_type=AlertPolicyType.ACCESS_CONTROL_POLICY,
     policy_desc="Detect and prevent brute force attacks.",
     risk_level=AlertRiskLevel.CRITICAL,
-    risk_details="Successful compromise of admin account could lead to full system control. Account from high-risk geographic location (China).",
+
     status=AlertStatus.NEW,
     status_detail="Immediate investigation required. Account may be compromised.",
     remediation="1. Immediately force password change for admin account. 2. Review all commands executed by admin since last_seen_time. 3. Block source IP 45.95.11.22 at firewall. 4. Enable MFA for admin account. 5. Review login history for other successful attempts from this IP.",
-    comment="Risk Score: 85/100. Successful login after multiple failures is strong indicator of compromise.",
+
     unmapped="",
     raw_data=json.dumps(
         {"failed_attempts": 7, "source_ip": "45.95.11.22", "source_country": "CN", "target_user": "admin", "target_host": "srv-web-prod-01", "protocol": "ssh",
@@ -698,11 +695,11 @@ alert_sql_injection_siem = AlertModel(
     policy_type=AlertPolicyType.SERVICE_CONTROL_POLICY,
     policy_desc="Block SQL injection attacks at the WAF.",
     risk_level=AlertRiskLevel.HIGH,
-    risk_details="SQL injection could allow attacker to read/modify database contents, affecting all application data.",
+
     status=AlertStatus.NEW,
     status_detail="Attack was successfully blocked. No damage detected. Source IP monitoring enabled.",
     remediation="1. Add source IP to block list. 2. Review WAF logs for other attack attempts. 3. Audit application code for SQL injection vulnerabilities. 4. Implement parameterized queries in application. 5. Consider implementing request rate limiting.",
-    comment="Attack method: sqlmap automated SQL injection scanner. Multiple injection vectors attempted including boolean blind, time-based, and UNION-based.",
+
     unmapped="",
     raw_data=json.dumps({"payload": "id=1' OR '1'='1", "waf_rule_id": "WAF-12345", "blocked_count": 1, "http_status": 403, "user_agent": "sqlmap/1.5.2"}),
     comment_ai="SQL injection attack from Russia was detected and blocked by WAF. Attacker used automated sqlmap tool. No database compromise detected.",
@@ -744,11 +741,9 @@ alert_ransomware_siem = AlertModel(
     policy_type=AlertPolicyType.SERVICE_CONTROL_POLICY,
     policy_desc="Immediate blocking of all ransomware indicators.",
     risk_level=AlertRiskLevel.CRITICAL,
-    risk_details="Database server encryption would impact all database users. Potential data loss and extended downtime. Estimated impact: $100K+ per hour of downtime.",
     status=AlertStatus.NEW,
     status_detail="CRITICAL: Immediate action required. Automatic host isolation has been triggered.",
     remediation="IMMEDIATE ACTIONS: 1. Verify host isolation is complete (confirmed). 2. Do NOT power off infected host (may prevent recovery). 3. Disconnect all network cables. 4. Capture forensic image of storage drives. 5. Begin restore from clean backup prior to incident date. 6. Notify business stakeholders of estimated recovery time. INVESTIGATION: 1. Analyze attack entry point (email, SMB, RDP, etc.). 2. Check for lateral movement to other hosts. 3. Review backup integrity to ensure clean restore available. 4. Implement EDR hunting query to find similar patterns.",
-    comment="This is a confirmed active ransomware attack. CRITICAL priority. Finance and Executive team notified. Legal/Compliance briefing initiated. Do NOT attempt to contact attacker or pay ransom without consulting law enforcement.",
     unmapped="",
     raw_data=json.dumps(
         {"shadow_copy_deleted": True, "encrypted_file_count": 20, "ransom_note_created": True, "process_execution": "vssadmin.exe delete shadows /all /quiet",

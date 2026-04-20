@@ -28,13 +28,13 @@ class Module(BaseModule):
         event_time = raw_alert.get("eventTime", raw_alert.get("@timestamp", ""))
         event_id = raw_alert.get("eventID", "")
         aws_region = raw_alert.get("awsRegion", "")
-        source_ip = raw_alert.get("sourceIPAddress", "0.0.0.0")
+        source_ip = raw_alert.get("sourceIPAddress", "")
         user_agent = raw_alert.get("userAgent", "Unknown")
 
         # 用户身份信息
         user_identity = raw_alert.get("userIdentity", {})
         principal_type = user_identity.get("type", "")
-        principal_user = user_identity.get("userName", "unknown-user")
+        principal_user = user_identity.get("userName", "")
         principal_arn = user_identity.get("arn", "")
         principal_id = user_identity.get("principalId", "")
         access_key_id = user_identity.get("accessKeyId", "")
@@ -42,18 +42,31 @@ class Module(BaseModule):
 
         # 请求参数
         request_params = raw_alert.get("requestParameters", {})
-        target_user = request_params.get("userName", "unknown-target")
+        target_user = request_params.get("userName", "")
         policy_arn = request_params.get("policyArn", "")
-        policy_name = policy_arn.split('/')[-1] if policy_arn else "UnknownPolicy"
+        policy_name = policy_arn.split('/')[-1] if policy_arn else ""
 
         # 响应与错误
         error_code = raw_alert.get("errorCode")
         error_message = raw_alert.get("errorMessage")
-        outcome = raw_alert.get("event.outcome", "success" if not error_code else "failure")
+        outcome = raw_alert.get("event.outcome", "")
 
-        # 严重程度映射
-        risk_score = raw_alert.get("event.risk_score", 80)
+        # 严重程度映射 (定制化字段处理)
+        risk_score_raw = raw_alert.get("event.risk_score", 80)
+        try:
+            risk_score = float(risk_score_raw)
+        except (TypeError, ValueError):
+            risk_score = 80.0
         log_level = raw_alert.get("log.level", "warning")
+
+        if risk_score >= 90:
+            risk_level = AlertRiskLevel.CRITICAL
+        elif risk_score >= 70:
+            risk_level = AlertRiskLevel.HIGH
+        elif risk_score >= 40:
+            risk_level = AlertRiskLevel.MEDIUM
+        else:
+            risk_level = AlertRiskLevel.LOW
 
         severity_map = {
             "critical": Severity.CRITICAL,
@@ -63,7 +76,7 @@ class Module(BaseModule):
         }
         severity = severity_map.get(log_level.lower(), Severity.HIGH)
 
-        # 处置结果判定
+        # 处置结果判定 (定制化字段处理)
         if error_code == "UnauthorizedOperation":
             disposition = Disposition.UNAUTHORIZED
             action = AlertAction.DENIED
@@ -74,7 +87,11 @@ class Module(BaseModule):
             disposition = Disposition.DETECTED
             action = AlertAction.OBSERVED
 
+        # 状态计算 (定制化字段处理)
+        status_detail = f"Outcome: {outcome}"
+
         event_time_formatted = parser.parse(event_time)
+
         # 2. 提取符合标准的 Artifact (Artifact Extraction)
         artifacts: List[ArtifactModel] = []
 
@@ -109,10 +126,6 @@ class Module(BaseModule):
         )
 
         # 4. 组装 Alert (Alert Assembly)
-        status_detail = f"Outcome: {outcome}"
-        if error_code:
-            status_detail += f" ({error_code}: {error_message})"
-
         alert_model = AlertModel(
             title=f"AWS IAM PrivyEsc: {principal_user} attempted to attach {policy_name} to {target_user}",
             severity=severity,
@@ -153,9 +166,7 @@ class Module(BaseModule):
             policy_type=AlertPolicyType.IDENTITY_POLICY,
             impact=Impact.CRITICAL if outcome == "success" else Impact.MEDIUM,
             confidence=Confidence.HIGH,
-            risk_level=AlertRiskLevel.HIGH if outcome == "success" else AlertRiskLevel.MEDIUM,
-            risk_details=f"High risk of administrative takeover if the attached policy contains broad permissions. "
-                         f"Current status is {outcome}."
+            risk_level=risk_level,
         )
         alert_model.artifacts = artifacts
 
@@ -174,6 +185,7 @@ class Module(BaseModule):
                 )
                 Case.update(update_case)
             else:
+                # 根据 Alert 计算 Case字段
                 new_case = CaseModel(
                     title=f"Potential IAM Privilege Escalation in Account {account_id}",
                     severity=severity,
@@ -202,5 +214,5 @@ if __name__ == "__main__":
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ASP.settings")
     django.setup()
     module = Module()
-    module.debug_message_id = "1776309110403-0"
+    module.debug_message_id = "1776309110386-0"
     module.run()

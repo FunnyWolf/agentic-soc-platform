@@ -119,10 +119,11 @@ class WorksheetRow(object):
     def _format_output_value(fields_config, fields):
         fields_new = []
         for field in fields:
-            field_key = field.get("id")
-            field_config = fields_config.get(field_key)
+            if field.get("id") == "row_id":
+                field["id"] = "rowId"
+            field_config = fields_config.get(field.get("id"))
             if field_config is None:
-                raise Exception(f"field {field_key} not found in fields_config")
+                raise Exception(f"field {field.get("id")} not found in fields_config")
 
             field_type = field_config.get("type")
             sub_type = field_config.get("subType")

@@ -5,6 +5,7 @@ from typing import Annotated, Optional
 from pydantic import Field
 
 from Lib.playbookloader import PlaybookLoader
+from PLUGINS.Redis.redis_stream_api import RedisStreamAPI
 from PLUGINS.SIEM.models import AdaptiveQueryInput, KeywordSearchInput, SchemaExplorerInput
 from PLUGINS.SIEM.tools import SIEMToolKit
 from PLUGINS.SIRP.nocolymodel import Group, Condition, Operator
@@ -14,12 +15,28 @@ from PLUGINS.SIRP.sirpmodel import ArtifactModel, ArtifactReputationScore, Artif
     AttackStage, KnowledgeAction, KnowledgeSource, PlaybookJobStatus, PlaybookType, TicketStatus, TicketType, TicketModel
 
 
-def _build_filter_group(conditions: list[Condition]) -> Group:
-    return Group(logic="AND", children=conditions or [])
-
-
 def _dump_models_for_ai(models, limit: int) -> list[dict]:
     return [model.model_dump_for_ai() for model in models[:limit]]
+
+
+# redis stream
+
+def read_message_by_id(
+        stream_name: Annotated[str, Field(description="Stream 名称,通常为 Module 名称, e.g. 'Cloud-01-AWS-IAM-Privilege-Escalation-via-AttachUserPolicy' ")],
+        message_id: Annotated[str, Field(description="Message ID (Entry ID), e.g. '1776309110392-0' ")],
+) -> Annotated[dict, Field(description="message (dict) read from Redis stream by message ID")]:
+    redis_stream_api = RedisStreamAPI()
+    message = redis_stream_api.read_message_by_id(stream_name, message_id, timeout=1)
+    return message
+
+
+def read_stream_head(
+        stream_name: Annotated[str, Field(description="Stream 名称,通常为 Module 名称, e.g. 'Cloud-01-AWS-IAM-Privilege-Escalation-via-AttachUserPolicy' ")],
+        n: Annotated[int, Field(description="读取消息数量")] = 3) -> Annotated[
+    list[dict], Field(description="前 n 条消息 (list of dict) read from Redis stream")]:
+    redis_stream_api = RedisStreamAPI()
+    messages = redis_stream_api.read_stream_head(stream_name, n, timeout=1)
+    return messages
 
 
 # Case
@@ -57,7 +74,7 @@ def list_cases(
     if tags:
         conditions.append(Condition(field="tags", operator=Operator.CONTAINS, value=tags))
 
-    filter_model = _build_filter_group(conditions)
+    filter_model = Group(logic="AND", children=conditions or [])
     models = Case.list(filter_model, lazy_load=lazy_load)
     return _dump_models_for_ai(models, limit)
 
@@ -122,7 +139,7 @@ def list_alerts(
     if correlation_uid:
         conditions.append(Condition(field="correlation_uid", operator=Operator.EQ, value=correlation_uid))
 
-    filter_model = _build_filter_group(conditions)
+    filter_model = Group(logic="AND", children=conditions or [])
     models = Alert.list(filter_model, lazy_load=lazy_load)
     return _dump_models_for_ai(models, limit)
 
@@ -215,7 +232,7 @@ def list_artifacts(
     if value:
         conditions.append(Condition(field="value", operator=Operator.EQ, value=value))
 
-    filter_model = _build_filter_group(conditions)
+    filter_model = Group(logic="AND", children=conditions or [])
     models = Artifact.list(filter_model, lazy_load=lazy_load)
     return _dump_models_for_ai(models, limit)
 
@@ -318,7 +335,7 @@ def list_tickets(
     if uid:
         conditions.append(Condition(field="uid", operator=Operator.EQ, value=uid))
 
-    filter_model = _build_filter_group(conditions)
+    filter_model = Group(logic="AND", children=conditions or [])
     models = Ticket.list(filter_model, lazy_load=True)
     return _dump_models_for_ai(models, limit)
 
@@ -372,7 +389,7 @@ def list_playbook_runs(
     if type:
         conditions.append(Condition(field="type", operator=Operator.IN, value=type))
 
-    filter_model = _build_filter_group(conditions)
+    filter_model = Group(logic="AND", children=conditions or [])
     models = Playbook.list(filter_model, lazy_load=True)
     return _dump_models_for_ai(models, limit)
 
@@ -421,7 +438,7 @@ def list_knowledge(
     if tags:
         conditions.append(Condition(field="tags", operator=Operator.CONTAINS, value=tags))
 
-    filter_model = _build_filter_group(conditions)
+    filter_model = Group(logic="AND", children=conditions or [])
     models = Knowledge.list(filter_model, lazy_load=True)
     return _dump_models_for_ai(models, limit)
 
@@ -552,4 +569,7 @@ REGISTERED_MCP_TOOLS = [
     siem_adaptive_query,
     siem_keyword_search,
 
+    # redis stream
+    read_stream_head,
+    read_message_by_id,
 ]

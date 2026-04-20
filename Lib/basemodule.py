@@ -23,7 +23,7 @@ class BaseModule(BaseAPI):
         if self.debug_message_id is not None:
             message = redis_stream_api.read_message_by_id(self.module_name, message_id=self.debug_message_id)
         else:
-            message = redis_stream_api.read_message(stream_key=self.module_name, consumer_group=REDIS_CONSUMER_GROUP, consumer_name=self._thread_name)
+            message = redis_stream_api.read_message(stream_name=self.module_name, consumer_group=REDIS_CONSUMER_GROUP, consumer_name=self._thread_name)
         return message
 
 
