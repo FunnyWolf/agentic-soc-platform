@@ -111,8 +111,8 @@ class Module(BaseModule):
 
         correlation_uid = Correlation.generate_correlation_uid(
             rule_id=self.module_name,
-            time_window="24h",
-            keys=[principal_user, target_user, account_id],
+            time_window="5m",
+            keys=[account_id],
             timestamp=event_time_formatted
         )
 
@@ -172,13 +172,13 @@ class Module(BaseModule):
             alert_model.artifacts = None
 
         if alert_enrichments:
-            alert_model.alert_enrichments = alert_enrichments
+            alert_model.enrichments = alert_enrichments
         else:
-            alert_model.alert_enrichments = None
+            alert_model.enrichments = None
 
         # 保存告警
         saved_alert_row_id = Alert.create(alert_model)
-        self.logger.info(f"Alert created: {saved_alert_row_id} with disposition {disposition}")
+        self.logger.info(f"Alert created: {saved_alert_row_id}")
 
         # 5. Case 处理 (Case Management)
         try:
@@ -219,5 +219,8 @@ if __name__ == "__main__":
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ASP.settings")
     django.setup()
     module = Module()
-    module.debug_message_id = "1776309110386-0"
-    module.run()
+
+    message_ids = module.read_stream_head_ids(100)
+    for message_id in message_ids:
+        module.debug_message_id = message_id
+        module.run()

@@ -17,6 +17,11 @@ class BaseModule(BaseAPI):
         self.agent_state = None
         self.debug_message_id = None  # 设置为非None以启用Debug模式
 
+    def read_stream_head_ids(self, n):  # 调试时使用，读取最近的n条消息
+        redis_stream_api = RedisStreamAPI()
+        messages = redis_stream_api.read_stream_head_ids(self.module_name, n=n)
+        return messages
+
     def read_stream_message(self) -> dict:
         """读取消息"""
         redis_stream_api = RedisStreamAPI()

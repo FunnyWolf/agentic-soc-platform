@@ -26,6 +26,7 @@ metadata:
 
 - 模块文件名必须与 SIEM rule 名称完全一致（含大小写）——Rule 名 = Redis Stream 名 = 文件名，三者强约束，任意一处不一致框架将无法路由告警。
 - 编写代码前必须先获取 raw_alert 样本，不得凭空猜测字段结构。
+- 编写代码前必须读取 `PLUGINS/SIRP/sirpcoremodel.py`，所有 enum 值只能使用该文件中实际定义的值，不得凭记忆或推断自行发明。
 - 所有模块必须继承 `BaseModule` 并实现 `run()` 方法。
 - SIRP 数据层级：`Case → Alert → Artifact`（三级体系）。Artifact 是调查的最小原子实体（一个 IP、一个用户名），应尽量从 raw_alert 中提取；Alert 挂在 Case 下；同类告警通过 `correlation_uid` 聚合到同一个 Case。Enrichment 是独立于三级体系之外的横切附加层，可按需挂载到 Case / Alert / Artifact 任意一级。
 - 参考实现：`MODULES/Cloud-01-AWS-IAM-Privilege-Escalation-via-AttachUserPolicy.py`。
@@ -84,6 +85,8 @@ metadata:
 - 好的聚合键应能回答："这些告警是否描述的是同一个攻击者对同一个目标的同一类行为？"
 
 ### Step 5 — 编写模块代码
+
+**前置动作：** 读取 `PLUGINS/SIRP/sirpcoremodel.py`，确认所有需要用到的 enum 的合法值，再开始写代码。
 
 按以下结构生成 `MODULES/<rule-name>.py`：
 

@@ -4,7 +4,7 @@ from typing import List, Union
 
 from typing import Literal
 
-ValidTimeWindows = Literal['10m', '30m', '1h', '2h', '4h', '8h', '12h', '24h', '7d', '30d']
+ValidTimeWindows = Literal['5m','10m', '30m', '1h', '2h', '4h', '8h', '12h', '24h', '7d', '30d']
 
 
 class Correlation(object):
@@ -29,8 +29,11 @@ class Correlation(object):
     def generate_correlation_uid(cls,
                                  rule_id: str,
                                  time_window: ValidTimeWindows = "24h",
-                                 timestamp: datetime = datetime.now(timezone.utc),
+                                 timestamp: datetime = None,
                                  keys: List[Union[str, None]] = None) -> str:
+        if timestamp is None:
+            timestamp = datetime.now(timezone.utc)
+        keys = keys or []
         time_bucket = cls._get_time_bucket(timestamp, time_window)
 
         key_parts = [rule_id, time_bucket]

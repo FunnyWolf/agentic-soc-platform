@@ -124,6 +124,23 @@ class RedisStreamAPI(object):
         with ThreadPoolExecutor(max_workers=1) as executor:
             return executor.submit(_fetch).result(timeout=timeout)
 
+    def read_stream_head_ids(self, stream_name: str, n: int, timeout: Optional[float] = None) -> List[str]:
+        """
+        读取指定 stream 的前 n 条消息的 ID（非阻塞）.
+        :param stream_name: Stream 的名称.
+        :param n: 要读取的消息数量.
+        :param timeout: 超时时间（秒），None 表示不限制.
+        """
+
+        def _fetch():
+            messages = self.redis_client.xrange(stream_name, min='-', max='+', count=n)
+            return [msg_id.decode() if isinstance(msg_id, bytes) else msg_id for msg_id, _ in messages]
+
+        if timeout is None:
+            return _fetch()
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            return executor.submit(_fetch).result(timeout=timeout)
+
     def read_stream_message_by_id(self, stream_name: str, message_id: str, timeout: Optional[float] = None) -> dict:
         """
         读取指定 ID 的消息（精确匹配，非阻塞）.
