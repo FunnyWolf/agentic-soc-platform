@@ -21,7 +21,7 @@ def _dump_models_for_ai(models, limit: int) -> list[dict]:
 
 # redis stream
 
-def read_message_by_id(
+def read_stream_message_by_id(
         stream_name: Annotated[str, Field(
             description="Stream name, usually the module name, e.g. 'Cloud-01-AWS-IAM-Privilege-Escalation-via-AttachUserPolicy' (Stream 名称,通常为 Module 名称)")],
         message_id: Annotated[str, Field(description="Message ID (Entry ID), e.g. '1776309110392-0' (消息 ID)")],
@@ -29,7 +29,7 @@ def read_message_by_id(
     description="Message read from Redis stream by message ID, or empty dict if not found (通过消息 ID 从 Redis Stream 精确读取的消息 dict,不存在时返回空 dict)")]:
     """Read one message from a Redis stream by its exact message ID (non-blocking). (按消息 ID 从 Redis Stream 精确读取一条消息,非阻塞)"""
     redis_stream_api = RedisStreamAPI()
-    message = redis_stream_api.read_message_by_id(stream_name, message_id, timeout=1)
+    message = redis_stream_api.read_stream_message_by_id(stream_name, message_id, timeout=1)
     return message
 
 
@@ -590,5 +590,5 @@ REGISTERED_MCP_TOOLS = [
 
     # redis stream
     read_stream_head,
-    read_message_by_id,
+    read_stream_message_by_id,
 ]

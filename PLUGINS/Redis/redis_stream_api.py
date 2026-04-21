@@ -61,8 +61,8 @@ class RedisStreamAPI(object):
             logger.exception(e)
             return None
 
-    def read_message(self, stream_name: str, consumer_group: str = None,
-                     consumer_name: str = None, timeout: int = 5000) -> dict:
+    def read_stream_message(self, stream_name: str, consumer_group: str = None,
+                            consumer_name: str = None, timeout: int = 5000) -> dict:
         """
         从指定stream读取一条消息
 
@@ -124,7 +124,7 @@ class RedisStreamAPI(object):
         with ThreadPoolExecutor(max_workers=1) as executor:
             return executor.submit(_fetch).result(timeout=timeout)
 
-    def read_message_by_id(self, stream_name: str, message_id: str, timeout: Optional[float] = None) -> dict:
+    def read_stream_message_by_id(self, stream_name: str, message_id: str, timeout: Optional[float] = None) -> dict:
         """
         读取指定 ID 的消息（精确匹配，非阻塞）.
         :param stream_name: Stream 的名称.

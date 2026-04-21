@@ -45,7 +45,7 @@ class Module(LanggraphModule):
             Read one alert from Redis Stream and preprocess into AlertModel.
             Extract artifacts and create AlertModel with proper structure.
             """
-            raw_message = self.read_message()
+            raw_message = self.read_stream_message()
             if raw_message is None:
                 return Command(update={}, goto=END)
 
@@ -148,7 +148,6 @@ class Module(LanggraphModule):
                 rule_name=rule_name,
                 source_uid=event_id,
                 correlation_uid=correlation_uid,
-                count=1,
                 analytic_type=AlertAnalyticType.BEHAVIORAL,
                 analytic_name="AWS IAM Behavioral Anomaly Detection",
                 analytic_desc="Detects suspicious IAM policy attachment operations that indicate privilege escalation attempts or backdoor account creation",

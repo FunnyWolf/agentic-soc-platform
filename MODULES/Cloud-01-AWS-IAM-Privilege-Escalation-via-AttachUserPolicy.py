@@ -7,7 +7,7 @@ from Lib.basemodule import BaseModule
 from PLUGINS.SIRP.correlation import Correlation
 from PLUGINS.SIRP.sirpapi import Alert, Case
 from PLUGINS.SIRP.sirpcoremodel import ArtifactType, ArtifactRole, Severity, Impact, Disposition, AlertAction, Confidence, AlertAnalyticType, ProductCategory, \
-    AlertPolicyType, AlertRiskLevel, AlertStatus, CasePriority, CaseStatus, ArtifactModel, AlertModel, CaseModel
+    AlertPolicyType, AlertRiskLevel, AlertStatus, CasePriority, ArtifactModel, AlertModel, CaseModel, EnrichmentModel
 
 
 class Module(BaseModule):
@@ -16,7 +16,7 @@ class Module(BaseModule):
 
     def run(self):
         # 获取原始告警JSON
-        raw_alert = self.read_message()
+        raw_alert = self.read_stream_message()
 
         # 1. 尽可能解析所有字段 (Extraction)
         event_time = raw_alert.get("eventTime", raw_alert.get("@timestamp", ""))
@@ -25,7 +25,6 @@ class Module(BaseModule):
         source_ip = raw_alert.get("sourceIPAddress", "")
         user_agent = raw_alert.get("userAgent", "")
 
-        # 用户身份信息
         user_identity = raw_alert.get("userIdentity", {})
         principal_type = user_identity.get("type", "")
         principal_user = user_identity.get("userName", "")
@@ -34,13 +33,11 @@ class Module(BaseModule):
         access_key_id = user_identity.get("accessKeyId", "")
         account_id = user_identity.get("accountId", raw_alert.get("recipientAccountId", raw_alert.get("cloud.account.id", "")))
 
-        # 请求参数
         request_params = raw_alert.get("requestParameters", {})
         target_user = request_params.get("userName", "")
         policy_arn = request_params.get("policyArn", "")
         policy_name = policy_arn.split('/')[-1] if policy_arn else ""
 
-        # 响应与错误
         error_code = raw_alert.get("errorCode")
         error_message = raw_alert.get("errorMessage")
         outcome = raw_alert.get("event.outcome", "")
@@ -120,6 +117,12 @@ class Module(BaseModule):
         )
 
         # 4. 组装 Alert (Alert Assembly)
+        alert_enrichments: List[EnrichmentModel] = []
+        if aws_region:
+            enrichment_location = EnrichmentModel(name="Alert AWS region", type="Location", provider="aws", value=aws_region,
+                                                  desc="Alert region from raw alert", data=json.dumps({"awsRegion": aws_region}))
+            alert_enrichments.append(enrichment_location)
+
         alert_model = AlertModel(
             title=f"AWS IAM PrivyEsc: {principal_user} attempted to attach {policy_name} to {target_user}",
             severity=severity,
@@ -148,7 +151,6 @@ class Module(BaseModule):
             unmapped=json.dumps({
                 "errorCode": error_code,
                 "errorMessage": error_message,
-                "userAgent": user_agent,
                 "awsRegion": aws_region,
                 "principalId": principal_id,
                 "requestID": raw_alert.get("requestID")
@@ -162,7 +164,17 @@ class Module(BaseModule):
             confidence=Confidence.HIGH,
             risk_level=risk_level,
         )
-        alert_model.artifacts = artifacts
+
+        # 当关联表值是list[BaseModel]类型时,创建关联记录并关联.当值为None,则不做任何处理,当职位值为[],则清空关联
+        if artifacts:
+            alert_model.artifacts = artifacts
+        else:
+            alert_model.artifacts = None
+
+        if alert_enrichments:
+            alert_model.alert_enrichments = alert_enrichments
+        else:
+            alert_model.alert_enrichments = None
 
         # 保存告警
         saved_alert_row_id = Alert.create(alert_model)
@@ -186,7 +198,6 @@ class Module(BaseModule):
                     impact=Impact.HIGH if outcome == "success" else Impact.MEDIUM,
                     priority=CasePriority.HIGH if outcome == "success" else CasePriority.MEDIUM,
                     confidence=Confidence.HIGH,
-                    status=CaseStatus.NEW,
                     description=f"Investigation required for multiple AttachUserPolicy attempts by {principal_user} "
                                 f"targeting {target_user} in account {account_id}.",
                     category=ProductCategory.CLOUD,

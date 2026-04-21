@@ -41,7 +41,7 @@ class Module(LanggraphModule):
             Read one alert from Redis Stream and preprocess email data into AlertModel.
             Extract and filter email headers, then create AlertModel with artifacts.
             """
-            raw_message = self.read_message()
+            raw_message = self.read_stream_message()
             if raw_message is None:
                 return Command(update={}, goto=END)
 

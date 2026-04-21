@@ -17,13 +17,13 @@ class BaseModule(BaseAPI):
         self.agent_state = None
         self.debug_message_id = None  # 设置为非None以启用Debug模式
 
-    def read_message(self) -> dict:
+    def read_stream_message(self) -> dict:
         """读取消息"""
         redis_stream_api = RedisStreamAPI()
         if self.debug_message_id is not None:
-            message = redis_stream_api.read_message_by_id(self.module_name, message_id=self.debug_message_id)
+            message = redis_stream_api.read_stream_message_by_id(self.module_name, message_id=self.debug_message_id)
         else:
-            message = redis_stream_api.read_message(stream_name=self.module_name, consumer_group=REDIS_CONSUMER_GROUP, consumer_name=self._thread_name)
+            message = redis_stream_api.read_stream_message(stream_name=self.module_name, consumer_group=REDIS_CONSUMER_GROUP, consumer_name=self._thread_name)
         return message
 
 

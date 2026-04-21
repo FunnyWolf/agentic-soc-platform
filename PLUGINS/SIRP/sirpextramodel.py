@@ -48,7 +48,7 @@ class MessageModel(BaseSystemModel):
 
 
 class PlaybookModel(BaseSystemModel):
-    id: Optional[str] = Field(default=None, description="Record ID e.g. playbook_000001 (记录 ID e.g. playbook_000001)")
+    id: Optional[str] = Field(default=None, init=False, description="Record ID e.g. playbook_000001 (记录 ID e.g. playbook_000001)")
     source_row_id: Optional[str] = Field(default="", description="Trigger source row ID (触发源行 ID)")
     source_id: Optional[str] = Field(default="",
                                      description="Trigger source record ID e.g. case_00000_1,alert_000001,artifact_000001 (触发源记录 ID e.g. case_00000_1,alert_000001,artifact_000001)")
@@ -66,7 +66,7 @@ class PlaybookModel(BaseSystemModel):
 
 
 class KnowledgeModel(BaseSystemModel):
-    id: Optional[str] = Field(default=None, description="Record ID e.g. knowledge_000001 (记录 ID e.g. knowledge_000001)")
+    id: Optional[str] = Field(default=None, init=False, description="Record ID e.g. knowledge_000001 (记录 ID e.g. knowledge_000001)")
     title: Optional[str] = Field(default="", description="Knowledge title (知识标题)")
     body: Optional[str] = Field(default="", description="Knowledge content (知识内容)")
     using: Optional[bool] = Field(default=False, description="Currently in use (当前正在使用)")
