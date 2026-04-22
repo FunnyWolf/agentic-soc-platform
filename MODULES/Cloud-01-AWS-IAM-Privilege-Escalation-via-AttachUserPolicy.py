@@ -7,7 +7,7 @@ from Lib.basemodule import BaseModule
 from PLUGINS.SIRP.correlation import Correlation
 from PLUGINS.SIRP.sirpapi import Alert, Case
 from PLUGINS.SIRP.sirpcoremodel import ArtifactType, ArtifactRole, Severity, Impact, Disposition, AlertAction, Confidence, AlertAnalyticType, ProductCategory, \
-    AlertPolicyType, AlertRiskLevel, AlertStatus, CasePriority, ArtifactModel, AlertModel, CaseModel, EnrichmentModel
+    AlertPolicyType, AlertRiskLevel, AlertStatus, CasePriority, ArtifactModel, AlertModel, CaseModel, EnrichmentModel, CaseStatus
 
 
 class Module(BaseModule):
@@ -178,7 +178,6 @@ class Module(BaseModule):
 
         # 保存告警
         saved_alert_row_id = Alert.create(alert_model)
-        self.logger.info(f"Alert created: {saved_alert_row_id}")
 
         # 5. Case 处理 (Case Management)
         try:
@@ -194,6 +193,7 @@ class Module(BaseModule):
                 # 根据 Alert 计算 Case字段
                 new_case = CaseModel(
                     title=f"Potential IAM Privilege Escalation in Account {account_id}",
+                    status=CaseStatus.NEW,  # 创建时显式设置为New
                     severity=severity,
                     impact=Impact.HIGH if outcome == "success" else Impact.MEDIUM,
                     priority=CasePriority.HIGH if outcome == "success" else CasePriority.MEDIUM,

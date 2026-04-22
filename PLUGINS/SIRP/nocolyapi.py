@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from typing import Dict
 from typing import List, Any
 
@@ -27,6 +28,24 @@ adapter = HTTPAdapter(
 HTTP_SESSION.mount('http://', adapter)
 HTTP_SESSION.mount('https://', adapter)
 
+
+def _request_with_timing(method: str, url: str, **kwargs):
+    started_at = time.perf_counter()
+    try:
+        response = HTTP_SESSION.request(method=method, url=url, **kwargs)
+        elapsed_ms = (time.perf_counter() - started_at) * 1000
+        logger.debug(
+            f"[SIRP] request method={method} url={url} status={response.status_code} elapsed_ms={elapsed_ms:.2f}"
+        )
+        return response
+    except Exception as exc:
+        elapsed_ms = (time.perf_counter() - started_at) * 1000
+        logger.debug(
+            f"[SIRP] request failed method={method} url={url} elapsed_ms={elapsed_ms:.2f} error={exc}"
+        )
+        raise
+
+
 SYSTEM_FIELDS = ['_initiatedBy', '_owner', '_updatedAt', '_createdAt', '_remainingTime', '_createdBy', '_updatedBy', '_processName', '_nodeAssignees',
                  '_initiatedAt', '_nodeStartedAt', '_approvalCompletedAt', '_dueAt', '_processStatus']
 
@@ -43,7 +62,8 @@ class Worksheet(object):
 
         url = f"{SIRP_URL}/api/v3/app/worksheets/{worksheet_id}"
 
-        response = HTTP_SESSION.get(
+        response = _request_with_timing(
+            "GET",
             url
         )
         response.raise_for_status()
@@ -169,7 +189,8 @@ class WorksheetRow(object):
     def get(worksheet_id: str, row_id: str, include_system_fields=True) -> dict:
         url = f"{SIRP_URL}/api/v3/app/worksheets/{worksheet_id}/rows/{row_id}"
         fields = Worksheet.get_fields(worksheet_id)
-        response = HTTP_SESSION.get(
+        response = _request_with_timing(
+            "GET",
             url,
             timeout=SIRP_REQUEST_TIMEOUT,
             params={"includeSystemFields": include_system_fields}
@@ -210,10 +231,11 @@ class WorksheetRow(object):
                 "pageIndex": page_index
             }
 
-            response = HTTP_SESSION.post(url,
-                                         timeout=SIRP_REQUEST_TIMEOUT,
-                                         headers=HEADERS,
-                                         json=data)
+            response = _request_with_timing("POST",
+                                            url,
+                                            timeout=SIRP_REQUEST_TIMEOUT,
+                                            headers=HEADERS,
+                                            json=data)
             response.raise_for_status()
             response_data = response.json()
 
@@ -250,9 +272,10 @@ class WorksheetRow(object):
         }
 
         try:
-            response = HTTP_SESSION.post(url,
-                                         timeout=SIRP_REQUEST_TIMEOUT,
-                                         json=data)
+            response = _request_with_timing("POST",
+                                            url,
+                                            timeout=SIRP_REQUEST_TIMEOUT,
+                                            json=data)
             response.raise_for_status()
 
             response_data = response.json()
@@ -274,9 +297,10 @@ class WorksheetRow(object):
             "triggerWorkflow": trigger_workflow,
             "fields": fields
         }
-        response = HTTP_SESSION.patch(url,
-                                      timeout=SIRP_REQUEST_TIMEOUT,
-                                      json=data)
+        response = _request_with_timing("PATCH",
+                                        url,
+                                        timeout=SIRP_REQUEST_TIMEOUT,
+                                        json=data)
         response.raise_for_status()
 
         response_data = response.json()
@@ -304,9 +328,10 @@ class WorksheetRow(object):
         }
 
         try:
-            response = HTTP_SESSION.post(url,
-                                         timeout=SIRP_REQUEST_TIMEOUT,
-                                         json=data)
+            response = _request_with_timing("POST",
+                                            url,
+                                            timeout=SIRP_REQUEST_TIMEOUT,
+                                            json=data)
             response.raise_for_status()
 
             response_data = response.json()
@@ -335,9 +360,10 @@ class WorksheetRow(object):
         }
 
         try:
-            response = HTTP_SESSION.patch(url,
-                                          timeout=SIRP_REQUEST_TIMEOUT,
-                                          json=data)
+            response = _request_with_timing("PATCH",
+                                            url,
+                                            timeout=SIRP_REQUEST_TIMEOUT,
+                                            json=data)
             response.raise_for_status()
 
             response_data = response.json()
@@ -357,9 +383,10 @@ class WorksheetRow(object):
             "triggerWorkflow": trigger_workflow,
         }
 
-        response = HTTP_SESSION.delete(url,
-                                       timeout=SIRP_REQUEST_TIMEOUT,
-                                       json=data)
+        response = _request_with_timing("DELETE",
+                                        url,
+                                        timeout=SIRP_REQUEST_TIMEOUT,
+                                        json=data)
         response.raise_for_status()
 
         response_data = response.json()
@@ -378,9 +405,10 @@ class WorksheetRow(object):
             "triggerWorkflow": trigger_workflow,
         }
 
-        response = HTTP_SESSION.delete(url,
-                                       timeout=SIRP_REQUEST_TIMEOUT,
-                                       json=data)
+        response = _request_with_timing("DELETE",
+                                        url,
+                                        timeout=SIRP_REQUEST_TIMEOUT,
+                                        json=data)
         response.raise_for_status()
 
         response_data = response.json()
@@ -395,8 +423,9 @@ class WorksheetRow(object):
     def get_discussions(worksheet_id: str, row_id: str) -> List[Dict]:
         url = f"{SIRP_URL}/api/v3/app/worksheets/{worksheet_id}/rows/{row_id}/discussions"
 
-        response = HTTP_SESSION.get(url,
-                                    timeout=SIRP_REQUEST_TIMEOUT)
+        response = _request_with_timing("GET",
+                                        url,
+                                        timeout=SIRP_REQUEST_TIMEOUT)
         response.raise_for_status()
 
         response_data = response.json()
@@ -437,9 +466,10 @@ class WorksheetRow(object):
         if include_system_fields is not None:
             params["isReturnSystemFields"] = include_system_fields
 
-        response = HTTP_SESSION.get(url,
-                                    timeout=SIRP_REQUEST_TIMEOUT,
-                                    params=params)
+        response = _request_with_timing("GET",
+                                        url,
+                                        timeout=SIRP_REQUEST_TIMEOUT,
+                                        params=params)
         response.raise_for_status()
 
         response_data = response.json()
@@ -465,8 +495,9 @@ class OptionSet(object):
             return cached_optionsets
         url = f"{SIRP_URL}/api/v3/app/optionsets"
 
-        response = HTTP_SESSION.get(url,
-                                    timeout=SIRP_REQUEST_TIMEOUT)
+        response = _request_with_timing("GET",
+                                        url,
+                                        timeout=SIRP_REQUEST_TIMEOUT)
         response.raise_for_status()
 
         response_data = response.json()

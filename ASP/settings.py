@@ -102,7 +102,7 @@ LOGGING = {
                 'file',
             ],
             'level': 'DEBUG',
-            'propagate': True,
+            'propagate': False,
         },
 
     }

@@ -418,8 +418,7 @@ class CaseModel(BaseSystemModel):
 
     # 创建记录填写字段
     title: Optional[str] = Field(default="", description="Case title (案例标题)")
-    severity: Optional[Severity] = Field(default=None,
-                                         description="Analyst-assessed severity (严重程度)")
+    severity: Optional[Severity] = Field(default=None, description="Analyst-assessed severity (严重程度)")
     impact: Optional[Impact] = Field(default=None, description="Analyst-assessed impact (影响)")
     priority: Optional[CasePriority] = Field(default=None, description="Response priority (响应优先级)")
 
