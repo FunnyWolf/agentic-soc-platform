@@ -3,6 +3,7 @@
 # os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
 import os
 import uuid
+from functools import lru_cache
 
 import httpx
 import torch
@@ -162,4 +163,7 @@ class EmbeddingsAPI(object):
         return scored_docs[:top_n]
 
 
-embedding_api_singleton_qdrant = EmbeddingsAPI()
+@lru_cache(maxsize=1)
+def get_qdrant_embeddings_api() -> EmbeddingsAPI:
+    logger.info("Initializing qdrant embeddings singleton")
+    return EmbeddingsAPI()

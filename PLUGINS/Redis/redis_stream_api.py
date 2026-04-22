@@ -152,7 +152,7 @@ class RedisStreamAPI(object):
         def _fetch():
             messages = self.redis_client.xrange(stream_name, min=message_id, max=message_id, count=1)
             if not messages:
-                return {}
+                raise Exception(f"Message ID {message_id} not found in stream {stream_name}")
             _, fields = messages[0]
             result: dict = json.loads(fields["data"])
             return result

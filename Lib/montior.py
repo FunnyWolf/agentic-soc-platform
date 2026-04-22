@@ -13,7 +13,7 @@ from Lib.moduleengine import ModuleEngine
 from Lib.playbookloader import PlaybookLoader
 from Lib.threadmodulemanager import thread_module_manager
 from Lib.xcache import Xcache
-from PLUGINS.Embeddings.embeddings_qdrant import embedding_api_singleton_qdrant, SIRP_KNOWLEDGE_COLLECTION
+from PLUGINS.Embeddings.embeddings_qdrant import get_qdrant_embeddings_api, SIRP_KNOWLEDGE_COLLECTION
 from PLUGINS.Redis.redis_stream_api import RedisStreamAPI
 from PLUGINS.SIRP.sirpapi import Playbook, Knowledge
 from PLUGINS.SIRP.sirpextramodel import PlaybookJobStatus, KnowledgeAction, PlaybookModel
@@ -139,7 +139,7 @@ class MainMonitor(object):
                 if model.action == KnowledgeAction.STORE:
                     logger.info(f"Knowledge storing,row_id: {model.row_id}")
                     try:
-                        doc_id = embedding_api_singleton_qdrant.add_document(SIRP_KNOWLEDGE_COLLECTION, model.row_id, payload_content, {"row_id": model.row_id})
+                        doc_id = get_qdrant_embeddings_api().add_document(SIRP_KNOWLEDGE_COLLECTION, model.row_id, payload_content, {"row_id": model.row_id})
                     except Exception as E:
                         logger.exception(E)
 
@@ -149,7 +149,7 @@ class MainMonitor(object):
                 elif model.action == KnowledgeAction.REMOVE:
                     logger.info(f"Knowledge removing,row_id: {model.row_id}")
                     try:
-                        result = embedding_api_singleton_qdrant.delete_document(SIRP_KNOWLEDGE_COLLECTION, model.row_id)
+                        result = get_qdrant_embeddings_api().delete_document(SIRP_KNOWLEDGE_COLLECTION, model.row_id)
                     except Exception as E:
                         logger.exception(E)
 

@@ -12,6 +12,3 @@ router = routers.DefaultRouter(trailing_slash=False)
 urlpatterns = [
     re_path(r'^', include(router.urls)),
 ]
-from Lib.montior import MainMonitor
-
-MainMonitor().start()
