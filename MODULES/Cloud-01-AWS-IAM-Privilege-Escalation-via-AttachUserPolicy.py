@@ -218,8 +218,14 @@ if __name__ == "__main__":
 
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ASP.settings")
     django.setup()
-    module = Module()
 
+    # 单独测试某条告警
+    module = Module()
+    module.debug_message_id = "1776753170359-0"
+    module.run()
+
+    # 批量测试最早的100条告警
+    module = Module()
     message_ids = module.read_stream_head_ids(100)
     for message_id in message_ids:
         module.debug_message_id = message_id
