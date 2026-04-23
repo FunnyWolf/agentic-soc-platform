@@ -509,7 +509,6 @@ def siem_keyword_search(
         index_name=index_name
     )
     results = SIEMToolKit.keyword_search(input_data)
-    # return [item.model_dump_json() for item in results]
     return results
 
 

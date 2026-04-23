@@ -22,17 +22,17 @@ from Lib.log import logger
 from PLUGINS.Embeddings.CONFIG import EMBEDDINGS_TYPE, EMBEDDINGS_BASE_URL, EMBEDDINGS_MODEL, EMBEDDINGS_API_KEY, EMBEDDINGS_SIZE, EMBEDDINGS_PROXY
 from PLUGINS.Qdrant.qdrant import Qdrant
 
-# 检查 GPU 是否可用
-device = "cuda" if torch.cuda.is_available() else "cpu"
-logger.info(f"Using device for embeddings and reranker: {device}")
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
 SIRP_KNOWLEDGE_COLLECTION = "SIRP_KNOWLEDGE_COLLECTION"
 
 
 class EmbeddingsAPI(object):
 
     def __init__(self):
+        # 检查 GPU 是否可用
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        logger.debug(f"Using device for embeddings and reranker: {device}")
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
         # you need to use Docker/huggingface/download_model.py to download the bm25 model first
         self.sparse_model = FastEmbedSparse(model_name="Qdrant/bm25",
                                             cache_dir=os.path.join(BASE_DIR, 'Docker', 'Huggingface', 'bm25'),

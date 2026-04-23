@@ -125,11 +125,7 @@ def _project_record(record: dict[str, Any], projection_fields: list[str]) -> dic
     if "_index" in record:
         projected["_index"] = record["_index"]
 
-    if projected:
-        return projected
-
-    fallback_fields = list(record.keys())[: min(len(record), SAMPLE_COUNT)]
-    return {field: record[field] for field in fallback_fields}
+    return projected
 
 
 def _extract_field_value(record: dict[str, Any], field_path: str) -> tuple[bool, Any]:
