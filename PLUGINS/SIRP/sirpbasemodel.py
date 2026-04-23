@@ -55,7 +55,7 @@ def serialize_datetime(v: Any) -> Any:
 AutoDatetime = Annotated[
     Union[datetime, None],
     BeforeValidator(validate_datetime),
-    PlainSerializer(serialize_datetime, when_used="json")
+    PlainSerializer(serialize_datetime)
 ]
 
 
@@ -98,13 +98,13 @@ AutoAccount = Annotated[
 
 class BaseSystemModel(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    _AI_EXCLUDE_FIELDS: ClassVar[set[str]] = {"row_owner", "row_createdBy", "row_createdAt", "row_updatedAt", "row_updatedBy"}  # 不传递给 AI 的字段
+    _AI_EXCLUDE_FIELDS: ClassVar[set[str]] = {"row_owner", "row_createdBy", "row_updatedBy"}  # 不传递给 AI 的字段
 
     row_id: Optional[str] = Field(default=None, description="Unique row ID (唯一行 ID)")
     row_owner: Optional[AutoAccount] = Field(default=None, description="Record owner (记录所有者)")
     row_createdBy: Optional[AutoAccount] = Field(default=None, description="Creator (创建者)")
-    row_createdAt: Optional[AutoDatetime] = Field(default=None, description="Record created time (记录创建时间)")
-    row_updatedAt: Optional[AutoDatetime] = Field(default=None, description="Record last updated time (记录最后更新时间)")
+    row_createdAt: Optional[AutoDatetime] = Field(alias="create_time", default=None, description="Record created time (记录创建时间)")
+    row_updatedAt: Optional[AutoDatetime] = Field(alias="update_time", default=None, description="Record last updated time (记录最后更新时间)")
     row_updatedBy: Optional[AutoAccount] = Field(default=None, description="Last updated by (最后更新人)")
 
     def __init_subclass__(cls, **kwargs):

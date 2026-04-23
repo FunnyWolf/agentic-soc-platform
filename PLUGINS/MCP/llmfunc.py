@@ -1,5 +1,5 @@
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Annotated, Optional, Union, List
 
 from pydantic import Field
@@ -536,16 +536,9 @@ def siem_adaptive_query(
     return result.model_dump_json()
 
 
-def get_current_time(
-        time_format: Annotated[
-            Optional[str], Field(
-                description="Optional Python strftime format string; if omitted, returns ISO8601 with timezone (可选的 Python strftime 格式字符串,不填则返回带时区的 ISO8601 时间)")] = None
-) -> Annotated[str, Field(description="Current local time string with timezone (带时区的当前本地时间字符串)")]:
-    """Get current system time. (获取当前系统时间)"""
-    current_time = datetime.now().astimezone()
-    if time_format:
-        return current_time.strftime(time_format)
-    return current_time.isoformat(timespec="seconds")
+def get_current_time() -> Annotated[str, Field(description="Current local time string with UTC (当前本地时间UTC字符串)")]:
+    """Get current system UTC time. (获取当前系统 UTC 时间)"""
+    return datetime.now(timezone.utc).isoformat(timespec='seconds').replace('+00:00', 'Z')
 
 
 REGISTERED_MCP_TOOLS = [

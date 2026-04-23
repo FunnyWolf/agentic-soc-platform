@@ -432,6 +432,7 @@ class CaseModel(BaseSystemModel):
 
     # 用户手动输入字段
     status: Optional[CaseStatus] = Field(default=CaseStatus.NEW, description="Case handling status (案例处理状态)")
+    acknowledged_time: Optional[AutoDatetime] = Field(default=None, description="L1 first acknowledged time (L1 首次接手时间)")
     assignee_l1: Optional[AutoAccount] = Field(default=None, description="Assigned L1 analyst (分配的 L1 分析师)")
 
     comment: Optional[str] = Field(default="", description="Case analyst comment (案例分析师注释)")
@@ -439,6 +440,7 @@ class CaseModel(BaseSystemModel):
     assignee_l2: Optional[AutoAccount] = Field(default=None, description="Assigned or escalated L2 analyst (分配或升级的 L2 分析师)")
     assignee_l3: Optional[AutoAccount] = Field(default=None, description="Assigned or escalated L3 analyst (分配或升级的 L3 分析师)")
 
+    closed_time: Optional[AutoDatetime] = Field(default=None, description="case close time (事件关闭时间)")
     verdict: Optional[CaseVerdict] = Field(default=None, description="Final verdict (最终判定结果)")
     summary: Optional[str] = Field(default="", description="Closure summary (结案摘要)")
 
@@ -453,9 +455,9 @@ class CaseModel(BaseSystemModel):
     summary_ai: Optional[str] = Field(default="", description="AI-generated closure summary (AI 生成的结案摘要)")
 
     # 自动计算字段,无需手动赋值
-    acknowledged_time: Optional[AutoDatetime] = Field(default=None, description="L1 first acknowledged time (L1 首次接手时间)")
-    start_time_calc: Optional[Any] = Field(default=None, description="Calculated start time (计算的开始时间)")
-    end_time_calc: Optional[Any] = Field(default=None, description="Calculated end time (计算的结束时间)")
+
+    start_time_calc: Optional[AutoDatetime] = Field(default=None, description="Calculated start time (计算的开始时间)")
+    end_time_calc: Optional[AutoDatetime] = Field(default=None, description="Calculated end time (计算的结束时间)")
     detect_time_calc: Optional[Any] = Field(default=None, description="Calculated detect time (计算的检测时间)")
     acknowledge_time_calc: Optional[Any] = Field(default=None, description="Calculated acknowledge time (计算的接手时间)")
     respond_time_calc: Optional[Any] = Field(default=None, description="Calculated response time (计算的响应时间)")

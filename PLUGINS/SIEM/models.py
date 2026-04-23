@@ -1,13 +1,57 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Literal, Optional, Union
 
-from pydantic import BaseModel, Field, field_validator
+import dateparser
+from pydantic import BaseModel, Field, model_validator, field_validator
 
 SUMMARY_THRESHOLD = 1000
 SAMPLE_THRESHOLD = 100
 SAMPLE_COUNT = 5
+UTC_TIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
+
+
+def _normalize_time_input(value: Any, relative_base: datetime) -> str:
+    system_timezone = relative_base.tzinfo or timezone.utc
+    if isinstance(value, datetime):
+        parsed = value
+    else:
+        parsed = dateparser.parse(
+            str(value),
+            settings={
+                "RELATIVE_BASE": relative_base,
+                "RETURN_AS_TIMEZONE_AWARE": True,
+            },
+        )
+
+    if parsed is None:
+        raise ValueError(f"Unable to parse time value: {value}")
+
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=system_timezone)
+    parsed = parsed.astimezone(timezone.utc)
+
+    return parsed.strftime(UTC_TIME_FORMAT)
+
+
+def _normalize_time_range_inputs(data: Any) -> Any:
+    if not isinstance(data, dict):
+        return data
+
+    normalized = dict(data)
+    relative_base = datetime.now(datetime.now().astimezone().tzinfo or timezone.utc)
+    for field_name in ("time_range_start", "time_range_end"):
+        if field_name in normalized and normalized[field_name] is not None:
+            normalized[field_name] = _normalize_time_input(normalized[field_name], relative_base)
+    return normalized
+
+
+def _validate_time_range_order(start: str, end: str) -> None:
+    start_dt = datetime.strptime(start, UTC_TIME_FORMAT).replace(tzinfo=timezone.utc)
+    end_dt = datetime.strptime(end, UTC_TIME_FORMAT).replace(tzinfo=timezone.utc)
+    if end_dt <= start_dt:
+        raise ValueError("time_range_end must be later than time_range_start")
 
 
 class SchemaIndexSummary(BaseModel):
@@ -55,11 +99,15 @@ class AdaptiveQueryInput(BaseModel):
     )
     time_range_start: str = Field(
         ...,
-        description="Start time in UTC ISO8601 format: YYYY-MM-DDTHH:MM:SSZ",
+        description=(
+            "Start time for the query window. Accepts common datetime strings and is normalized to UTC ISO8601."
+        ),
     )
     time_range_end: str = Field(
         ...,
-        description="End time in UTC ISO8601 format: YYYY-MM-DDTHH:MM:SSZ",
+        description=(
+            "End time for the query window. Accepts common datetime strings and is normalized to UTC ISO8601."
+        ),
     )
     filters: Dict[str, Union[str, List[str]]] = Field(
         default_factory=dict,
@@ -76,16 +124,15 @@ class AdaptiveQueryInput(BaseModel):
         ),
     )
 
-    @field_validator("time_range_start", "time_range_end")
+    @model_validator(mode="before")
     @classmethod
-    def validate_utc_format(cls, value: str) -> str:
-        try:
-            if not value.endswith("Z"):
-                raise ValueError("Time must end with 'Z' to indicate UTC.")
-            datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ")
-        except ValueError as exc:
-            raise ValueError("Invalid format. Must be UTC ISO8601: YYYY-MM-DDTHH:MM:SSZ") from exc
-        return value
+    def normalize_time_range_inputs(cls, data: Any) -> Any:
+        return _normalize_time_range_inputs(data)
+
+    @model_validator(mode="after")
+    def validate_time_range_order(self):
+        _validate_time_range_order(self.time_range_start, self.time_range_end)
+        return self
 
 
 class KeywordSearchInput(BaseModel):
@@ -98,11 +145,15 @@ class KeywordSearchInput(BaseModel):
     )
     time_range_start: str = Field(
         ...,
-        description="Start time in UTC ISO8601 format: YYYY-MM-DDTHH:MM:SSZ",
+        description=(
+            "Start time for the query window. Accepts common datetime strings and is normalized to UTC ISO8601."
+        ),
     )
     time_range_end: str = Field(
         ...,
-        description="End time in UTC ISO8601 format: YYYY-MM-DDTHH:MM:SSZ",
+        description=(
+            "End time for the query window. Accepts common datetime strings and is normalized to UTC ISO8601."
+        ),
     )
     time_field: str = Field(
         default="@timestamp",
@@ -119,16 +170,15 @@ class KeywordSearchInput(BaseModel):
         ),
     )
 
-    @field_validator("time_range_start", "time_range_end")
+    @model_validator(mode="before")
     @classmethod
-    def validate_utc_format(cls, value: str) -> str:
-        try:
-            if not value.endswith("Z"):
-                raise ValueError("Time must end with 'Z' to indicate UTC.")
-            datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ")
-        except ValueError as exc:
-            raise ValueError("Invalid format. Must be UTC ISO8601: YYYY-MM-DDTHH:MM:SSZ") from exc
-        return value
+    def normalize_time_range_inputs(cls, data: Any) -> Any:
+        return _normalize_time_range_inputs(data)
+
+    @model_validator(mode="after")
+    def validate_time_range_order(self):
+        _validate_time_range_order(self.time_range_start, self.time_range_end)
+        return self
 
     @field_validator("keyword")
     @classmethod

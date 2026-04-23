@@ -187,4 +187,5 @@ PLAYBOOKS/Debug_*
 DATA/Debug_*/
 
 .claude/*.local.*
+.gemini/*.local.*
 .vscode/*
