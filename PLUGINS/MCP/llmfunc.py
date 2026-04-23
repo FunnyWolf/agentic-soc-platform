@@ -1,18 +1,18 @@
 import json
 from datetime import datetime
-from typing import Annotated, Optional
+from typing import Annotated, Optional, Union, List
 
 from pydantic import Field
 
 from Lib.playbookloader import PlaybookLoader
 from PLUGINS.Redis.redis_stream_api import RedisStreamAPI
-from PLUGINS.SIEM.models import AdaptiveQueryInput, KeywordSearchInput, SchemaExplorerInput
+from PLUGINS.SIEM.models import AdaptiveQueryInput, KeywordSearchInput, SchemaExplorerInput, KeywordSearchOutput, IndexInfo, SchemaIndexSummary
 from PLUGINS.SIEM.tools import SIEMToolKit
 from PLUGINS.SIRP.nocolymodel import Group, Condition, Operator
 from PLUGINS.SIRP.sirpapi import Alert, Artifact, Case, Enrichment, Knowledge, Playbook, Ticket
-from PLUGINS.SIRP.sirpextramodel import PlaybookType, KnowledgeSource, PlaybookJobStatus, KnowledgeAction
 from PLUGINS.SIRP.sirpcoremodel import TicketStatus, TicketType, ArtifactType, ArtifactRole, ArtifactReputationScore, Severity, AttackStage, Confidence, \
     AlertStatus, CaseStatus, CaseVerdict, EnrichmentModel, TicketModel, ArtifactModel
+from PLUGINS.SIRP.sirpextramodel import PlaybookType, KnowledgeSource, PlaybookJobStatus, KnowledgeAction
 
 
 def _dump_models_for_ai(models, limit: int) -> list[dict]:
@@ -485,11 +485,11 @@ def search_knowledge(
 def siem_explore_schema(
         target_index: Annotated[Optional[str], Field(
             description="Target SIEM index to inspect; omit to list all available indices (目标 SIEM 索引名称,不填则列出所有可用索引)")] = None
-) -> Annotated[str, Field(description="Schema exploration result as JSON string (索引 Schema 探查结果 JSON 字符串)")]:
+) -> Annotated[Union[IndexInfo, List[SchemaIndexSummary]], Field(description="Schema exploration result(索引 Schema 探查结果)")]:
     """Explore available SIEM indices or inspect one index schema. (探查可用的 SIEM 索引列表或指定索引的 Schema)"""
     input_data = SchemaExplorerInput(target_index=target_index)
     result = SIEMToolKit.explore_schema(input_data)
-    return json.dumps(result, ensure_ascii=False)
+    return result
 
 
 def siem_keyword_search(
@@ -499,7 +499,7 @@ def siem_keyword_search(
         time_field: Annotated[str, Field(description="Time field used for range filtering (用于时间范围过滤的字段名)")] = "@timestamp",
         index_name: Annotated[
             Optional[str], Field(description="Target SIEM index or source; None means all indices (目标 SIEM 索引或数据源,None 表示全部索引)")] = None
-) -> Annotated[list[str], Field(description="Search hits as JSON strings (命中的事件列表,每条为 JSON 字符串)")]:
+) -> Annotated[list[KeywordSearchOutput], Field(description="Search hits as JSON strings (命中的事件列表,每条为 JSON 字符串)")]:
     """Search SIEM events by keyword and time range. (按关键词和时间范围搜索 SIEM 事件)"""
     input_data = KeywordSearchInput(
         keyword=keyword,
@@ -509,7 +509,8 @@ def siem_keyword_search(
         index_name=index_name
     )
     results = SIEMToolKit.keyword_search(input_data)
-    return [item.model_dump_json() for item in results]
+    # return [item.model_dump_json() for item in results]
+    return results
 
 
 def siem_adaptive_query(

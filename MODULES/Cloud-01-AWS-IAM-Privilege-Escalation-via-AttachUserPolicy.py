@@ -220,9 +220,9 @@ if __name__ == "__main__":
     django.setup()
 
     # 单独测试某条告警
-    module = Module()
-    module.debug_message_id = "1776753170359-0"
-    module.run()
+    # module = Module()
+    # module.debug_message_id = "1776753170359-0"
+    # module.run()
 
     # 批量测试最早的100条告警
     module = Module()

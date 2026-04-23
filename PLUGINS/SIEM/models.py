@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from datetime import datetime
-from typing import List, Dict, Any, Optional, Union
+from typing import Any, Dict, List, Literal, Optional, Union
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -8,138 +10,140 @@ SAMPLE_THRESHOLD = 100
 SAMPLE_COUNT = 5
 
 
-# --- Input Models ---
+class SchemaIndexSummary(BaseModel):
+    name: str = Field(..., description="Registered SIEM index/source name")
+    backend: Literal["ELK", "Splunk"] = Field(..., description="Backend that owns this index")
+    description: str = Field(..., description="Human-readable description of the index")
+    default_aggregation_fields: List[str] = Field(
+        default_factory=list,
+        description="Registry key fields used as default aggregation fields for this index",
+    )
+
+
+class SchemaFieldInfo(BaseModel):
+    name: str = Field(..., description="Field name")
+    type: str = Field(..., description="Field type declared in the SIEM registry")
+    description: str = Field(..., description="Human-readable field description")
+    is_key_field: bool = Field(
+        default=False,
+        description="Whether the field is marked as a key field in the registry",
+    )
+
+
 class SchemaExplorerInput(BaseModel):
     target_index: Optional[str] = Field(
         default=None,
         description=(
             "Target index to explore. "
-            "If None: returns a list of all available indices with descriptions (list of dicts with 'name' and 'description'). "
-            "If provided: returns detailed field metadata for that specific index (list of field schemas with 'name', 'type', 'description', etc.)"
-        )
+            "If None: returns summaries for all registered indices. "
+            "If provided: returns field metadata for that specific index."
+        ),
     )
 
 
 class AdaptiveQueryInput(BaseModel):
     index_name: str = Field(
         ...,
-        description="Target SIEM index/source name. Examples: 'logs-security', 'main', 'logs-endpoint'"
+        description="Target SIEM index/source name. Examples: 'logs-security', 'main', 'logs-endpoint'",
     )
-
     time_field: str = Field(
         default="@timestamp",
         description=(
-            "The field to apply time range filter on. "
-            "Commonly used fields: '@timestamp', 'event.created', '_time'. "
-            "Must be a Date/DateTime type in your SIEM."
-        )
+            "Field used for time range filtering. "
+            "The field must exist in the target index and be queryable as a timestamp field."
+        ),
     )
-
     time_range_start: str = Field(
         ...,
-        description="Start time in UTC ISO8601 format. Format: 'YYYY-MM-DDTHH:MM:SSZ'. Example: '2026-02-04T06:00:00Z'"
+        description="Start time in UTC ISO8601 format: YYYY-MM-DDTHH:MM:SSZ",
     )
     time_range_end: str = Field(
         ...,
-        description="End time in UTC ISO8601 format. Format: 'YYYY-MM-DDTHH:MM:SSZ'. Example: '2026-02-04T07:00:00Z'"
+        description="End time in UTC ISO8601 format: YYYY-MM-DDTHH:MM:SSZ",
     )
-
     filters: Dict[str, Union[str, List[str]]] = Field(
         default_factory=dict,
         description=(
-            "Key-value pairs for exact matching filters (term/exact match, not full-text search). "
-            "Supports both single values (exact match) and lists (OR logic within list). "
-            "Examples: "
-            "{'event.outcome': 'success', 'source.ip': '45.33.22.11'} OR "
-            "{'event.outcome': ['success', 'failed'], 'source.ip': '45.33.22.11'}"
-        )
+            "Exact-match filters. "
+            "String values mean single exact match; list values mean OR semantics within that field."
+        ),
     )
     aggregation_fields: List[str] = Field(
         default_factory=list,
         description=(
-            "Fields to get top-N statistics for. "
-            "If empty, uses backend-specific default key fields. "
-            "Example: ['event.outcome', 'source.ip', 'process.name']"
-        )
+            "Fields used for top-N aggregation statistics. "
+            "If empty, the tool uses the registry key fields for the target index."
+        ),
     )
 
-    @field_validator('time_range_start', 'time_range_end')
+    @field_validator("time_range_start", "time_range_end")
     @classmethod
-    def validate_utc_format(cls, v):
+    def validate_utc_format(cls, value: str) -> str:
         try:
-            if not v.endswith("Z"):
+            if not value.endswith("Z"):
                 raise ValueError("Time must end with 'Z' to indicate UTC.")
-            datetime.strptime(v, "%Y-%m-%dT%H:%M:%SZ")
-        except ValueError:
-            raise ValueError("Invalid format. Must be UTC ISO8601: YYYY-MM-DDTHH:MM:SSZ")
-        return v
+            datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ")
+        except ValueError as exc:
+            raise ValueError("Invalid format. Must be UTC ISO8601: YYYY-MM-DDTHH:MM:SSZ") from exc
+        return value
 
 
 class KeywordSearchInput(BaseModel):
     keyword: Union[str, List[str]] = Field(
         ...,
         description=(
-            "Search keyword or a list of keywords. "
-            "A single string performs a standard full-text search. "
-            "A list performs an AND search, meaning every keyword in the list must match. "
-            "Keywords can be IP addresses, hostnames, usernames, or arbitrary strings."
-        )
+            "Search keyword or keyword list. "
+            "A list uses AND semantics, so every keyword in the list must match."
+        ),
     )
-
     time_range_start: str = Field(
         ...,
-        description="Start time in UTC ISO8601 format. Format: 'YYYY-MM-DDTHH:MM:SSZ'. Example: '2026-02-04T06:00:00Z'"
+        description="Start time in UTC ISO8601 format: YYYY-MM-DDTHH:MM:SSZ",
     )
-
     time_range_end: str = Field(
         ...,
-        description="End time in UTC ISO8601 format. Format: 'YYYY-MM-DDTHH:MM:SSZ'. Example: '2026-02-04T07:00:00Z'"
+        description="End time in UTC ISO8601 format: YYYY-MM-DDTHH:MM:SSZ",
     )
-
     time_field: str = Field(
         default="@timestamp",
         description=(
-            "The field to apply time range filter on. "
-            "Commonly used fields: '@timestamp', 'event.created', '_time'. "
-            "Must be a Date/DateTime type in your SIEM."
-        )
+            "Field used for time range filtering. "
+            "The field must exist in the target index and be queryable as a timestamp field."
+        ),
     )
-
     index_name: Optional[str] = Field(
         default=None,
         description=(
             "Target SIEM index/source name. "
-            "If None or empty: searches across all indices. "
-            "If provided: searches only in specified index. "
-            "Examples: 'logs-security', 'main', 'logs-endpoint'"
-        )
+            "If omitted, the tool first discovers hit indices across the registered backends."
+        ),
     )
 
-    @field_validator('time_range_start', 'time_range_end')
+    @field_validator("time_range_start", "time_range_end")
     @classmethod
-    def validate_utc_format(cls, v):
+    def validate_utc_format(cls, value: str) -> str:
         try:
-            if not v.endswith("Z"):
+            if not value.endswith("Z"):
                 raise ValueError("Time must end with 'Z' to indicate UTC.")
-            datetime.strptime(v, "%Y-%m-%dT%H:%M:%SZ")
-        except ValueError:
-            raise ValueError("Invalid format. Must be UTC ISO8601: YYYY-MM-DDTHH:MM:SSZ")
-        return v
+            datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ")
+        except ValueError as exc:
+            raise ValueError("Invalid format. Must be UTC ISO8601: YYYY-MM-DDTHH:MM:SSZ") from exc
+        return value
 
-    @field_validator('keyword')
+    @field_validator("keyword")
     @classmethod
-    def validate_keyword(cls, v):
-        if isinstance(v, str):
-            keyword = v.strip()
+    def validate_keyword(cls, value: Union[str, List[str]]) -> Union[str, List[str]]:
+        if isinstance(value, str):
+            keyword = value.strip()
             if not keyword:
                 raise ValueError("keyword must not be empty")
             return keyword
 
-        if isinstance(v, list):
-            if not v:
+        if isinstance(value, list):
+            if not value:
                 raise ValueError("keyword list must not be empty")
             normalized_keywords = []
-            for item in v:
+            for item in value:
                 if not isinstance(item, str):
                     raise ValueError("keyword list must contain only strings")
                 keyword = item.strip()
@@ -151,100 +155,84 @@ class KeywordSearchInput(BaseModel):
         raise ValueError("keyword must be a string or a list of strings")
 
 
-# --- Output Models ---
 class FieldStat(BaseModel):
-    field_name: str = Field(
-        ...,
-        description="Name of the field for which statistics are computed"
-    )
+    field_name: str = Field(..., description="Name of the field for which statistics are computed")
     top_values: Dict[Union[str, int], int] = Field(
         ...,
-        description="Top-N value distribution for the field (key: value, int: count)"
+        description="Top-N value distribution for the field (value -> count)",
     )
 
 
 class AdaptiveQueryOutput(BaseModel):
-    status: str = Field(
+    backend: Literal["ELK", "Splunk"] = Field(..., description="Backend that executed the query")
+    index_name: str = Field(..., description="Index/source queried by the tool")
+    status: Literal["records", "sample", "summary"] = Field(
         ...,
         description=(
             "Response type indicator based on result volume. "
-            f"Possible values: 'full' (complete logs, < {SAMPLE_THRESHOLD} results), "
-            f"'sample' (statistics + sample records, {SAMPLE_THRESHOLD}-{SUMMARY_THRESHOLD} results), "
-            f"'summary' (statistics only, > {SUMMARY_THRESHOLD} results)"
-        )
+            f"'records' returns up to {SAMPLE_THRESHOLD} projected records, "
+            f"'sample' returns statistics plus up to {SAMPLE_COUNT} projected records, "
+            f"'summary' returns statistics only."
+        ),
     )
-    total_hits: int = Field(
+    total_hits: int = Field(..., description="Total number of matching records in the SIEM backend")
+    returned_records: int = Field(..., description="Number of records included in the response payload")
+    truncated: bool = Field(
         ...,
-        description="Total number of matching records in the SIEM backend"
+        description="Whether the tool omitted matching events or record fields to keep the payload LLM-safe",
     )
-    message: str = Field(
-        ...,
-        description="Human-readable status message describing the response"
-    )
+    message: str = Field(..., description="Human-readable status message describing the response")
     statistics: List[FieldStat] = Field(
-        ...,
-        description=(
-            "Top-N value distribution for each aggregation field. "
-            "Each FieldStat contains field_name and top_values (dict mapping values to their counts)"
-        )
+        default_factory=list,
+        description="Top-N value distribution for each aggregation field",
     )
     records: List[Dict[str, Any]] = Field(
-        ...,
+        default_factory=list,
         description=(
-            "Actual log records returned based on status: "
-            "'full' status returns all records up to SAMPLE_THRESHOLD; "
-            "'sample' status returns first 3 representative records; "
-            "'summary' status returns empty list"
-        )
+            "Projected log records. "
+            "These records may omit non-essential fields to control response size."
+        ),
     )
 
 
 class KeywordSearchOutput(BaseModel):
-    status: str = Field(
+    backend: Literal["ELK", "Splunk"] = Field(..., description="Backend that executed the search")
+    index_name: str = Field(..., description="Index/source represented by this result")
+    status: Literal["records", "sample", "summary"] = Field(
         ...,
         description=(
             "Response type indicator based on result volume. "
-            f"Possible values: 'full' (complete logs, < {SAMPLE_THRESHOLD} results), "
-            f"'sample' (statistics + sample records, {SAMPLE_THRESHOLD}-{SUMMARY_THRESHOLD} results), "
-            f"'summary' (statistics only, > {SUMMARY_THRESHOLD} results)"
-        )
+            f"'records' returns up to {SAMPLE_THRESHOLD} projected records, "
+            f"'sample' returns statistics plus up to {SAMPLE_COUNT} projected records, "
+            f"'summary' returns statistics only."
+        ),
     )
-    total_hits: int = Field(
+    total_hits: int = Field(..., description="Total number of matching records for this result set")
+    returned_records: int = Field(..., description="Number of records included in the response payload")
+    truncated: bool = Field(
         ...,
-        description="Total number of matching records across all indices"
+        description="Whether the tool omitted matching events or record fields to keep the payload LLM-safe",
     )
-    message: str = Field(
-        ...,
-        description="Human-readable status message describing the response"
-    )
+    message: str = Field(..., description="Human-readable status message describing the response")
     index_distribution: Dict[str, int] = Field(
-        ...,
-        description=(
-            "Distribution of hits across indices. "
-            "Key: index name, Value: number of hits in that index. "
-            "When searching a specific index, this will contain only one entry. "
-            "When searching all indices (*), this shows which indices contain matching data"
-        )
+        default_factory=dict,
+        description="Distribution of hits across indices seen by this search result",
     )
     statistics: List[FieldStat] = Field(
         default_factory=list,
-        description=(
-            "Top-N value distribution for each aggregation field. "
-            "When searching across all indices without specifying aggregation_fields, this may be empty or contain only common fields. "
-            "When searching a specific index, this contains statistics for the specified or default aggregation fields"
-        )
+        description="Top-N value distribution for each aggregation field",
     )
     records: List[Dict[str, Any]] = Field(
-        ...,
+        default_factory=list,
         description=(
-            "Actual log records returned based on status. "
-            "Each record includes '_index' field to indicate its source index. "
-            "'full' status returns all records up to SAMPLE_THRESHOLD; "
-            "'sample' status returns first 3 representative records; "
-            "'summary' status returns empty list"
-        )
+            "Projected log records. "
+            "These records may omit non-essential fields to control response size."
+        ),
     )
-    backend: str = Field(
-        default="",
-        description="Backend type: 'ELK' or 'Splunk'. Empty when searching a specific index."
-    )
+
+
+class IndexInfo(BaseModel):
+    name: str
+    backend: Literal["ELK", "Splunk"]
+    description: str
+    fields: List[SchemaFieldInfo]
