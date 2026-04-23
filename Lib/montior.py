@@ -85,7 +85,7 @@ class MainMonitor(object):
         self.start_background_task(self.subscribe_knowledge_action, "subscribe_knowledge_action", delay_time)
 
         # engine
-        self.engine.start()
+        # self.engine.start()
         logger.info("Background services started.")
 
     @staticmethod

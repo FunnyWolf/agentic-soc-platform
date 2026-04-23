@@ -1,6 +1,3 @@
-# uncomment the code to set a custom Hugging Face endpoint if needed.
-# import os
-# os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
 import os
 import uuid
 from functools import lru_cache

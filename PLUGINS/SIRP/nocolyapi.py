@@ -49,6 +49,10 @@ def _request_with_timing(method: str, url: str, **kwargs):
 SYSTEM_FIELDS = ['_initiatedBy', '_owner', '_updatedAt', '_createdAt', '_remainingTime', '_createdBy', '_updatedBy', '_processName', '_nodeAssignees',
                  '_initiatedAt', '_nodeStartedAt', '_approvalCompletedAt', '_dueAt', '_processStatus']
 
+SYSTEM_FIELDS_ROW = ['row_initiatedBy', 'row_owner', 'row_updatedAt', 'row_createdAt', 'row_remainingTime', 'row_createdBy', 'row_updatedBy', 'row_processName',
+                     'row_nodeAssignees',
+                     'row_initiatedAt', 'row_nodeStartedAt', 'row_approvalCompletedAt', 'row_dueAt', 'row_processStatus']
+
 
 class Worksheet(object):
     def __init__(self):
@@ -141,7 +145,10 @@ class WorksheetRow(object):
         for field in fields:
             if field.get("id") == "row_id":
                 field["id"] = "rowId"
+            elif field.get("id") in SYSTEM_FIELDS_ROW:
+                field["id"] = field["id"][3:]
             field_config = fields_config.get(field.get("id"))
+
             if field_config is None:
                 raise Exception(f"field {field.get("id")} not found in fields_config")
 
@@ -151,12 +158,6 @@ class WorksheetRow(object):
 
             if field_type in ['Checkbox']:
                 field["value"] = 1 if value else 0
-            if field_type in ['Collaborator']:
-                if value:
-                    if isinstance(value, list):
-                        field["value"] = value[0].get('accountId')
-                    else:
-                        field["value"] = value.get('accountId')
             fields_new.append(field)
         return fields_new
 
