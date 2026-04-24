@@ -1,6 +1,6 @@
 name: siem-aws-cloudtrail
 backend: ELK
-description: AWS CloudTrail logs with enhanced field mapping
+description: AWS CloudTrail 日志索引，包含 API 调用事件、身份信息、请求参数及响应元素，用于云环境安全审计与威胁调查。
 
 fields:
   # === Core Timestamp Fields ===
@@ -8,188 +8,332 @@ fields:
     type: date
     description: Event timestamp in ISO format
     is_key_field: false
+    sample_values: [1776301143902, 1776301235703, 1776301164265, 1776301215332, 1776301133325]
 
   - name: eventTime
-    type: keyword
+    type: date
     description: AWS CloudTrail event time
     is_key_field: false
+    sample_values: [1776301143902, 1776301164265, 1776301215332, 1776301235703, 1776301133325]
 
   # === Event Identification ===
   - name: eventID
-    type: keyword
+    type: text
     description: Unique CloudTrail event ID (UUID)
     is_key_field: true
+    sample_values: ["0000180f-5c5f-4806-a63a-bbb68251fc8c", "00001b59-8b0d-41b5-b106-83c784ee7b2f", "00001c41-aa07-4049-a3a3-85b7c47c7113"]
 
   - name: eventName
-    type: keyword
+    type: text
     description: AWS API action name (CreateUser, RunInstances, AssumeRole, etc.)
     is_key_field: true
+    sample_values: ["AttachUserPolicy", "CreateUser", "CreateAccessKey", "AssumeRole", "AuthorizeSecurityGroupIngress"]
 
   - name: eventSource
-    type: keyword
+    type: text
     description: Event source (ec2.amazonaws.com, iam.amazonaws.com, s3.amazonaws.com, sts.amazonaws.com)
     is_key_field: true
+    sample_values: ["ec2.amazonaws.com", "iam.amazonaws.com", "s3.amazonaws.com", "sts.amazonaws.com", "unknown.amazonaws.com"]
 
   - name: eventType
-    type: keyword
+    type: text
     description: Event type (AwsApiCall, AwsServiceEvent, AwsConsoleAction)
     is_key_field: false
+    sample_values: ["AwsApiCall"]
 
   - name: eventVersion
-    type: keyword
+    type: text
     description: CloudTrail event version (e.g., 1.08)
     is_key_field: false
+    sample_values: ["1.08"]
 
   # === ECS Event Fields ===
   - name: event.dataset
-    type: keyword
+    type: text
     description: Dataset source (aws.cloudtrail)
     is_key_field: false
+    sample_values: ["aws.cloudtrail"]
 
   - name: event.module
-    type: keyword
+    type: text
     description: Module (cloudtrail)
     is_key_field: false
+    sample_values: ["cloudtrail"]
 
   - name: event.action
-    type: keyword
+    type: text
     description: API action name (same as eventName for CloudTrail)
     is_key_field: true
+    sample_values: ["AttachUserPolicy", "CreateUser", "CreateAccessKey", "AssumeRole", "AuthorizeSecurityGroupIngress"]
 
   - name: event.category
-    type: keyword
+    type: text
     description: Event category (iam, cloud_infrastructure, cloud_storage, authentication)
     is_key_field: true
+    sample_values: ["iam", "cloud_infrastructure", "cloud_storage", "cloud", "authentication"]
 
   - name: event.outcome
-    type: keyword
+    type: text
     description: Event result (success, failure)
     is_key_field: true
+    sample_values: ["success", "failure"]
 
   - name: event.risk_score
     type: long
-    description: Risk score (20-100), based on operation severity
+    description: Risk score (10-100), based on operation severity
     is_key_field: false
+    sample_values: [80, 50, 20, 100, 10]
 
   # === AWS Account & Region ===
   - name: cloud.provider
-    type: keyword
+    type: text
     description: Cloud provider identifier (aws)
     is_key_field: false
+    sample_values: ["aws"]
 
   - name: cloud.service.name
-    type: keyword
+    type: text
     description: AWS service name (ec2, iam, s3, sts, cloudtrail)
     is_key_field: true
+    sample_values: ["ec2", "iam", "s3", "unknown", "cloudtrail"]
 
   - name: cloud.region
-    type: keyword
+    type: text
     description: AWS region (us-east-1, us-west-2, eu-west-1, ap-northeast-1)
     is_key_field: true
+    sample_values: ["us-west-2", "cn-north-1", "sa-east-1", "eu-west-1", "us-east-1"]
 
   - name: cloud.account.id
-    type: keyword
+    type: text
     description: AWS account ID (12-digit number)
     is_key_field: true
+    sample_values: ["123456780004", "123456780001", "123456780003", "123456780002"]
 
   - name: awsRegion
-    type: keyword
+    type: text
     description: AWS region (alternate field, same as cloud.region)
     is_key_field: false
+    sample_values: ["us-west-2", "ap-northeast-1", "us-east-1", "eu-central-1", "cn-north-1"]
 
   - name: recipientAccountId
-    type: keyword
+    type: text
     description: Target AWS account ID for the API call
     is_key_field: true
+    sample_values: ["123456780004", "123456780001", "123456780003", "123456780002"]
 
   # === Request Identification ===
   - name: requestID
-    type: keyword
+    type: text
     description: AWS request ID (UUID)
     is_key_field: true
+    sample_values: ["00000821-ba2f-40dc-b007-348f201e47fe", "0000100a-7b8b-4976-ae1c-0cd811bdc202"]
 
   - name: sourceIPAddress
-    type: ip
+    type: text
     description: Source IP address of the API caller
     is_key_field: true
+    sample_values: ["8.8.4.4", "1.1.1.1", "193.23.181.2", "13.234.56.78", "45.33.22.11"]
 
   - name: userAgent
     type: text
     description: User agent string (aws-cli, Terraform, boto3, etc.)
     is_key_field: false
+    sample_values: ["boto3/1.26.0", "AWS-CloudFormation/1.0", "Terraform/1.5.0", "aws-sdk-go/1.44.0", "aws-cli/2.0.50 Python/3.8.5 Windows/10"]
 
   # === User Identity ===
-  - name: userIdentity
-    type: object
-    description: User identity object containing type, principalId, arn, accountId, userName, accessKeyId
-    is_key_field: false
-
   - name: userIdentity.type
-    type: keyword
+    type: text
     description: User identity type (IAMUser, IAMRole, AssumedRole, RootUser)
     is_key_field: true
+    sample_values: ["IAMUser", "IAMRole", "AssumedRole"]
 
   - name: userIdentity.principalId
-    type: keyword
+    type: text
     description: Principal ID (AIDAI... for users, AIDA... for roles)
     is_key_field: true
+    sample_values: ["AIDAI0006E042D9FC4BE4", "AIDAI0011149ADB764F3E", "AIDAI005F007F27EE48DC"]
 
   - name: userIdentity.arn
-    type: keyword
+    type: text
     description: User ARN (arn:aws:iam::123456789012:user/username)
     is_key_field: false
+    sample_values: ["arn:aws:iam::123456780003:user/dev-user-beta", "arn:aws:iam::123456780004:user/admin-cli"]
 
   - name: userIdentity.accountId
-    type: keyword
+    type: text
     description: AWS account ID of the user
     is_key_field: true
+    sample_values: ["123456780004", "123456780001", "123456780003", "123456780002"]
 
   - name: userIdentity.userName
-    type: keyword
+    type: text
     description: IAM user name
     is_key_field: true
+    sample_values: ["dev-user-beta", "iam-user-01", "break-glass-admin", "dev-user-alpha", "terraform-executor"]
 
   - name: userIdentity.accessKeyId
-    type: keyword
+    type: text
     description: Access key ID (AKIA... for long-term keys, ASIA... for temp keys)
     is_key_field: true
+    sample_values: ["AKIA0014428409994E76", "AKIA0027787E209E4DCB", "AKIA0033E3E778C242A3"]
 
   # === Request Parameters ===
-  - name: requestParameters
-    type: object
-    description: Request parameters object (varies by eventName)
+  - name: requestParameters.bucketName
+    type: text
+    description: S3 bucket name targeted by the API call
+    is_key_field: true
+    sample_values: ["bucket-7255", "bucket-8109", "bucket-1612", "bucket-2118", "bucket-3381"]
+
+  - name: requestParameters.force
+    type: boolean
+    description: Flag indicating if the operation was forced (e.g., forced deletion)
     is_key_field: false
+    sample_values: [false]
+
+  - name: requestParameters.groupId
+    type: text
+    description: EC2 security group ID targeted by the API call
+    is_key_field: true
+    sample_values: ["sg-05781757", "sg-182a8536", "sg-25cf114b", "sg-323d78ab", "sg-60402b37"]
+
+  - name: requestParameters.instanceId
+    type: text
+    description: EC2 instance ID targeted by the API call
+    is_key_field: true
+    sample_values: ["i-000002ed828d4574", "i-000022868f0c44f7", "i-000033a79b104d99"]
+
+  - name: requestParameters.path
+    type: text
+    description: IAM path for user or role creation (e.g., /service-accounts/)
+    is_key_field: false
+    sample_values: ["/service-accounts/"]
+
+  - name: requestParameters.policyArn
+    type: text
+    description: ARN of the IAM policy being attached (high-risk if AdministratorAccess or IAMFullAccess)
+    is_key_field: true
+    sample_values: ["arn:aws:iam::aws:policy/AdministratorAccess", "arn:aws:iam::aws:policy/IAMFullAccess"]
+
+  - name: requestParameters.roleArn
+    type: text
+    description: ARN of the IAM role being assumed or modified
+    is_key_field: true
+    sample_values: ["arn:aws:iam::123456780003:role/service-role", "arn:aws:iam::123456780004:role/OrganizationAccountAccessRole"]
+
+  - name: requestParameters.roleSessionName
+    type: text
+    description: Session name used when assuming a role (useful for tracing cross-account activity)
+    is_key_field: true
+    sample_values: ["cross-account-session", "session-19040", "session-24253", "session-32973"]
+
+  - name: requestParameters.userName
+    type: text
+    description: IAM user name specified in the request parameters (e.g., user being created or modified)
+    is_key_field: true
+    sample_values: ["iam-user-02", "dev-user-alpha", "read-only-auditor", "billing-manager", "iam-user-03"]
 
   # === Response Elements ===
-  - name: responseElements
-    type: object
-    description: Response elements object (only present on successful calls)
+  - name: responseElements.accessKey.accessKeyId
+    type: text
+    description: Access key ID of the newly created long-term access key (AKIA...)
+    is_key_field: true
+    sample_values: ["AKIA0000A7F055CA4AAC", "AKIA0001408B57C6464C", "AKIA00014AFD876C4442"]
+
+  - name: responseElements.accessKey.createDate
+    type: date
+    description: Creation timestamp of the newly created access key
     is_key_field: false
+    sample_values: [1776786768315, 1776797006205, 1776922348837]
+
+  - name: responseElements.accessKey.status
+    type: text
+    description: Status of the newly created access key (Active/Inactive)
+    is_key_field: false
+    sample_values: ["Active"]
+
+  - name: responseElements.accessKey.userName
+    type: text
+    description: IAM user name associated with the newly created access key
+    is_key_field: true
+    sample_values: ["service_account_1012", "service_account_1001", "service_account_1019"]
+
+  - name: responseElements.credentials.accessKeyId
+    type: text
+    description: Temporary access key ID returned from AssumeRole (ASIA...)
+    is_key_field: true
+    sample_values: ["ASIA000A13000A404BCA", "ASIA000F2AD12A7C43D3", "ASIA0027A8237D374A08"]
+
+  - name: responseElements.credentials.expiration
+    type: date
+    description: Expiration timestamp of the temporary credentials
+    is_key_field: false
+    sample_values: [1776305470696, 1776306012967, 1776306411838]
+
+  - name: responseElements.credentials.sessionToken
+    type: text
+    description: Temporary session token returned from AssumeRole (opaque string)
+    is_key_field: false
+    sample_values: ["AQoDYXdzE0007829e301a46e4bf8e14d0d29009f4"]
+
+  - name: responseElements.user.arn
+    type: text
+    description: ARN of the newly created IAM user
+    is_key_field: true
+    sample_values: ["arn:aws:iam::123456780001:user/service", "arn:aws:iam::123456780004:user/service-accounts/service_account_1019"]
+
+  - name: responseElements.user.createDate
+    type: date
+    description: Creation timestamp of the newly created IAM user
+    is_key_field: false
+    sample_values: [1776301133325, 1776772130055, 1776774782921]
+
+  - name: responseElements.user.path
+    type: text
+    description: IAM path of the newly created user (e.g., /service-accounts/)
+    is_key_field: false
+    sample_values: ["/", "/service-accounts/"]
+
+  - name: responseElements.user.userId
+    type: text
+    description: Unique IAM user ID of the newly created user (AIDAI...)
+    is_key_field: true
+    sample_values: ["AIDAI000019B113904B0E", "AIDAI00004C0759E9499F", "AIDAI000091D1739D4AEB"]
+
+  - name: responseElements.user.userName
+    type: text
+    description: User name of the newly created IAM user
+    is_key_field: true
+    sample_values: ["service_account_1012", "service_account_1001", "service_account_1019"]
 
   # === Error Information ===
   - name: errorCode
-    type: keyword
+    type: text
     description: Error code (AccessDenied, InvalidParameterValue, UnauthorizedOperation, InsufficientPermissions)
     is_key_field: true
+    sample_values: ["AccessDenied", "UnauthorizedOperation", "InsufficientPermissions", "InvalidParameterValue"]
 
   - name: errorMessage
     type: text
-    description: Error message (detailed error explanation)
+    description: Detailed error message explaining the denial or failure reason
     is_key_field: false
+    sample_values: ["User: arn:aws:iam::123456789012:user/attacker is not authorized to perform: iam:AttachUserPolicy"]
 
   # === Operation Flags ===
   - name: readOnly
     type: boolean
     description: Flag indicating if operation is read-only (read operations don't modify resources)
     is_key_field: true
+    sample_values: [false, true]
 
   # === Message and Logging ===
   - name: message
     type: text
     description: Human-readable message about the event
     is_key_field: false
+    sample_values: ["CloudTrail event: UpdateAssumeRolePolicy from iam-user-01", "CloudTrail event: ConsoleLogin from billing-manager"]
 
   - name: log.level
-    type: keyword
-    description: Log severity level (info, warning, error)
+    type: text
+    description: Log severity level (info, warning, error, critical)
     is_key_field: false
+    sample_values: ["warning", "info", "error", "critical"]

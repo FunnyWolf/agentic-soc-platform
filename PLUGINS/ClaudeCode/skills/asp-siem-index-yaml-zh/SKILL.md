@@ -1,11 +1,11 @@
 ---
 name: asp-siem-index-yaml-zh
-description: '新建或更新 SIEM 索引配置 YAML。当用户想为某个 SIEM index 生成字段配置、更新现有索引 YAML、或把后端实时字段同步到配置文件时使用。'
+description: '新建或更新 SIEM 索引配置 YAML。当用户提到 SIEM index、字段配置、索引 schema、ELK/Splunk 字段发现、或想把后端字段同步到 YAML 配置文件时，主动使用此 skill——即使用户没有明确说"生成 YAML"。'
 argument-hint: '<index_name> <backend>'
 compatibility: connect to asp mcp server
 metadata:
   author: Funnywolf
-  version: 0.1.0
+  version: 0.2.0
   mcp-server: asp
   category: cyber security
   tags: [ SIEM, index, yaml, schema, configuration ]
@@ -69,13 +69,26 @@ metadata:
 |------|------|
 | `name` | 直接采用 |
 | `type` | 直接采用 |
-| `sample_values` | 直接采用 |
-| `description` | 从字段名语义生成，结合 sample_values 补充示例范围 |
-| `is_key_field` | 按调查价值启发式推断：身份、资产、网络四元组、动作、结果、高信号标识字段 → `true`；纯噪音或低价值字段 → `false` |
+| `sample_values` | 直接采用；若为空列表，在描述中标注"(无样本数据，描述仅供参考)" |
+| `description` | 从字段名语义生成，结合 sample_values 补充示例范围；sample_values 为空时仅基于字段名推断 |
+| `is_key_field` | 按调查价值启发式推断（见下方规则） |
+
+**`is_key_field` 推断规则：**
+
+- `true`：身份、资产、网络四元组、动作、结果、高信号标识字段。
+  常见示例：`src_ip`、`dst_ip`、`user`、`username`、`action`、`event_type`、`severity`、`process_name`、`file_hash`、`domain`
+- `false`：纯噪音或低价值的元数据字段。
+  常见示例：`_id`、`@version`、`beat.hostname`、`log.offset`、`input.type`、`agent.ephemeral_id`
+
+**存在基线时的处理：**
+
+- 保留已有字段的 `description` 和 `is_key_field`（除非该字段类型发生变化）。
+- 只对新增字段或类型变化字段重新推断。
+- 在草案摘要中明确标注每个字段的来源："保留自基线" 或 "新推断"。
 
 ### Step 5 — 展示草案
 
-向用户展示差异摘要和完整草案。
+向用户展示差异摘要和关键字段列表。**不要直接倾倒完整 YAML**——完整 YAML 仅在用户确认写入时生成。
 
 首选回复结构：
 
@@ -103,7 +116,7 @@ YAML 顶层结构：
 ```yaml
 name: <index_name>
 backend: <backend>
-description: <index description>
+description: <由模型根据 index_name 和字段整体语义自动生成，用户可在 review 时修改>
 
 fields:
   - name: <field_name>
@@ -117,7 +130,7 @@ fields:
 
 - 只有在缺失时才询问 `index_name` 或 `backend`。
 - 如果 `siem_discover_index_fields` 返回空字段列表，说明可能 index 名称有误或后端无数据，要求用户确认。
-- 如果用户对草案中某些字段的 `is_key_field` 或 `description` 有异议，按用户要求调整后重新展示。
+- 如果用户对草案中某些字段的 `is_key_field` 或 `description` 有异议，按用户要求调整后只重新展示受影响的字段，不需要重新展示整个草案。
 
 ## 输出规则
 
@@ -130,4 +143,3 @@ fields:
 - 如果 `siem_discover_index_fields` 调用失败，说明错误并要求用户检查 index 名称和后端连通性。
 - 如果返回字段数为 0，提示用户确认 index 是否存在且有数据。
 - 如果用户要求写入但未经过 review 确认，提醒先完成确认步骤。
-
