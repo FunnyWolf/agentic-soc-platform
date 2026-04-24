@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
+from PLUGINS.SIEM.backends import BackendQueryResult
 from PLUGINS.SIEM.models import (
     AdaptiveQueryInput,
     AdaptiveQueryOutput,
@@ -11,11 +12,10 @@ from PLUGINS.SIEM.models import (
     SAMPLE_THRESHOLD,
     SUMMARY_THRESHOLD,
 )
-from PLUGINS.SIEM.query_backends import BackendQueryResult
 from PLUGINS.SIEM.registry import get_default_agg_fields
 
 
-def resolve_status(total_hits: int) -> Literal["records", "sample", "summary"]:
+def _resolve_status(total_hits: int) -> Literal["records", "sample", "summary"]:
     if total_hits > SUMMARY_THRESHOLD:
         return "summary"
     if total_hits > SAMPLE_THRESHOLD:
@@ -24,7 +24,7 @@ def resolve_status(total_hits: int) -> Literal["records", "sample", "summary"]:
 
 
 def build_adaptive_output(input_data: AdaptiveQueryInput, result: BackendQueryResult) -> AdaptiveQueryOutput:
-    status = resolve_status(result.total_hits)
+    status = _resolve_status(result.total_hits)
     records = _project_records(
         result.raw_records[: _record_limit_for_status(status)],
         index_name=result.index_name,
@@ -45,7 +45,7 @@ def build_adaptive_output(input_data: AdaptiveQueryInput, result: BackendQueryRe
 
 
 def build_keyword_output(input_data: KeywordSearchInput, result: BackendQueryResult) -> KeywordSearchOutput:
-    status = resolve_status(result.total_hits)
+    status = _resolve_status(result.total_hits)
     records = _project_records(
         result.raw_records[: _record_limit_for_status(status)],
         index_name=result.index_name,

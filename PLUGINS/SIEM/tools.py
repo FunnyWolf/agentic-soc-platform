@@ -1,5 +1,6 @@
 from typing import List, Union
 
+from PLUGINS.SIEM.backends import ELKQueryBackend, SplunkQueryBackend
 from PLUGINS.SIEM.models import (
     AdaptiveQueryInput,
     AdaptiveQueryOutput,
@@ -8,16 +9,8 @@ from PLUGINS.SIEM.models import (
     SchemaExplorerInput,
     SchemaIndexSummary, IndexInfo,
 )
-from PLUGINS.SIEM.query_backends import ELKQueryBackend, SplunkQueryBackend
 from PLUGINS.SIEM.registry import get_backend_type, get_default_agg_fields, get_index_info, list_indices
-from PLUGINS.SIEM.response_builder import build_adaptive_output, build_keyword_output
-
-
-def get_indices_by_backend() -> dict:
-    result = {"ELK": [], "Splunk": []}
-    for index_info in list_indices():
-        result.setdefault(index_info.backend, []).append(index_info.name)
-    return result
+from PLUGINS.SIEM.response import build_adaptive_output, build_keyword_output
 
 
 class SIEMToolKit:
@@ -76,7 +69,7 @@ class SIEMToolKit:
             return [build_keyword_output(input_data, backend_result)]
 
         results: list[KeywordSearchOutput] = []
-        indices_by_backend = get_indices_by_backend()
+        indices_by_backend = cls.get_indices_by_backend()
 
         for backend_name, indices in indices_by_backend.items():
             query_backend = cls._get_query_backend(backend_name)
@@ -100,3 +93,10 @@ class SIEMToolKit:
         if backend == "Splunk":
             return SplunkQueryBackend
         raise ValueError(f"Unsupported backend: {backend}")
+
+    @staticmethod
+    def get_indices_by_backend() -> dict:
+        result = {"ELK": [], "Splunk": []}
+        for index_info in list_indices():
+            result.setdefault(index_info.backend, []).append(index_info.name)
+        return result
