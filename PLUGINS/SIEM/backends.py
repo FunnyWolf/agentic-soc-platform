@@ -10,9 +10,12 @@ from typing import Any, Literal
 
 from splunklib.results import JSONResultsReader
 
+from Lib.log import logger
 from PLUGINS.ELK.client import ELKClient
 from PLUGINS.SIEM.models import (
     AdaptiveQueryInput,
+    DiscoveredFieldInfo,
+    DiscoverIndexFieldsOutput,
     FieldStat,
     KeywordSearchInput,
     SAMPLE_COUNT,
@@ -169,7 +172,9 @@ def _get_elk_field_types(index_name: str) -> dict[str, str]:
     field_types: dict[str, str] = {}
     try:
         mapping_resp = client.indices.get_mapping(index=index_name)
-    except Exception:
+    except Exception as E:
+        logger.warning(f"Failed to get ELK field types for {index_name}")
+        logger.exception(E)
         return field_types
     for _, index_mapping in mapping_resp.items():
         properties = index_mapping.get("mappings", {}).get("properties", {})
@@ -296,6 +301,44 @@ class ELKQueryBackend:
         buckets = response.get("aggregations", {}).get("_index", {}).get("buckets", [])
         return [bucket["key"] for bucket in buckets if bucket["doc_count"] > 0]
 
+    @classmethod
+    def discover_index_fields(cls, index_name: str) -> DiscoverIndexFieldsOutput:
+        field_types = _get_elk_field_types(index_name)
+        if not field_types:
+            return DiscoverIndexFieldsOutput(
+                backend=cls.backend_name, index_name=index_name, total_fields=0, fields=[],
+            )
+
+        all_fields = [f for f in field_types if not f.startswith("_")]
+        discovered: list[DiscoveredFieldInfo] = []
+
+        batch_size = 50
+        for i in range(0, len(all_fields), batch_size):
+            batch = all_fields[i: i + batch_size]
+            aggs = _build_safe_aggs(batch, index_name)
+
+            client = ELKClient.get_client()
+            response = client.search(
+                index=index_name, query={"match_all": {}}, aggs=aggs, size=0,
+            )
+            aggregations = response.get("aggregations", {})
+
+            for field_name in batch:
+                field_type = field_types[field_name]
+                agg_key = f"{field_name}.keyword" if field_type in (None, "text") else field_name
+                buckets = aggregations.get(agg_key, {}).get("buckets", [])
+                sample_values = [str(b["key"]) for b in buckets[:5]]
+                discovered.append(DiscoveredFieldInfo(
+                    name=field_name, type=field_type, sample_values=sample_values,
+                ))
+
+        return DiscoverIndexFieldsOutput(
+            backend=cls.backend_name,
+            index_name=index_name,
+            total_fields=len(discovered),
+            fields=discovered,
+        )
+
 
 class SplunkQueryBackend:
     backend_name: Literal["ELK", "Splunk"] = "Splunk"
@@ -384,3 +427,53 @@ class SplunkQueryBackend:
             if isinstance(item, dict) and "index" in item and "count" in item and int(item["count"]) > 0:
                 hit_indices.append(item["index"])
         return hit_indices
+
+    @classmethod
+    def discover_index_fields(cls, index_name: str) -> DiscoverIndexFieldsOutput:
+        service = SplunkClient.get_service()
+        summary_query = f'search index="{index_name}" | head 10000 | fieldsummary maxvals=5'
+        oneshot = service.jobs.oneshot(summary_query, output_mode="json")
+        reader = JSONResultsReader(oneshot)
+
+        skip_fields = {"_time", "_raw", "_indextime", "_cd", "_serial", "_bkt", "_si",
+                       "splunk_server", "host", "source", "sourcetype", "index",
+                       "linecount", "punct", "splunk_server_group", "timeendpos", "timestartpos"}
+
+        discovered: list[DiscoveredFieldInfo] = []
+        for item in reader:
+            if not isinstance(item, dict) or "field" not in item:
+                continue
+            fname = item["field"]
+            if fname in skip_fields or fname.startswith("date_"):
+                continue
+
+            numeric_count = int(item.get("numeric_count", 0))
+            distinct_count = int(item.get("distinct_count", 0))
+            if numeric_count > 0 and distinct_count > 20:
+                ftype = "long"
+            elif numeric_count > 0:
+                ftype = "keyword"
+            else:
+                ftype = "keyword"
+
+            sample_values: list[str] = []
+            raw_values = item.get("values", "")
+            if raw_values:
+                try:
+                    parsed = json.loads(raw_values)
+                    if isinstance(parsed, list):
+                        for entry in parsed:
+                            sample_values.append(entry.get("value"))
+                except (json.JSONDecodeError, TypeError):
+                    pass
+
+            discovered.append(DiscoveredFieldInfo(
+                name=fname, type=ftype, sample_values=sample_values,
+            ))
+
+        return DiscoverIndexFieldsOutput(
+            backend=cls.backend_name,
+            index_name=index_name,
+            total_fields=len(discovered),
+            fields=discovered,
+        )

@@ -286,3 +286,33 @@ class IndexInfo(BaseModel):
     backend: Literal["ELK", "Splunk"]
     description: str
     fields: List[SchemaFieldInfo]
+
+
+class DiscoverIndexFieldsInput(BaseModel):
+    index_name: str = Field(
+        ...,
+        description="Target SIEM index/source name to discover fields from the live backend.",
+    )
+    backend: Literal["ELK", "Splunk"] = Field(
+        ...,
+        description="Backend type that owns this index.",
+    )
+
+
+class DiscoveredFieldInfo(BaseModel):
+    name: str = Field(..., description="Field name (dotted path for nested fields)")
+    type: str = Field(..., description="Field type reported by the backend")
+    sample_values: List[str] = Field(
+        default_factory=list,
+        description="Top-5 most frequent values for this field",
+    )
+
+
+class DiscoverIndexFieldsOutput(BaseModel):
+    backend: Literal["ELK", "Splunk"] = Field(..., description="Backend that was queried")
+    index_name: str = Field(..., description="Index that was inspected")
+    total_fields: int = Field(..., description="Total number of discovered fields")
+    fields: List[DiscoveredFieldInfo] = Field(
+        default_factory=list,
+        description="Discovered field definitions with sample values",
+    )

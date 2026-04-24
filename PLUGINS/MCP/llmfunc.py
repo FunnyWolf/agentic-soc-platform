@@ -1,12 +1,13 @@
 import json
 from datetime import datetime, timezone
-from typing import Annotated, Optional, Union, List
+from typing import Annotated, Optional, Union, List, Literal
 
 from pydantic import Field
 
 from Lib.playbookloader import PlaybookLoader
 from PLUGINS.Redis.redis_stream_api import RedisStreamAPI
-from PLUGINS.SIEM.models import AdaptiveQueryInput, KeywordSearchInput, SchemaExplorerInput, KeywordSearchOutput, IndexInfo, SchemaIndexSummary
+from PLUGINS.SIEM.models import AdaptiveQueryInput, KeywordSearchInput, SchemaExplorerInput, KeywordSearchOutput, IndexInfo, SchemaIndexSummary, \
+    DiscoverIndexFieldsInput, DiscoverIndexFieldsOutput
 from PLUGINS.SIEM.tools import SIEMToolKit
 from PLUGINS.SIRP.nocolymodel import Group, Condition, Operator
 from PLUGINS.SIRP.sirpapi import Alert, Artifact, Case, Enrichment, Knowledge, Playbook, Ticket
@@ -535,6 +536,16 @@ def siem_adaptive_query(
     return result.model_dump_json()
 
 
+def siem_discover_index_fields(
+        index_name: Annotated[
+            str, Field(description="Target SIEM index/source name to discover fields from the live backend (目标 SIEM 索引名称,从实时后端发现字段)")],
+        backend: Annotated[Literal["ELK", "Splunk"], Field(description="Backend type: 'ELK' or 'Splunk' (后端类型: 'ELK' 或 'Splunk')")],
+) -> Annotated[DiscoverIndexFieldsOutput, Field(description="Discovered fields with types and sample values (发现的字段信息,包含类型和样本值)")]:
+    """Discover all fields of a live SIEM index, returning field names, types, and top-5 sample values. Useful for generating index YAML configs. (从实时 SIEM 索引发现所有字段,返回字段名、类型和 Top-5 样本值,用于生成索引 YAML 配置)"""
+    input_data = DiscoverIndexFieldsInput(index_name=index_name, backend=backend)
+    return SIEMToolKit.discover_index_fields(input_data)
+
+
 def get_current_time() -> Annotated[str, Field(description="Current local time string with UTC (当前本地时间UTC字符串)")]:
     """Get current system UTC time. (获取当前系统 UTC 时间)"""
     return datetime.now(timezone.utc).isoformat(timespec='seconds').replace('+00:00', 'Z')
@@ -580,6 +591,7 @@ REGISTERED_MCP_TOOLS = [
     siem_explore_schema,
     siem_adaptive_query,
     siem_keyword_search,
+    siem_discover_index_fields,
 
     # redis stream
     read_stream_head,

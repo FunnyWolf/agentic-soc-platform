@@ -4,6 +4,8 @@ from PLUGINS.SIEM.backends import ELKQueryBackend, SplunkQueryBackend
 from PLUGINS.SIEM.models import (
     AdaptiveQueryInput,
     AdaptiveQueryOutput,
+    DiscoverIndexFieldsInput,
+    DiscoverIndexFieldsOutput,
     KeywordSearchInput,
     KeywordSearchOutput,
     SchemaExplorerInput,
@@ -85,6 +87,17 @@ class SIEMToolKit:
                 results.append(build_keyword_output(per_index_input, backend_result))
 
         return results
+
+    @classmethod
+    def discover_index_fields(cls, input_data: DiscoverIndexFieldsInput) -> DiscoverIndexFieldsOutput:
+        """
+        Discover all fields of a live SIEM index by querying the backend directly.
+
+        Returns field names, types, and top-5 sample values for each field.
+        This is intended for generating index YAML configuration files.
+        """
+        query_backend = cls._get_query_backend(input_data.backend)
+        return query_backend.discover_index_fields(input_data.index_name)
 
     @staticmethod
     def _get_query_backend(backend: str):
