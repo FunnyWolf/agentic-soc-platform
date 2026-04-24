@@ -3,142 +3,291 @@ backend: ELK
 description: Network traffic logs
 
 fields:
+  # === Core Timestamp Fields ===
   - name: "@timestamp"
     type: date
     description: Event time
     is_key_field: false
+    sample_values: ["2026-04-14T12:18:52Z", "2026-04-14T12:19:13Z", "2026-04-14T12:19:34Z"]
 
+  # === Event Fields ===
   - name: event.dataset
     type: keyword
-    description: Dataset (network)
+    description: Dataset (network, host)
     is_key_field: false
+    sample_values: ["network", "host"]
 
   - name: event.module
     type: keyword
-    description: Module (firewall)
+    description: Module (firewall, endpoint)
     is_key_field: false
+    sample_values: ["firewall", "endpoint"]
 
   - name: event.category
     type: keyword
-    description: Event category (network_traffic)
+    description: Event category (network_traffic, authentication)
     is_key_field: true
+    sample_values: ["network_traffic", "authentication"]
 
   - name: event.type
     type: keyword
-    description: Event type (connection)
+    description: Event type (connection, authentication)
     is_key_field: false
+    sample_values: ["connection", "authentication"]
 
   - name: event.action
     type: keyword
-    description: Action (allow/deny)
+    description: Action (allow, deny, login_failed, login_success)
     is_key_field: true
+    sample_values: ["allow", "deny", "login_failed", "login_success"]
 
   - name: event.outcome
     type: keyword
-    description: Outcome (success/failure)
+    description: Outcome (success, failure)
     is_key_field: true
+    sample_values: ["success", "failure"]
 
+  - name: event.reason
+    type: text
+    description: Human-readable reason for the event outcome
+    is_key_field: false
+    sample_values: ["Invalid credentials", "Valid credentials"]
+
+  - name: event.duration
+    type: long
+    description: Event duration in milliseconds
+    is_key_field: false
+    sample_values: [1725, 1974, 4590, 4737, 1119]
+
+  # === Network Fields ===
   - name: network.protocol
     type: keyword
-    description: Protocol (tcp/udp)
+    description: Protocol (tcp, udp)
     is_key_field: true
+    sample_values: ["tcp", "udp"]
+
+  - name: network.transport
+    type: keyword
+    description: Transport protocol (ssh, rdp)
+    is_key_field: false
+    sample_values: ["ssh", "rdp"]
 
   - name: network.direction
     type: keyword
-    description: Direction (egress/ingress)
+    description: Direction (egress, ingress)
     is_key_field: false
+    sample_values: ["egress"]
 
   - name: network.bytes_in
     type: long
     description: Bytes in
     is_key_field: false
+    sample_values: [176687, 281834, 300835, 581421, 741757]
 
   - name: network.bytes_out
     type: long
     description: Bytes out
     is_key_field: false
+    sample_values: [39799, 312151, 349677, 380336, 446128]
 
   - name: network.packets
     type: long
     description: Packet count
     is_key_field: false
+    sample_values: [1621, 3784, 8418, 2637, 5129]
 
   - name: network.duration
     type: long
-    description: Duration in ms
+    description: Network connection duration in ms
     is_key_field: false
+    sample_values: [515014, 700899, 1648549, 1967317, 3222839]
 
+  # === Source Fields ===
   - name: source.ip
     type: ip
     description: Source IP
     is_key_field: true
+    sample_values: ["10.0.0.19", "10.0.0.45", "192.168.1.132", "10.0.0.28", "10.0.0.20"]
 
   - name: source.port
     type: long
     description: Source port
     is_key_field: false
+    sample_values: [50347, 60476, 51333, 52564, 61022]
 
   - name: source.mac
     type: keyword
     description: Source MAC address
     is_key_field: false
+    sample_values: ["00:00:02:aa:0f:30", "00:00:09:81:53:e4", "00:00:0f:08:c3:d4"]
 
+  - name: source.geo.country_iso_code
+    type: keyword
+    description: Source geo country ISO code (CN, US, etc.)
+    is_key_field: true
+    sample_values: ["CN"]
+
+  - name: source.geo.country_name
+    type: keyword
+    description: Source geo country name
+    is_key_field: false
+    sample_values: ["China"]
+
+  # === Destination Fields ===
   - name: destination.ip
     type: ip
     description: Destination IP
     is_key_field: true
+    sample_values: ["13.234.56.78", "8.8.8.8", "208.67.222.222", "1.1.1.1", "8.8.4.4"]
 
   - name: destination.port
     type: long
     description: Destination port
     is_key_field: true
+    sample_values: [443, 80, 22, 3389, 3306]
 
   - name: destination.service
     type: keyword
-    description: Destination service (https/http/ssh/rdp/mysql/postgresql/redis/dns)
+    description: Destination service (https, http, ssh, rdp, mysql)
     is_key_field: true
+    sample_values: ["https", "http", "ssh", "rdp", "mysql"]
+
+  # === Host Fields ===
+  - name: host.id
+    type: keyword
+    description: Host unique identifier (UUID)
+    is_key_field: false
+    sample_values: ["000550b4-00e4-49ec-b630-27d197f7cfaa", "0007adcc-fdc6-42bd-a4df-15233e85831a"]
 
   - name: host.name
     type: keyword
     description: Host name
     is_key_field: true
+    sample_values: ["srv-db-slave-02", "jump-bastion-01", "srv-web-prod-02", "app-worker-02", "cache-memcached-01"]
 
   - name: host.ip
     type: ip
     description: Host IP (source IP)
     is_key_field: false
+    sample_values: ["10.0.0.19", "10.0.0.45", "192.168.1.132", "10.0.0.28", "10.0.0.20"]
 
+  - name: host.os.name
+    type: keyword
+    description: Host operating system (Windows, Linux)
+    is_key_field: true
+    sample_values: ["Windows", "Linux"]
+
+  # === Process Fields ===
   - name: process.pid
     type: long
     description: Process ID
     is_key_field: false
+    sample_values: [124, 260, 434, 929, 16170]
 
   - name: process.name
     type: keyword
-    description: Process name
+    description: Process name (lsass.exe, svchost.exe, go, nc, scp)
     is_key_field: false
+    sample_values: ["lsass.exe", "svchost.exe", "go", "nc", "scp"]
 
+  - name: process.executable
+    type: keyword
+    description: Process executable path
+    is_key_field: false
+    sample_values: ["/usr/sbin/sshd", "C:\\Windows\\System32\\lsass.exe"]
+
+  # === User Fields ===
   - name: user.name
     type: keyword
     description: User name
     is_key_field: true
+    sample_values: ["j.smith", "b.li", "e.chen", "ops_oncall", "bot_scanner"]
 
   - name: user.id
     type: keyword
     description: User ID
     is_key_field: false
+    sample_values: ["2453", "5267", "7545", "8067", "4202"]
 
+  - name: user.domain
+    type: keyword
+    description: User domain (CORP, LOCAL)
+    is_key_field: true
+    sample_values: ["CORP", "LOCAL"]
+
+  - name: user.logon_type
+    type: keyword
+    description: Logon type (Network, RemoteInteractive, Interactive)
+    is_key_field: true
+    sample_values: ["Network", "RemoteInteractive", "Interactive"]
+
+  # === Authentication Fields ===
+  - name: authentication.type
+    type: keyword
+    description: Authentication type (kerberos, ssh, ntlm, rdp)
+    is_key_field: true
+    sample_values: ["kerberos", "ssh", "ntlm", "rdp"]
+
+  - name: authentication.method
+    type: keyword
+    description: Authentication method (password)
+    is_key_field: false
+    sample_values: ["password"]
+
+  # === Session Fields ===
+  - name: session.id
+    type: keyword
+    description: Session unique identifier (UUID)
+    is_key_field: false
+    sample_values: ["033aa8fb-f654-44e4-be4f-35655d5d095a", "05c28e7d-32f9-47e5-a9e2-7be911971a41"]
+
+  - name: session.duration
+    type: long
+    description: Session duration in milliseconds
+    is_key_field: false
+    sample_values: [301324, 303359, 303724, 304726, 305929]
+
+  # === Error Fields ===
+  - name: error.code
+    type: keyword
+    description: Error code (INVALID_CREDS, INVALID_USER, AUTH_FAILED)
+    is_key_field: true
+    sample_values: ["INVALID_CREDS", "INVALID_USER", "AUTH_FAILED"]
+
+  - name: error.message
+    type: text
+    description: Error message detail
+    is_key_field: false
+    sample_values: ["Authentication failed: invalid password"]
+
+  # === Firewall Fields ===
   - name: firewall.rule_id
     type: keyword
     description: Firewall rule ID
     is_key_field: true
+    sample_values: ["FW-69502", "FW-12211", "FW-30165", "FW-74646", "FW-79960"]
 
   - name: firewall.rule_name
     type: keyword
-    description: Firewall rule name
+    description: Firewall rule name (rule-deny-traffic, rule-allow-traffic)
     is_key_field: false
+    sample_values: ["rule-deny-traffic", "rule-allow-traffic"]
+
+  # === Risk & Logging ===
+  - name: risk_score
+    type: long
+    description: Risk score (0-100)
+    is_key_field: false
+    sample_values: [85]
+
+  - name: message
+    type: text
+    description: Human-readable event message
+    is_key_field: false
+    sample_values: ["Successful login after 9 failed attempts - BRUTE FORCE DETECTED", "Successful login after 10 failed attempts - BRUTE FORCE DETECTED"]
 
   - name: log.level
     type: keyword
-    description: Log level (info)
+    description: Log level (info, warning, critical)
     is_key_field: false
+    sample_values: ["info", "warning", "critical"]

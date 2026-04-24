@@ -72,6 +72,10 @@ class SchemaFieldInfo(BaseModel):
         default=False,
         description="Whether the field is marked as a key field in the registry",
     )
+    sample_values: List[Any] = Field(
+        default_factory=list,
+        description="Example values observed in the live backend data",
+    )
 
 
 class SchemaExplorerInput(BaseModel):
@@ -302,7 +306,7 @@ class DiscoverIndexFieldsInput(BaseModel):
 class DiscoveredFieldInfo(BaseModel):
     name: str = Field(..., description="Field name (dotted path for nested fields)")
     type: str = Field(..., description="Field type reported by the backend")
-    sample_values: List[str] = Field(
+    sample_values: List[Any] = Field(
         default_factory=list,
         description="Top-5 most frequent values for this field",
     )

@@ -327,7 +327,7 @@ class ELKQueryBackend:
                 field_type = field_types[field_name]
                 agg_key = f"{field_name}.keyword" if field_type in (None, "text") else field_name
                 buckets = aggregations.get(agg_key, {}).get("buckets", [])
-                sample_values = [str(b["key"]) for b in buckets[:5]]
+                sample_values = [b["key"] for b in buckets[:5]]
                 discovered.append(DiscoveredFieldInfo(
                     name=field_name, type=field_type, sample_values=sample_values,
                 ))
@@ -447,23 +447,30 @@ class SplunkQueryBackend:
             if fname in skip_fields or fname.startswith("date_"):
                 continue
 
+            count = int(item.get("count", 0))
             numeric_count = int(item.get("numeric_count", 0))
-            distinct_count = int(item.get("distinct_count", 0))
-            if numeric_count > 0 and distinct_count > 20:
+            if count > 0 and numeric_count / count > 0.8:
                 ftype = "long"
-            elif numeric_count > 0:
-                ftype = "keyword"
             else:
                 ftype = "keyword"
 
-            sample_values: list[str] = []
+            sample_values: list = []
             raw_values = item.get("values", "")
             if raw_values:
                 try:
                     parsed = json.loads(raw_values)
                     if isinstance(parsed, list):
                         for entry in parsed:
-                            sample_values.append(entry.get("value"))
+                            val = entry.get("value") if isinstance(entry, dict) else entry
+                            if val is not None and ftype == "long":
+                                try:
+                                    val = int(val)
+                                except (ValueError, TypeError):
+                                    try:
+                                        val = float(val)
+                                    except (ValueError, TypeError):
+                                        pass
+                            sample_values.append(val)
                 except (json.JSONDecodeError, TypeError):
                     pass
 

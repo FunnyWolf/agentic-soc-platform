@@ -4,156 +4,229 @@ description: Host endpoint events including process and file activities.
 
 fields:
   - name: "@timestamp"
-    type: date
+    type: keyword
     description: Event time
     is_key_field: false
-
-  - name: event.dataset
-    type: keyword
-    description: Dataset type (host)
-    is_key_field: false
-
-  - name: event.module
-    type: keyword
-    description: Module (endpoint)
-    is_key_field: false
-
-  - name: event.category
-    type: keyword
-    description: Event category (process/file)
-    is_key_field: true
-
-  - name: event.type
-    type: keyword
-    description: Event type (process_created/terminated/file_created/deleted/registry_modified)
-    is_key_field: true
+    sample_values: ["2026-04-24T07:27:50.859184Z", "2026-04-24T07:27:50.859372Z", "2026-04-24T07:27:50.859663Z", "2026-04-24T07:27:50.859742Z", "2026-04-24T07:27:50.859811Z"]
 
   - name: event.action
     type: keyword
     description: Event action
     is_key_field: true
+    sample_values: ["process_created", "process_terminated", "file_created", "file_deleted", "network_connection"]
+
+  - name: event.category
+    type: keyword
+    description: Event category (process/file)
+    is_key_field: true
+    sample_values: ["process", "file"]
+
+  - name: event.dataset
+    type: keyword
+    description: Dataset type (host)
+    is_key_field: false
+    sample_values: ["host"]
+
+  - name: event.duration
+    type: long
+    description: Event duration
+    is_key_field: false
+    sample_values: [1014, 1530, 1559, 167, 1761]
+
+  - name: event.module
+    type: keyword
+    description: Module (endpoint)
+    is_key_field: false
+    sample_values: ["endpoint"]
 
   - name: event.outcome
     type: keyword
     description: Event outcome (success/failure)
     is_key_field: false
+    sample_values: ["failure", "success"]
 
-  - name: host.name
+  - name: event.type
     type: keyword
-    description: Host name
+    description: Event type
     is_key_field: true
+    sample_values: ["process_created", "process_terminated", "file_created", "file_deleted", "network_connection"]
 
-  - name: host.id
+  - name: eventtype
     type: keyword
-    description: Host ID (UUID)
-    is_key_field: true
-
-  - name: host.os.name
-    type: keyword
-    description: OS name (Windows/Linux/macOS)
+    description: Splunk event type label
     is_key_field: false
+    sample_values: []
 
-  - name: host.os.version
+  - name: file.content
     type: keyword
-    description: OS version
+    description: File content snippet
     is_key_field: false
+    sample_values: ["Your files have been encrypted. Contact us for decryption key."]
 
-  - name: host.architecture
+  - name: file.extension
     type: keyword
-    description: Host architecture (x86_64/arm64)
+    description: File extension
     is_key_field: false
-
-  - name: user.name
-    type: keyword
-    description: User name
-    is_key_field: true
-
-  - name: user.id
-    type: keyword
-    description: User ID (SID)
-    is_key_field: true
-
-  - name: user.domain
-    type: keyword
-    description: User domain (CORP/LOCAL/WORKGROUP)
-    is_key_field: false
-
-  - name: process.pid
-    type: long
-    description: Process ID
-    is_key_field: true
-
-  - name: process.ppid
-    type: long
-    description: Parent Process ID
-    is_key_field: false
-
-  - name: process.name
-    type: keyword
-    description: Process name
-    is_key_field: true
-
-  - name: process.executable
-    type: keyword
-    description: Process executable path
-    is_key_field: false
-
-  - name: process.command_line
-    type: text
-    description: Process command line
-    is_key_field: false
-
-  - name: process.hash.md5
-    type: keyword
-    description: Process MD5 hash
-    is_key_field: false
-
-  - name: process.hash.sha256
-    type: keyword
-    description: Process SHA256 hash
-    is_key_field: false
-
-  - name: process.parent.name
-    type: keyword
-    description: Parent process name
-    is_key_field: false
-
-  - name: process.parent.pid
-    type: long
-    description: Parent process ID
-    is_key_field: false
-
-  - name: file.name
-    type: keyword
-    description: File name
-    is_key_field: true
-
-  - name: file.path
-    type: keyword
-    description: File path
-    is_key_field: false
-
-  - name: file.size
-    type: long
-    description: File size in bytes
-    is_key_field: false
+    sample_values: [".pdf", ".jpg", ".docx", ".xls", ".xlsx"]
 
   - name: file.hash.md5
     type: keyword
     description: File MD5 hash
     is_key_field: false
+    sample_values: ["01c2ea9c38f443fb895d889f0a6ed8ef", "04eef09f1db24af6a977836b03f36193", "0bda41d3f70d47c9ad9c9549ca70cf2c", "0c5c5aa75ef54430a3ddfc4008fa92bc", "0d92cb4d64eb4d88b54519c9ebd5f4e0"]
 
   - name: file.hash.sha256
     type: keyword
     description: File SHA256 hash
     is_key_field: false
+    sample_values: ["036f3657bd7845b98b685352b20f6441", "08a220089adc4861ae6719165f06f9ff", "08b68f3fc25e47158a513dd0d98a4305", "0a5d4ce832c64a19b0aa3860ef75f6e6", "0e3988e2dac0462195245fb7a81a0a28"]
+
+  - name: file.name
+    type: keyword
+    description: File name
+    is_key_field: true
+    sample_values: ["README_TO_DECRYPT.txt", "file_1560.dll", "file_2074.sys", "file_2217.dat", "file_3594.txt"]
+
+  - name: file.path
+    type: keyword
+    description: File path
+    is_key_field: false
+    sample_values: ["/var/log/app.log", "C:\\Users\\temp_contractor\\Documents\\file.txt", "C:\\Users\\j.smith\\Documents\\file.txt", "C:\\Users\\svc_sql\\Documents\\file.txt", "C:\\Users\\dev_01\\Documents\\file.txt"]
+
+  - name: file.size
+    type: long
+    description: File size in bytes
+    is_key_field: false
+    sample_values: [1243351, 162926, 286945, 10141978, 10163562]
+
+  - name: file.target_path
+    type: keyword
+    description: File target path
+    is_key_field: false
+    sample_values: ["C:\\Users\\b.li\\Documents\\finance_data_0.pdf.encrypted", "C:\\Users\\b.li\\Documents\\finance_data_1.docx.encrypted", "C:\\Users\\b.li\\Documents\\finance_data_10.pdf.encrypted", "C:\\Users\\b.li\\Documents\\finance_data_11.docx.encrypted", "C:\\Users\\b.li\\Documents\\finance_data_12.pdf.encrypted"]
+
+  - name: host.architecture
+    type: keyword
+    description: Host architecture (x86_64/arm64)
+    is_key_field: false
+    sample_values: ["x86_64", "arm64"]
+
+  - name: host.id
+    type: keyword
+    description: Host ID (UUID)
+    is_key_field: true
+    sample_values: ["01386b33-b42a-465d-8928-3fee4942dd6d", "01da9479-a5ed-4083-8916-8d39ffafd699", "0293adda-de48-4561-9272-91fe6d1c9dce", "04f8a590-b9cc-4ea5-9885-e122509f9d97", "0bc6abf7-e58a-447a-ac0e-a721a63bd5cb"]
+
+  - name: host.name
+    type: keyword
+    description: Host name
+    is_key_field: true
+    sample_values: ["workstation-win10-01", "app-api-v1", "app-worker-02", "srv-web-prod-02", "app-api-v2"]
+
+  - name: host.os.name
+    type: keyword
+    description: OS name (Windows/Linux/macOS)
+    is_key_field: false
+    sample_values: ["Windows", "macOS", "Linux"]
+
+  - name: host.os.version
+    type: long
+    description: OS version
+    is_key_field: false
+    sample_values: [10, 22.04, 11, 20.04, 12.0]
 
   - name: log.level
     type: keyword
-    description: Log level (info/warning/error)
+    description: Log level
     is_key_field: false
+    sample_values: ["warning", "info", "error", "critical"]
 
   - name: message
-    type: text
+    type: keyword
     description: Log message
     is_key_field: false
+    sample_values: ["Process crond executed by user svc_monitor", "Process java executed by user admin", "Process nmap executed by user svc_monitor", "Process apache2 executed by user svc_deploy", "Process curl executed by user d.liu"]
+
+  - name: process.command_line
+    type: keyword
+    description: Process command line
+    is_key_field: false
+    sample_values: ["nmap ", "node --verbose", "powershell.exe --verbose", "scp --verbose", "crond -d"]
+
+  - name: process.executable
+    type: keyword
+    description: Process executable path
+    is_key_field: false
+    sample_values: ["/usr/bin/node", "C:\\Windows\\System32\\wininit.exe", "/usr/bin/nmap", "/usr/bin/crond", "/usr/bin/metasploit"]
+
+  - name: process.hash.md5
+    type: keyword
+    description: Process MD5 hash
+    is_key_field: false
+    sample_values: ["0211267a67a74070b6928b762b38e4e0", "3369dca72af34458a6a4617ed4ee6c6a", "3f1c3159f0a348448c76312de9fb72dd", "73c064f9edda4b588465c64eb89aa52e", "00b6aceb8e164875a8cbe0ca99644ed8"]
+
+  - name: process.hash.sha256
+    type: keyword
+    description: Process SHA256 hash
+    is_key_field: false
+    sample_values: ["0211267a67a74070b6928b762b38e4e0", "3369dca72af34458a6a4617ed4ee6c6a", "3f1c3159f0a348448c76312de9fb72dd", "73c064f9edda4b588465c64eb89aa52e", "009e60e6a0aa40e9b35258eea30b6d58"]
+
+  - name: process.name
+    type: keyword
+    description: Process name
+    is_key_field: true
+    sample_values: ["node", "wininit.exe", "nmap", "crond", "metasploit"]
+
+  - name: process.parent.name
+    type: keyword
+    description: Parent process name
+    is_key_field: false
+    sample_values: ["svchost.exe", "bash", "systemd", "explorer.exe", "powershell.exe"]
+
+  - name: process.parent.pid
+    type: long
+    description: Parent process ID
+    is_key_field: false
+    sample_values: [892, 895, 795, 126, 503]
+
+  - name: process.pid
+    type: long
+    description: Process ID
+    is_key_field: true
+    sample_values: [6502, 6713, 8970, 9806, 15862]
+
+  - name: process.ppid
+    type: long
+    description: Parent Process ID
+    is_key_field: false
+    sample_values: [44291, 12066, 24842, 10023, 10194]
+
+  - name: process.working_directory
+    type: keyword
+    description: Process working directory
+    is_key_field: false
+    sample_values: ["C:\\Windows\\System32"]
+
+  - name: risk_score
+    type: long
+    description: Risk score
+    is_key_field: true
+    sample_values: [95, 100]
+
+  - name: user.domain
+    type: keyword
+    description: User domain (CORP/LOCAL/WORKGROUP)
+    is_key_field: false
+    sample_values: ["WORKGROUP", "LOCAL", "CORP"]
+
+  - name: user.id
+    type: keyword
+    description: User ID (SID)
+    is_key_field: true
+    sample_values: ["S-1-5-21-1175884441-9443163747-9821964477-3064", "S-1-5-21-1574726635-2883070211-2019391702-6084", "S-1-5-21-1667962420-7344460597-3979035416-6313", "S-1-5-21-1792593035-2443779791-1962848761-3629", "S-1-5-21-1815891220-4999913203-8554913523-5415"]
+
+  - name: user.name
+    type: keyword
+    description: User name
+    is_key_field: true
+    sample_values: ["dev_01", "c.zhang", "svc_sql", "b.li", "e.chen"]
