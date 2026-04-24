@@ -1,5 +1,5 @@
 ---
-name: asp-siem-en
+name: asp-siem-search-en
 description: 'Investigate ASP SIEM data with schema exploration, keyword search, and adaptive queries. Use when users want to find the right index, inspect available fields, search logs by IOC, or run structured hunts with exact filters and aggregations.'
 argument-hint: 'explore schema [index] | search <keyword> from <UTC start> to <UTC end> | adaptive query <index_name> <time range> [filters] [aggregations]'
 compatibility: connect to asp mcp server
