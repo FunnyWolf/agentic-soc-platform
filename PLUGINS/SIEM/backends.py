@@ -193,7 +193,7 @@ def _build_safe_aggs(agg_fields: list[str], index_name: str) -> dict[str, Any]:
 
 
 class ELKQueryBackend:
-    backend_name = "ELK"
+    backend_name: Literal["ELK", "Splunk"] = "ELK"
 
     @classmethod
     def execute_structured_query(cls, input_data: AdaptiveQueryInput) -> BackendQueryResult:
@@ -298,7 +298,7 @@ class ELKQueryBackend:
 
 
 class SplunkQueryBackend:
-    backend_name = "Splunk"
+    backend_name: Literal["ELK", "Splunk"] = "Splunk"
 
     @classmethod
     def execute_structured_query(cls, input_data: AdaptiveQueryInput) -> BackendQueryResult:
