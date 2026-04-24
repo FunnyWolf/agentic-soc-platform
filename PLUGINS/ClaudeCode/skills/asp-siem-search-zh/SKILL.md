@@ -1,5 +1,5 @@
 ---
-name: asp-siem-zh
+name: asp-siem-search-zh
 description: '用于在 ASP SIEM 中进行日志调查、事件检索、字段探索和结构化分析，适合从模糊线索到精确验证的调查任务。'
 argument-hint: 'explore schema [index] | search <keyword> from <UTC start> to <UTC end> | adaptive query <index_name> <time range> [filters] [aggregations]'
 compatibility: connect to asp mcp server
