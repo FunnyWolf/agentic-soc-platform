@@ -513,29 +513,6 @@ class Alert(BaseWorksheetEntity[AlertModel]):
             return None
 
     @classmethod
-    def update_by_id(
-            cls,
-            alert_id: str,
-            severity_ai: Union[Severity, None] = None,
-            confidence_ai: Union[Confidence, None] = None,
-            comment_ai: Union[str, None] = None
-    ) -> Union[str, None]:
-        alert_old = cls.get_by_id(alert_id, lazy_load=True)
-        if not alert_old:
-            return None
-
-        alert_new = AlertModel()
-        alert_new.row_id = alert_old.row_id
-        if severity_ai is not None:
-            alert_new.severity_ai = severity_ai
-        if confidence_ai is not None:
-            alert_new.confidence_ai = confidence_ai
-        if comment_ai is not None:
-            alert_new.comment_ai = comment_ai
-
-        return cls.update(alert_new)
-
-    @classmethod
     def get_discussions(cls, alert_id) -> Union[List[dict], None]:
         alert_model = cls.get_by_id(alert_id, lazy_load=True)
         if not alert_model:

@@ -9,8 +9,8 @@ from Lib.baseplaybook import LanggraphPlaybook
 from Lib.llmapi import BaseAgentState
 from PLUGINS.LLM.llmapi import LLMAPI
 from PLUGINS.SIRP.sirpapi import Case
-from PLUGINS.SIRP.sirpextramodel import PlaybookJobStatus, PlaybookModel
 from PLUGINS.SIRP.sirpcoremodel import Severity, AttackStage, Confidence, CaseModel
+from PLUGINS.SIRP.sirpextramodel import PlaybookJobStatus, PlaybookModel
 
 
 class AnalyzeResult(BaseModel):

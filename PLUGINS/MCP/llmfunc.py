@@ -160,21 +160,6 @@ def get_alert_discussions(
     return [json.dumps(item, ensure_ascii=False) for item in discussions]
 
 
-def update_alert(
-        alert_id: Annotated[str, Field(description="Alert ID to update (待更新的 Alert ID)")],
-        severity_ai: Annotated[Severity, Field(description="Updated AI-assessed severity (更新 AI 评估严重程度)")] = None,
-        confidence_ai: Annotated[Optional[Confidence], Field(description="Updated AI-assessed confidence (更新 AI 评估置信度)")] = None,
-        comment_ai: Annotated[Optional[str], Field(description="Updated AI comment, Markdown supported (更新 AI 注释,支持 Markdown)")] = None
-) -> Annotated[Optional[str], Field(description="Updated alert row ID, or None if not found (更新后的 Alert 行 ID,不存在时返回 None)")]:
-    """Update AI-assessed fields on an alert. (更新 Alert 的 AI 评估字段)"""
-    return Alert.update_by_id(
-        alert_id=alert_id,
-        severity_ai=severity_ai,
-        confidence_ai=confidence_ai,
-        comment_ai=comment_ai
-    )
-
-
 # Artifact
 # Do not open to mcp , because we think artifact is add only by automation, not human
 def create_artifact(
@@ -561,7 +546,6 @@ REGISTERED_MCP_TOOLS = [
     # alert
     list_alerts,
     get_alert_discussions,
-    update_alert,
 
     # artifact
     list_artifacts,

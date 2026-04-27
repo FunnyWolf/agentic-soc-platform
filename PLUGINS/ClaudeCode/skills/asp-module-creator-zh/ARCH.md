@@ -84,7 +84,7 @@ self.read_stream_message()
 ## SIRP 数据层级
 
 ```
-Case（调查案例，顶层）
+Case（调查案件，顶层）
  │  通过 correlation_uid 聚合同类告警
  │
  └── Alert（单次规则触发记录，二级）
