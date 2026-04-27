@@ -1,60 +1,75 @@
-from typing import List, Dict, Optional
+import json
+from typing import Dict, List, Optional
 
 from langchain_core.messages import HumanMessage
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from Lib.baseplaybook import BasePlaybook
 from PLUGINS.LLM.llmapi import LLMAPI
 from PLUGINS.SIRP.sirpapi import Case
-from PLUGINS.SIRP.sirpcoremodel import AttackStage, CasePriority, Confidence
+from PLUGINS.SIRP.sirpcoremodel import AttackStage, CaseModel, CasePriority, Confidence, Impact, Severity
 from PLUGINS.SIRP.sirpextramodel import PlaybookModel
 
 
 class AffectedAsset(BaseModel):
-    asset_type: str = Field(description="资产的类型, 例如Host, IP, User, File, Cloud Resource.")
-    asset_value: str = Field(description="资产的具体标识符, 例如IP地址, 主机名, 用户名, 资源ARN.")
+    asset_type: str = Field(description="受影响或被攻击者直接操作的资产类型，例如 Host、IP、User、Mailbox、File、Cloud Resource。")
+    asset_value: str = Field(description="资产的具体标识，例如主机名、IP、用户名、邮箱地址、文件路径、云资源 ARN。")
 
 
 class ArtifactAnalysis(BaseModel):
-    artifact_name: str = Field(description="痕迹或载荷的标识符, 例如文件名, 进程名, URL或IAM角色名.")
-    artifact_type: str = Field(description="痕迹的类型, 例如File, Process, Network Traffic, API Call, IAM Policy.")
+    artifact_name: str = Field(description="痕迹、样本或关键对象的标识，例如文件名、进程名、URL、策略名。")
+    artifact_type: str = Field(description="痕迹类型，例如 File、Process、Network Traffic、API Call、IAM Policy。")
     properties: Dict[str, str] = Field(
-        description="动态属性键值对. 根据痕迹类型提取不同的关键属性, 例如文件可能包含MD5, Path; 网络请求可能包含Method, User-Agent; 云操作可能包含API Name, Parameters.")
-    analysis_result: str = Field(description="对该痕迹的深度技术分析, 解释其执行的恶意行为, 功能机制以及造成的威胁等级.")
-    threat_intelligence: Optional[str] = Field(description="与该痕迹相关的威胁情报信息或标签, 如无则为空.")
+        description="与该痕迹直接相关的关键属性键值对，例如 Hash、Path、CommandLine、UserAgent、APIName、Parameters。"
+    )
+    analysis_result: str = Field(description="针对该痕迹的技术分析结论，说明其行为、作用、风险和与本案的关联。")
+    threat_intelligence: Optional[str] = Field(description="与该痕迹相关的情报、标签或信誉结论；无证据时写空字符串。")
 
 
 class AttackChainStep(BaseModel):
-    attack_stage: AttackStage = Field(description="攻击链的阶段名称.")
-    description: str = Field(description="该阶段的具体行为说明, 描述攻击者如何利用漏洞或执行了什么操作.")
+    attack_stage: AttackStage = Field(description="MITRE ATT&CK 攻击阶段。")
+    description: str = Field(description="该阶段发生了什么、攻击者如何实现、证据依据是什么。")
 
 
 class TimelineEvent(BaseModel):
-    timestamp: str = Field(description="事件发生的时间点.")
-    attack_behavior: str = Field(description="在该时间点发生的具体攻击行为或检测到的动作.")
-    evidence_field: str = Field(description="支撑该行为判断的关键证据字段或日志内容片段.")
+    timestamp: str = Field(description="事件发生时间；若无法精确确定，可填相对时间或近似时间。")
+    attack_behavior: str = Field(description="该时间点发生的关键行为、操作或检测现象。")
+    evidence_field: str = Field(description="支撑该结论的关键日志字段、原文片段或关联证据。")
 
 
 class IndicatorOfCompromise(BaseModel):
-    indicator_type: str = Field(description="IOC的类型, 必须从以下范围中选择: IP, Domain, URL, FileHash, FilePath, Command, RegistryKey.")
-    value: str = Field(description="IOC的具体值, 例如具体的IP地址, MD5字符串或恶意文件路径.")
-    context: str = Field(description="简述该IOC在本次事件中的上下文描述, 例如作为C2服务器建立网络连接或被释放的后门文件.")
+    indicator_type: str = Field(description="IOC 类型，只能从 IP、Domain、URL、FileHash、FilePath、Command、RegistryKey 中选择。")
+    value: str = Field(description="IOC 的具体值。")
+    context: str = Field(description="该 IOC 在本案中的上下文，例如作为下载地址、C2、落地文件、横向移动命令等。")
 
 
 class RemediationRecommendation(BaseModel):
-    action_type: str = Field(description="处置或加固动作的类型, 例如隔离主机, 封禁IP, 清除文件, 修复漏洞等.")
-    description: str = Field(description="具体的处置步骤或系统加固建议说明.")
-    priority: CasePriority = Field(description="该建议的执行优先级, 例如High, Medium, Low.")
+    action_type: str = Field(description="处置动作类型，例如隔离主机、禁用账号、阻断 URL、删除文件、修复配置。")
+    description: str = Field(description="可直接执行的处置或加固建议，要求具体。")
+    priority: CasePriority = Field(description="该处置动作自身的执行优先级。")
 
 
 class IncidentReport(BaseModel):
-    affected_assets: List[AffectedAsset] = Field(description="受此次事件影响或作为目标的资产列表.")
-    attack_chain: List[AttackChainStep] = Field(description="重建的攻击链结构化步骤列表.")
-    attack_timeline: List[TimelineEvent] = Field(description="按时间顺序排列的事件时间线.")
-    ioc_indicators: List[IndicatorOfCompromise] = Field(description="结构化提取的妥协指标列表.")
-    digest: str = Field(description="事件的综合摘要. 需确认攻击是否真实发生, 攻击者获取的最高权限, 核心恶意行为以及总体的影响评估.")
-    remediation_recommendations: List[RemediationRecommendation] = Field(description="针对该事件的处置与系统加固建议列表.")
-    confidence: Confidence = Field(description="事件的置信度.")
+    model_config = ConfigDict(use_enum_values=False)
+
+    severity: Severity = Field(description="AI 评估的事件严重程度，必须结合攻击链深度、权限水平、受影响范围和业务风险判断。")
+    impact: Impact = Field(description="AI 评估的事件影响等级，必须反映事件对资产、账号、数据和业务的实际或潜在影响。")
+    priority: CasePriority = Field(description="AI 评估的响应优先级，必须结合当前风险、是否仍在持续、以及是否需要立即响应判断。")
+    confidence: Confidence = Field(
+        description="事件置信度。High 表示多源证据交叉验证；Medium 表示证据基本闭环但仍有缺口；Low 表示证据不足或更像噪声。"
+    )
+    digest: str = Field(
+        description="事件综合摘要。必须写成详细结论性摘要，至少覆盖：1. 是否真实安全事件；2. 攻击者关键行为与攻击链；3. 已获得的最高权限或控制能力；4. 影响范围与业务风险；5. 关键证据与不确定性。禁止只写一句空泛结论。"
+    )
+    affected_assets: List[AffectedAsset] = Field(
+        description="受影响资产或被攻击者直接操作的目标资产列表。若无法确认真实受影响范围，可列出当前证据支持的潜在目标，并在描述中说明不确定性。"
+    )
+    attack_chain: List[AttackChainStep] = Field(description="基于证据重建的攻击链步骤，按逻辑顺序排列，只保留有证据支撑的阶段。")
+    attack_timeline: List[TimelineEvent] = Field(description="按时间顺序排列的关键事件时间线；无法精确排序时，也要给出相对先后关系。")
+    ioc_indicators: List[IndicatorOfCompromise] = Field(description="可用于排查、封禁、搜索或持续监控的 IOC 列表。")
+    remediation_recommendations: List[RemediationRecommendation] = Field(
+        description="面向分析员的处置与加固建议，要求具体、可执行，并按优先级组织。"
+    )
 
 
 class Playbook(BasePlaybook):
@@ -67,23 +82,36 @@ class Playbook(BasePlaybook):
     def run(self):
         case = Case.get(self.param_source_row_id)
         content = case.model_dump_json_for_ai()
-        # Load system prompt
+
         system_message = self.load_system_prompt_template("Investigation_System").format()
 
-        # Run
         llm_api = LLMAPI()
-
         llm = llm_api.get_model(tag="structured_output")
 
-        # Construct message list
         messages = [
             system_message,
             HumanMessage(content=content)
         ]
         llm = llm.with_structured_output(IncidentReport)
-        response = llm.invoke(messages)
-        response: IncidentReport
-        print(response)
+        response: IncidentReport = llm.invoke(messages)
+
+        report_payload = response.model_dump(mode="json")
+        comment_payload = {
+            key: value
+            for key, value in report_payload.items()
+            if key not in {"severity", "impact", "priority", "confidence"}
+        }
+
+        case_new = CaseModel(
+            row_id=self.param_source_row_id,
+            severity_ai=response.severity,
+            impact_ai=response.impact,
+            priority_ai=response.priority,
+            confidence_ai=response.confidence,
+            comment_ai=json.dumps(comment_payload, ensure_ascii=False, indent=2),
+        )
+        Case.update(case_new)
+        print(report_payload)
         return
 
 
