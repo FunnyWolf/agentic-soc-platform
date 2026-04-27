@@ -404,8 +404,8 @@ class AlertModel(BaseSystemModel):
 
 class CaseModel(BaseSystemModel):
     """安全案件,多个告警聚合而成,安全人员与AI分析处理的核心对象"""
-    _AI_EXCLUDE_FIELDS: ClassVar[set[str]] = {"workbook", "summary_ai", "comment_ai", "attack_stage_ai", "severity_ai", "confidence_ai", "impact_ai",
-                                              "priority_ai", "verdict_ai"}
+    _AI_EXCLUDE_FIELDS: ClassVar[set[str]] = {"workbook", "summary_ai", "investigation_report_ai", "severity_ai", "confidence_ai", "impact_ai", "priority_ai",
+                                              "verdict_ai"}
     # 系统自动生成字段
     id: Optional[str] = Field(default=None, init=False, description="Record ID e.g. case_000001 (记录 ID e.g. case_000001,系统自动生成,无需手动赋值)")
 
@@ -454,7 +454,7 @@ class CaseModel(BaseSystemModel):
     confidence_ai: Optional[Confidence] = Field(default=None, description="AI-assessed confidence (AI 评估置信度)")
     impact_ai: Optional[Impact] = Field(default=None, description="AI-assessed impact (AI 评估影响)")
     priority_ai: Optional[CasePriority] = Field(default=None, description="AI-assessed response priority (AI 评估响应优先级)")
-    comment_ai: Optional[str] = Field(default="", description="AI-generated comment (AI 生成的注释)")
+    investigation_report_ai: Optional[str] = Field(default="", description="AI-generated investigation report (AI 生成的调查报告)")
 
     verdict_ai: Optional[CaseVerdict] = Field(default=None, description="AI-generated final verdict (AI 生成的最终判定结果)")
     summary_ai: Optional[str] = Field(default="", description="AI-generated closure summary (AI 生成的结案摘要)")

@@ -49,7 +49,7 @@ class RemediationRecommendation(BaseModel):
     priority: CasePriority = Field(description="该处置动作自身的执行优先级。")
 
 
-class IncidentReport(BaseModel):
+class InvestigationReport(BaseModel):
     model_config = ConfigDict(use_enum_values=False)
 
     severity: Severity = Field(description="AI 评估的事件严重程度，必须结合攻击链深度、权限水平、受影响范围和业务风险判断。")
@@ -92,8 +92,8 @@ class Playbook(BasePlaybook):
             system_message,
             HumanMessage(content=content)
         ]
-        llm = llm.with_structured_output(IncidentReport)
-        response: IncidentReport = llm.invoke(messages)
+        llm = llm.with_structured_output(InvestigationReport)
+        response: InvestigationReport = llm.invoke(messages)
 
         report_payload = response.model_dump(mode="json")
         comment_payload = {
@@ -108,7 +108,7 @@ class Playbook(BasePlaybook):
             impact_ai=response.impact,
             priority_ai=response.priority,
             confidence_ai=response.confidence,
-            comment_ai=json.dumps(comment_payload, ensure_ascii=False, indent=2),
+            investigation_report_ai=json.dumps(comment_payload, ensure_ascii=False, indent=2),
         )
         Case.update(case_new)
         print(report_payload)
