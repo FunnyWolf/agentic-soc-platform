@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any, Annotated, Union, ClassVar, Optional
 
-from pydantic import BeforeValidator, PlainSerializer, BaseModel, ConfigDict, Field, field_validator
+from pydantic import BeforeValidator, PlainSerializer, BaseModel, ConfigDict, Field, field_validator, model_serializer
 
 
 class AccountModel(BaseModel):
@@ -119,6 +119,18 @@ class BaseSystemModel(BaseModel):
             return None
         return v
 
+    @model_serializer(mode="wrap")
+    def _serialize_model(self, handler, info):
+        data = handler(self)
+        if not isinstance(data, dict):
+            return data
+
+        context = info.context if info else None
+        if isinstance(context, dict) and context.get("for_ai"):
+            for field_name in self._AI_EXCLUDE_FIELDS:
+                data.pop(field_name, None)
+        return data
+
     def model_dump_for_ai(
             self,
             *,
@@ -127,11 +139,11 @@ class BaseSystemModel(BaseModel):
             exclude_default: bool = True,
     ) -> dict[str, Any]:
         return self.model_dump(
-            exclude=self._AI_EXCLUDE_FIELDS,
             exclude_none=exclude_none,
             exclude_unset=exclude_unset,
             exclude_defaults=exclude_default,
-            by_alias=True
+            by_alias=True,
+            context={"for_ai": True}
         )
 
     def model_dump_json_for_ai(
@@ -142,9 +154,9 @@ class BaseSystemModel(BaseModel):
             exclude_default: bool = True,
     ) -> str:
         return self.model_dump_json(
-            exclude=self._AI_EXCLUDE_FIELDS,
             exclude_none=exclude_none,
             exclude_unset=exclude_unset,
             exclude_defaults=exclude_default,
-            by_alias=True
+            by_alias=True,
+            context={"for_ai": True}
         )

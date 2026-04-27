@@ -104,8 +104,6 @@ class Severity(StrEnum):
     MEDIUM = "Medium"
     HIGH = "High"
     CRITICAL = "Critical"
-    FATAL = "Fatal"
-    OTHER = "Other"
 
 
 class AttackStage(StrEnum):
@@ -131,7 +129,6 @@ class Impact(StrEnum):
     MEDIUM = "Medium"
     HIGH = "High"
     CRITICAL = "Critical"
-    OTHER = "Other"
 
 
 class Disposition(StrEnum):
@@ -180,7 +177,6 @@ class Confidence(StrEnum):
     LOW = "Low"
     MEDIUM = "Medium"
     HIGH = "High"
-    OTHER = "Other"
 
 
 class AlertAnalyticType(StrEnum):
@@ -458,8 +454,7 @@ class CaseModel(BaseSystemModel):
     confidence_ai: Optional[Confidence] = Field(default=None, description="AI-assessed confidence (AI 评估置信度)")
     impact_ai: Optional[Impact] = Field(default=None, description="AI-assessed impact (AI 评估影响)")
     priority_ai: Optional[CasePriority] = Field(default=None, description="AI-assessed response priority (AI 评估响应优先级)")
-    attack_stage_ai: Optional[AttackStage] = Field(default="", description="AI-assessed attack stage (AI 评估攻击阶段)")
     comment_ai: Optional[str] = Field(default="", description="AI-generated comment (AI 生成的注释)")
-    
+
     verdict_ai: Optional[CaseVerdict] = Field(default=None, description="AI-generated final verdict (AI 生成的最终判定结果)")
     summary_ai: Optional[str] = Field(default="", description="AI-generated closure summary (AI 生成的结案摘要)")

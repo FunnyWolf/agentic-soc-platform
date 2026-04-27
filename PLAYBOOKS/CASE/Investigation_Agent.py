@@ -1,28 +1,13 @@
-from typing import Any
 from typing import List, Dict, Optional
 
 from langchain_core.messages import HumanMessage
 from pydantic import BaseModel, Field
-from pydantic import ConfigDict
 
 from Lib.baseplaybook import BasePlaybook
 from PLUGINS.LLM.llmapi import LLMAPI
 from PLUGINS.SIRP.sirpapi import Case
-from PLUGINS.SIRP.sirpcoremodel import Severity, AttackStage, Confidence
+from PLUGINS.SIRP.sirpcoremodel import AttackStage, CasePriority, Confidence
 from PLUGINS.SIRP.sirpextramodel import PlaybookModel
-
-
-class AnalyzeResult(BaseModel):
-    """Structure for extracting user information from text"""
-    # config
-    model_config = ConfigDict(use_enum_values=True)
-
-    original_severity: Severity = Field(description="Original alert severity")
-    new_severity: Severity = Field(description="Recommended new severity level")
-    confidence: Confidence = Field(description="Confidence score, only one of 'Low', 'Medium', or 'High'")
-    analysis_rationale: str | None = Field(description="Analysis process and reasons", default=None)
-    attack_stage: AttackStage = Field(description="e.g. 'Lateral Movement'", default=None)
-    recommended_actions: str | dict[str, Any] | None = Field(description="e.g., 'Isolate host 10.1.1.5'", default=None)
 
 
 class AffectedAsset(BaseModel):
@@ -40,7 +25,7 @@ class ArtifactAnalysis(BaseModel):
 
 
 class AttackChainStep(BaseModel):
-    phase: str = Field(description="攻击链的阶段名称, 例如Initial Access, Execution, Persistence, Privilege Escalation, Lateral Movement等.")
+    attack_stage: AttackStage = Field(description="攻击链的阶段名称.")
     description: str = Field(description="该阶段的具体行为说明, 描述攻击者如何利用漏洞或执行了什么操作.")
 
 
@@ -53,24 +38,23 @@ class TimelineEvent(BaseModel):
 class IndicatorOfCompromise(BaseModel):
     indicator_type: str = Field(description="IOC的类型, 必须从以下范围中选择: IP, Domain, URL, FileHash, FilePath, Command, RegistryKey.")
     value: str = Field(description="IOC的具体值, 例如具体的IP地址, MD5字符串或恶意文件路径.")
-    confidence: str = Field(description="该指标的置信度或威胁等级, 例如High, Medium, Low.")
     context: str = Field(description="简述该IOC在本次事件中的上下文描述, 例如作为C2服务器建立网络连接或被释放的后门文件.")
 
 
 class RemediationRecommendation(BaseModel):
     action_type: str = Field(description="处置或加固动作的类型, 例如隔离主机, 封禁IP, 清除文件, 修复漏洞等.")
     description: str = Field(description="具体的处置步骤或系统加固建议说明.")
-    priority: str = Field(description="该建议的执行优先级, 例如High, Medium, Low.")
+    priority: CasePriority = Field(description="该建议的执行优先级, 例如High, Medium, Low.")
 
 
 class IncidentReport(BaseModel):
-    digest: str = Field(description="事件的综合摘要. 需确认攻击是否真实发生, 攻击者获取的最高权限, 核心恶意行为以及总体的影响评估.")
     affected_assets: List[AffectedAsset] = Field(description="受此次事件影响或作为目标的资产列表.")
-    attack_chain_description: List[AttackChainStep] = Field(description="按时间或逻辑顺序重建的攻击链结构化步骤列表.")
-    artifact_analysis: List[ArtifactAnalysis] = Field(description="对事件中的关键痕迹或恶意载荷的详细分析列表. 利用properties字段动态适应不同类型的告警特征.")
+    attack_chain: List[AttackChainStep] = Field(description="重建的攻击链结构化步骤列表.")
     attack_timeline: List[TimelineEvent] = Field(description="按时间顺序排列的事件时间线.")
     ioc_indicators: List[IndicatorOfCompromise] = Field(description="结构化提取的妥协指标列表.")
+    digest: str = Field(description="事件的综合摘要. 需确认攻击是否真实发生, 攻击者获取的最高权限, 核心恶意行为以及总体的影响评估.")
     remediation_recommendations: List[RemediationRecommendation] = Field(description="针对该事件的处置与系统加固建议列表.")
+    confidence: Confidence = Field(description="事件的置信度.")
 
 
 class Playbook(BasePlaybook):
@@ -84,7 +68,7 @@ class Playbook(BasePlaybook):
         case = Case.get(self.param_source_row_id)
         content = case.model_dump_json_for_ai()
         # Load system prompt
-        system_message = self.load_system_prompt_template("L3_SOC_Analyst").format()
+        system_message = self.load_system_prompt_template("Investigation_System").format()
 
         # Run
         llm_api = LLMAPI()
@@ -99,6 +83,7 @@ class Playbook(BasePlaybook):
         llm = llm.with_structured_output(IncidentReport)
         response = llm.invoke(messages)
         response: IncidentReport
+        print(response)
         return
 
 
