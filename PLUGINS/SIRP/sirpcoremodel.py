@@ -457,4 +457,3 @@ class CaseModel(BaseSystemModel):
 
     investigation_report_ai_json: Optional[str] = Field(default="", description="AI-generated investigation report JSON Format (AI 生成的调查报告 JSON 格式)")
     verdict_ai: Optional[CaseVerdict] = Field(default=None, description="AI-generated final verdict (AI 生成的最终判定结果)")
-    summary_ai: Optional[str] = Field(default="", description="AI-generated closure summary (AI 生成的结案摘要)")

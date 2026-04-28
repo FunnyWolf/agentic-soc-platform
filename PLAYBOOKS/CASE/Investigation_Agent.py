@@ -73,7 +73,6 @@ class Playbook(BasePlaybook):
 
     def run(self):
         case = Case.get(self.param_source_row_id)
-        self.logger.debug(case.investigation_report_ai_json)
         content = case.model_dump_json_for_ai()
 
         system_message = self.load_system_prompt_template("Investigation_System").format()

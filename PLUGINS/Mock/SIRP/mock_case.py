@@ -1,7 +1,7 @@
 from PLUGINS.Mock.SIRP.mock_alert import *
 from PLUGINS.Mock.SIRP.mock_enrichment import *
 from PLUGINS.Mock.SIRP.mock_ticket import *
-from PLUGINS.SIRP.sirpcoremodel import Severity, AttackStage, Impact, Confidence, ProductCategory, CasePriority, CaseStatus, CaseVerdict, CaseModel
+from PLUGINS.SIRP.sirpcoremodel import Severity, Impact, Confidence, ProductCategory, CasePriority, CaseStatus, CaseVerdict, CaseModel
 
 # === Case 1: Phishing Email Attack (100% Coverage) ===
 case1_phishing = CaseModel(
@@ -9,7 +9,6 @@ case1_phishing = CaseModel(
     severity=Severity.HIGH,
     impact=Impact.MEDIUM,
     priority=CasePriority.HIGH,
-    src_url="https://sirp.example.com/cases/1",
     confidence=Confidence.HIGH,
     description="A targeted phishing campaign was identified. The email lured users to a fake login page to harvest credentials and deployed malware via an attachment.",
     category=ProductCategory.EMAIL,
@@ -21,13 +20,8 @@ case1_phishing = CaseModel(
     verdict=None,
     summary="",
     correlation_uid="CORR-PHISH-XYZ-123",
-    workbook="### Phishing Investigation PlaybookLoader\n1. Analyze headers (`done`)\n2. Detonate URL/Attachment (`done`)\n3. Identify recipients (`in-progress`)\n4. Purge emails from mailboxes\n5. Reset compromised user passwords\n",
-    comment_ai="The email originates from an external, un-reputable domain and uses urgent language, a common phishing tactic. The URL leads to a non-standard login page with a self-signed certificate. The attachment hash matches known malware.",
-    summary_ai="- Block sender domain 'evil-domain.com'\n- Reset passwords for all users who clicked the link\n- Scan all endpoints for the malware hash 'a1b2c3d4e5f6...'",
-    attack_stage_ai=AttackStage("Execution"),
     severity_ai=Severity.HIGH,
     confidence_ai=Confidence.HIGH,
-    threat_hunting_report_ai="Threat hunting query initiated to find other emails from the same sender IP or with similar subject lines across the organization.",
     tickets=[ticket_jira],
     enrichments=[enrichment_business],
     alerts=[alert_user_reported_phishing, alert_malware_blocked]
@@ -50,13 +44,10 @@ case2_lateral_movement = CaseModel(
     verdict=CaseVerdict.TRUE_POSITIVE,
     summary="Attacker compromised DC01 and moved to WS-FINANCE-05. Both hosts have been isolated and are pending reimaging. All domain admin credentials have been rotated.",
     correlation_uid="CORR-LAT-MOV-456",
-    workbook="### Lateral Movement PlaybookLoader\n1. Isolate source and destination (`done`)\n2. Dump memory from hosts (`done`)\n3. Analyze for persistence (`done`)\n4. Rotate credentials (`done`)",
-    comment_ai="PsExec execution from a domain controller to a workstation is highly anomalous. The initial compromise vector on DC01 appears to be related to a credential dumping alert moments before the lateral movement.",
-    summary_ai="- Isolate both DC01 and WS-FINANCE-05 immediately.\n- Investigate DC01 for initial compromise.\n- Rotate all privileged credentials.",
-    attack_stage_ai=AttackStage("Lateral Movement"),
+
     severity_ai=Severity.CRITICAL,
     confidence_ai=Confidence.HIGH,
-    threat_hunting_report_ai="",
+
     tickets=[ticket_servicenow],
     alerts=[alert_psexec_lateral, alert_credential_dumping]
 )
@@ -78,13 +69,8 @@ case3_dns_tunnel = CaseModel(
     verdict=CaseVerdict.SUSPICIOUS,
     summary="",
     correlation_uid="CORR-DNS-TUN-789",
-    workbook="### DNS Tunneling PlaybookLoader\n1. Analyze query patterns (TXT/NULL record types, query length)\n2. Check domain reputation\n3. Perform packet capture on host\n4. Compare against baseline DNS traffic",
-    comment_ai="The high volume of TXT queries to a single, non-business related domain is a strong indicator of DNS tunneling. The query payloads appear to be encoded.",
-    summary_ai="- Place the host in a sinkhole network to observe C2 traffic safely.\n- Do not block immediately to gather more intelligence on the attacker's infrastructure.",
-    attack_stage_ai=AttackStage("Command and Control"),
     severity_ai=Severity.MEDIUM,
     confidence_ai=Confidence.MEDIUM,
-    threat_hunting_report_ai="",
     tickets=[],
     enrichments=[],
     alerts=[alert_dns_tunnel_volume, alert_dns_long_query]
@@ -107,13 +93,8 @@ case4_brute_force = CaseModel(
     verdict=None,
     summary="",
     correlation_uid="CORR-BRUTE-001",
-    workbook="### Brute Force Investigation\n1. Verify firewall blocks are in place (`done`)\n2. Review successful logins from source IP (`in-progress`)\n3. Reset database credentials (`done`)\n4. Monitor for further attempts",
-    comment_ai="245 failed login attempts in 15 minutes is indicative of automated password guessing attack.",
-    summary_ai="- Keep firewall block in place\n- Review SSH access logs for successful authentications from this IP\n- Enforce MFA on database access",
-    attack_stage_ai=AttackStage("Credential Access"),
     severity_ai=Severity.HIGH,
     confidence_ai=Confidence.HIGH,
-    threat_hunting_report_ai="",
     tickets=[ticket_jira],
     alerts=[alert_brute_force_ssh]
 )
@@ -135,13 +116,8 @@ case5_ransomware = CaseModel(
     verdict=None,
     summary="",
     correlation_uid="CORR-RANSOMWARE-001",
-    workbook="### Ransomware Response Playbook\n1. Isolate endpoint (`done`)\n2. Dump memory for forensic analysis (`in-progress`)\n3. Scan for lateral movement (`in-progress`)\n4. Prepare backup restore\n5. Notify executive team",
-    comment_ai="PowerShell execution with file encryption and network scanning behavior is characteristic of modern ransomware families.",
-    summary_ai="- Restore from clean backup once investigation completes\n- Segment network to prevent spread\n- Hunt for similar behavior on other endpoints",
-    attack_stage_ai=AttackStage("Impact"),
     severity_ai=Severity.CRITICAL,
     confidence_ai=Confidence.HIGH,
-    threat_hunting_report_ai="",
     tickets=[ticket_pagerduty],
     alerts=[alert_malware_execution]
 )
@@ -163,13 +139,8 @@ case6_unauthorized_access = CaseModel(
     verdict=None,
     summary="",
     correlation_uid="CORR-UNAUTH-002",
-    workbook="### Insider Threat Investigation\n1. Interview user about access (`pending`)\n2. Review all file access logs (`in-progress`)\n3. Check for data exfiltration (`in-progress`)\n4. Determine if account is compromised (`pending`)",
-    comment_ai="Off-hours access to restricted files is anomalous for this user's role and may indicate account compromise or malicious intent.",
-    summary_ai="- Conduct forensic interview with user\n- Check user's email for suspicious activity\n- Review all connected devices for malware",
-    attack_stage_ai=AttackStage("Lateral Movement"),
     severity_ai=Severity.MEDIUM,
     confidence_ai=Confidence.MEDIUM,
-    threat_hunting_report_ai="",
     tickets=[],
     alerts=[alert_unauthorized_access]
 )
@@ -191,13 +162,8 @@ case7_data_exfil = CaseModel(
     verdict=None,
     summary="",
     correlation_uid="CORR-EXFIL-003",
-    workbook="### Data Exfiltration Response\n1. Isolate server (`done`)\n2. Block destination domain (`done`)\n3. Capture network traffic (`in-progress`)\n4. Identify data scope (`in-progress`)\n5. Notify affected customers (`pending`)",
-    comment_ai="2.3 GB of data transfer to unknown domain in 45 minutes suggests automated exfiltration process, likely malware-driven.",
-    summary_ai="- Conduct forensic analysis of server\n- Determine data exfiltrated and notify customers\n- Hunt for similar C2 connections\n- Implement egress filtering",
-    attack_stage_ai=AttackStage("Exfiltration"),
     severity_ai=Severity.CRITICAL,
     confidence_ai=Confidence.HIGH,
-    threat_hunting_report_ai="",
     tickets=[ticket_servicenow],
     alerts=[alert_data_exfiltration]
 )
@@ -219,13 +185,10 @@ case8_email_campaign = CaseModel(
     verdict=CaseVerdict.TRUE_POSITIVE,
     summary="Email campaign was successfully detected and quarantined before any endpoints were compromised.",
     correlation_uid="CORR-MACRO-004",
-    workbook="### Email Security Response\n1. Identify all affected recipients (`done`)\n2. Quarantine malicious emails (`done`)\n3. Block sender domain (`done`)\n4. Schedule user security training (`done`)",
-    comment_ai="VBA macro attempting PowerShell execution is a classic attack vector for delivering secondary malware payloads.",
-    summary_ai="- Deploy macro blocking policies\n- Educate users about macro dangers\n- Implement YARA rules to detect similar patterns",
-    attack_stage_ai=AttackStage("Execution"),
+
     severity_ai=Severity.HIGH,
     confidence_ai=Confidence.HIGH,
-    threat_hunting_report_ai="",
+
     tickets=[ticket_jira],
     alerts=[alert_malicious_email_attachment]
 )
@@ -247,13 +210,10 @@ case9_priv_esc = CaseModel(
     verdict=None,
     summary="",
     correlation_uid="CORR-PE-005",
-    workbook="### Privilege Escalation Response\n1. Isolate endpoint (`done`)\n2. Analyze post-exploitation behavior (`in-progress`)\n3. Search for persistence mechanisms (`in-progress`)\n4. Patch Windows (`in-progress`)",
-    comment_ai="UAC bypass technique CVE-2019-1315 via CMSTP executable indicates sophisticated attacker with knowledge of Windows security mechanisms.",
-    summary_ai="- Apply Windows security patches\n- Check for persistence (scheduled tasks, registry modifications)\n- Reset local administrator passwords",
-    attack_stage_ai=AttackStage("Privilege Escalation"),
+
     severity_ai=Severity.CRITICAL,
     confidence_ai=Confidence.HIGH,
-    threat_hunting_report_ai="",
+
     tickets=[ticket_pagerduty],
     alerts=[alert_privilege_escalation]
 )
@@ -275,13 +235,10 @@ case10_cloud_misconfig = CaseModel(
     verdict=None,
     summary="",
     correlation_uid="CORR-CLOUD-006",
-    workbook="### Cloud Security Response\n1. Revert policy to private (`done`)\n2. Enable MFA delete (`done`)\n3. Audit bucket access logs (`in-progress`)\n4. Check for data downloads (`in-progress`)\n5. Notify legal/compliance (`in-progress`)",
-    comment_ai="S3 bucket policy change to allow public read access suggests either misconfiguration or unauthorized modification by attacker.",
-    summary_ai="- Implement SCPs to prevent public S3 policies\n- Enable CloudTrail monitoring\n- Conduct data breach investigation\n- Notify affected customers per GDPR/CCPA",
-    attack_stage_ai=AttackStage("Exfiltration"),
+
     severity_ai=Severity.CRITICAL,
     confidence_ai=Confidence.HIGH,
-    threat_hunting_report_ai="",
+
     tickets=[ticket_servicenow],
     alerts=[alert_cloud_config_change]
 )
@@ -303,13 +260,9 @@ case11_brute_force = CaseModel(
     verdict=None,
     summary="",
     correlation_uid="CORR-BRUTE-FORCE-001",
-    workbook="### Brute Force Attack Response\n1. Confirm account compromise (`done`)\n2. Reset admin password (`done`)\n3. Terminate all admin sessions (`done`)\n4. Review command history (`in-progress`)\n5. Check for lateral movement (`in-progress`)\n6. Block source IP globally (`done`)\n7. Enable MFA for admin (`pending`)",
-    comment_ai="Attack pattern clearly indicates brute force: consistent failed auth attempts from single IP followed by immediate success. Source IP reputation is MALICIOUS. Geographic origin (China) is high-risk for admin account.",
-    summary_ai="- IMMEDIATE: Force password reset for admin account. 2. Review all commands executed by admin since last_seen_time. 3. Block source IP 45.95.11.22 at firewall. 4. Enable MFA for admin account. 5. Review login history for other successful attempts from this IP.",
-    attack_stage_ai=AttackStage("Credential Access"),
+
     severity_ai=Severity.CRITICAL,
     confidence_ai=Confidence.HIGH,
-    threat_hunting_report_ai="Query: Show all failed login attempts from external IPs in last 7 days | Show all successful logins from 45.95.11.22 in last 7 days | Check for similar brute force patterns from other IP ranges",
     tickets=[ticket_pagerduty],
     enrichments=[enrichment_business],
     alerts=[alert_brute_force_siem]
@@ -332,13 +285,10 @@ case12_sql_injection = CaseModel(
     verdict=CaseVerdict.TRUE_POSITIVE,
     summary="SQL injection attack was detected and blocked by WAF. No application or database compromise occurred. Attacker IP has been blocked and monitoring is ongoing.",
     correlation_uid="CORR-SQL-INJ-001",
-    workbook="### SQL Injection Response\n1. Block attacker IP (`done`)\n2. Review WAF logs for patterns (`done`)\n3. Audit application code for injection vulnerabilities (`done`)\n4. Deploy parameterized query fixes (`pending`)\n5. Conduct SAST scan of codebase (`pending`)",
-    comment_ai="SQL injection attempt with multiple payloads (boolean blind, time-based, UNION-based) indicates automated tool usage (sqlmap). However, WAF successfully blocked all attempts. No evidence of database access or compromise.",
-    summary_ai="- Update WAF rules with new detection patterns (COMPLETED)\n- Review application code for SQL injection vulnerabilities\n- Implement parameterized queries in API endpoint /api/user\n- Add request rate limiting\n- Conduct security code review of all database interactions\n- Plan penetration test after fixes are deployed",
-    attack_stage_ai=AttackStage("Execution"),
+
     severity_ai=Severity.HIGH,
     confidence_ai=Confidence.HIGH,
-    threat_hunting_report_ai="",
+
     tickets=[ticket_jira],
     enrichments=[enrichment_urlhaus_malware],
     alerts=[alert_sql_injection_siem]
@@ -361,13 +311,9 @@ case13_ransomware = CaseModel(
     verdict=None,
     summary="",
     correlation_uid="CORR-RANSOMWARE-ACTIVE-001",
-    workbook="### CRITICAL: Ransomware Response Playbook\n**IMMEDIATE ACTIONS (0-15 min):**\n- [x] Isolate infected host from network\n- [x] Preserve forensic evidence (disk/memory dumps initiated)\n- [x] Notify incident response team\n- [x] Activate disaster recovery plan\n\n**SHORT TERM (15 min - 2 hours):**\n- [x] Assess backup integrity\n- [ ] Identify attack vector (email, RDP, SMB, supply chain)\n- [ ] Hunt for lateral movement indicators\n- [ ] Review EDR logs for persistence mechanisms\n- [ ] Activate clean backup restoration\n\n**MEDIUM TERM (2-24 hours):**\n- [ ] Complete system restore from clean backup\n- [ ] Verify restored system integrity\n- [ ] Analyze forensic artifacts\n- [ ] Identify and patch vulnerability used for initial compromise\n- [ ] Review all privileged account activity\n\n**LONG TERM:**\n- [ ] Incident report and lessons learned\n- [ ] Security control improvements\n- [ ] Backup and recovery procedures review",
-    comment_ai="Three concurrent indicators confirm active ransomware: (1) vssadmin.exe shadow copy deletion removes backup recovery options, (2) Bulk file encryption of business-critical files with .encrypted extension, (3) Ransom note creation indicates attacker demand. This is NOT a false positive. This is a confirmed active attack requiring full incident response activation.",
-    summary_ai="CRITICAL ACTIONS - EXECUTE IMMEDIATELY:\n1. ✓ NETWORK ISOLATION: Disconnect infected host from all networks (COMPLETED)\n2. ✓ PRESERVE EVIDENCE: Initiate forensic disk/memory capture (COMPLETED)\n3. ✓ DO NOT SHUTDOWN: Risk unrecoverable data if malware not fully executed\n4. BACKUP ASSESSMENT: Verify clean backup exists before infection date\n5. RECOVERY ACTIVATION: Prepare clean backup for immediate restoration\n6. ATTACK VECTOR IDENTIFICATION: Determine compromise method (email, RDP, SMB, web shell)\n7. LATERAL MOVEMENT CHECK: Hunt for infection spread to other systems\n8. PERSISTENCE SEARCH: Look for scheduled tasks, registry modifications, services\n9. STAKEHOLDER NOTIFICATION: Inform affected business units, customers, regulators\n10. LAW ENFORCEMENT: Contact FBI/local authorities for APT attribution and coordination",
-    attack_stage_ai=AttackStage("Impact"),
+
     severity_ai=Severity.CRITICAL,
     confidence_ai=Confidence.HIGH,
-    threat_hunting_report_ai="URGENT HUNTS:\n- Find all processes executed by user 'dbadmin' in last 2 hours\n- Identify all processes accessing files with .encrypted extension\n- Check for vssadmin.exe execution on all hosts (indicates lateral movement)\n- Review all RDP/SMB connections to this host in last 24 hours\n- Search for similar encrypted file extensions across file shares\n- Check for ransom notes on network shares (indicates spread)\n- Monitor command/control traffic patterns from isolated host\n- Identify initial entry point: email attachment, RDP brute force, SMB exploit, web shell",
     tickets=[ticket_servicenow, ticket_pagerduty],
     enrichments=[enrichment_carbonblack_execution],
     alerts=[alert_ransomware_siem]

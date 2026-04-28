@@ -150,9 +150,6 @@ class Playbook(LanggraphPlaybook):
             case_new = CaseModel(row_id=self.param_source_row_id,
                                  severity_ai=analyze_result.new_severity,
                                  confidence_ai=analyze_result.confidence,
-                                 comment_ai=analyze_result.analysis_rationale,
-                                 attack_stage_ai=analyze_result.attack_stage,
-                                 summary_ai=analyze_result.recommended_actions,
                                  )
             Case.update(case_new)
 

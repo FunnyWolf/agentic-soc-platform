@@ -12,15 +12,13 @@
 
 LLM_CONFIGS = [
     {
-        "type": "ollama",
-        "api_key": "ollama",  # 对于 ollama,api_key 通常是 'ollama'
-        "base_url": "http://192.168.241.128:8080/v1",
-        "model": "qwen2:7b-instruct-q8_0",
+        "api_key": 'ollama',
+        "base_url": "http://10.10.10.10:11434/v1",
+        "model": "qwen3.5:9b",
         "proxy": None,
-        "tags": ["cheap", "fast"]
+        "tags": ["fast", "cheap", "function_calling", "structured_output"]
     },
     {
-        "type": "openai",
         "api_key": "sk-XXXXXXXXXXXXXX",
         "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
         "model": "qwen3-max",
@@ -28,7 +26,6 @@ LLM_CONFIGS = [
         "tags": ["powerful", "function_calling", "structured_output"]
     },
     {
-        "type": "openai",
         "api_key": 'AIXXXX',
         "base_url": "https://generativelanguage.googleapis.com/v1beta/openai/",
         "model": "gemini-2.5-flash",
@@ -42,7 +39,6 @@ LLM_CONFIGS = [
         "tags": ["fast", "function_calling", "structured_output"]
     },
     {
-        "type": "openai",
         "api_key": 'AIXXXX',
         "base_url": "https://generativelanguage.googleapis.com/v1beta/openai/",
         "model": "gemini-2.5-pro",
@@ -50,7 +46,6 @@ LLM_CONFIGS = [
         "tags": ["powerful", "function_calling", "structured_output"]
     },
     {
-        "type": "openai",
         "api_key": 'sk-XXXXXXXXXXXXXX',
         "base_url": "https://api.moonshot.cn/v1",
         "model": "kimi-k2-0905-preview",
