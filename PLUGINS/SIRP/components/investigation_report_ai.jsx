@@ -30,6 +30,19 @@ function SecurityIncidentReport({ value }) {
     return 'bg-gray-50 text-gray-700 border-gray-200';
   };
 
+  const getVerdictBadgeClass = (verdict) => {
+    if (verdict === 'True Positive') {
+      return 'bg-red-50 text-red-700 border-red-200';
+    }
+    if (verdict === 'Suspicious') {
+      return 'bg-orange-50 text-orange-700 border-orange-200';
+    }
+    if (verdict === 'False Positive') {
+      return 'bg-green-50 text-green-700 border-green-200';
+    }
+    return 'bg-gray-50 text-gray-700 border-gray-200';
+  };
+
   const formatLocalTime = (utcString) => {
     if (!utcString) return '';
     const date = new Date(utcString);
@@ -41,18 +54,26 @@ function SecurityIncidentReport({ value }) {
 
   return (
     <div className="flex flex-col gap-6 w-full">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className={`flex items-center justify-center px-4 py-2.5 rounded-lg text-sm font-bold border ${getSeverityBadgeClass(data.severity)}`}>
-          Severity: {data.severity}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div className={`flex flex-col items-center justify-center px-4 py-2 rounded-lg border ${getVerdictBadgeClass(data.verdict)}`}>
+          <span className="text-[10px] uppercase tracking-wider opacity-80 mb-0.5">Verdict</span>
+          <span className="text-sm font-bold text-center leading-tight">{data.verdict}</span>
         </div>
-        <div className={`flex items-center justify-center px-4 py-2.5 rounded-lg text-sm font-bold border ${getSeverityBadgeClass(data.impact)}`}>
-          Impact: {data.impact}
+        <div className={`flex flex-col items-center justify-center px-4 py-2 rounded-lg border ${getSeverityBadgeClass(data.severity)}`}>
+          <span className="text-[10px] uppercase tracking-wider opacity-80 mb-0.5">Severity</span>
+          <span className="text-sm font-bold text-center leading-tight">{data.severity}</span>
         </div>
-        <div className={`flex items-center justify-center px-4 py-2.5 rounded-lg text-sm font-bold border ${getSeverityBadgeClass(data.priority)}`}>
-          Priority: {data.priority}
+        <div className={`flex flex-col items-center justify-center px-4 py-2 rounded-lg border ${getSeverityBadgeClass(data.impact)}`}>
+          <span className="text-[10px] uppercase tracking-wider opacity-80 mb-0.5">Impact</span>
+          <span className="text-sm font-bold text-center leading-tight">{data.impact}</span>
         </div>
-        <div className={`flex items-center justify-center px-4 py-2.5 rounded-lg text-sm font-bold border ${getSeverityBadgeClass(data.confidence)}`}>
-          Confidence: {data.confidence}
+        <div className={`flex flex-col items-center justify-center px-4 py-2 rounded-lg border ${getSeverityBadgeClass(data.priority)}`}>
+          <span className="text-[10px] uppercase tracking-wider opacity-80 mb-0.5">Priority</span>
+          <span className="text-sm font-bold text-center leading-tight">{data.priority}</span>
+        </div>
+        <div className={`flex flex-col items-center justify-center px-4 py-2 rounded-lg border ${getSeverityBadgeClass(data.confidence)}`}>
+          <span className="text-[10px] uppercase tracking-wider opacity-80 mb-0.5">Confidence</span>
+          <span className="text-sm font-bold text-center leading-tight">{data.confidence}</span>
         </div>
       </div>
 
@@ -113,6 +134,39 @@ function SecurityIncidentReport({ value }) {
 
       <div className="flex flex-col gap-4 pt-2">
         <h3 className="flex items-center gap-2 text-sm font-bold text-gray-800 border-b border-gray-100 pb-2">
+          <LucideIcon name="Search" size="18" className="text-cyan-600" />
+          Evidence Findings
+        </h3>
+        <div className="grid grid-cols-1 gap-4">
+          {Array.isArray(data.evidence_findings) && data.evidence_findings.map((finding, index) => (
+            <div key={index} className="flex flex-col gap-3 p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 border-b border-gray-100 pb-2">
+                <span className="text-sm font-bold text-gray-900">{finding.title}</span>
+                <span className="text-[10px] font-bold text-cyan-700 px-2 py-0.5 bg-cyan-50 border border-cyan-100 rounded uppercase tracking-wider w-max shrink-0">
+                  {finding.finding_type}
+                </span>
+              </div>
+              <div className="flex flex-col gap-2 text-xs">
+                <div className="flex gap-2">
+                  <span className="font-bold text-gray-600 shrink-0 w-20">Subject:</span>
+                  <span className="text-gray-800">{finding.subject}</span>
+                </div>
+                <div className="flex gap-2">
+                  <span className="font-bold text-gray-600 shrink-0 w-20">Evidence:</span>
+                  <span className="text-gray-700 font-mono bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100 break-all">{finding.evidence}</span>
+                </div>
+                <div className="flex gap-2 mt-1">
+                  <span className="font-bold text-gray-600 shrink-0 w-20">Conclusion:</span>
+                  <span className="text-gray-800 font-medium leading-relaxed">{finding.conclusion}</span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-4 pt-2">
+        <h3 className="flex items-center gap-2 text-sm font-bold text-gray-800 border-b border-gray-100 pb-2">
           <LucideIcon name="GitMerge" size="18" className="text-indigo-500" />
           Attack Chain
         </h3>
@@ -150,7 +204,7 @@ function SecurityIncidentReport({ value }) {
               <div className="text-sm text-gray-800 font-medium mb-2 leading-relaxed">
                 {event.attack_behavior}
               </div>
-              <div className="text-[11px] text-gray-500 bg-gray-50 p-2.5 rounded-md border border-gray-200 font-mono break-all">
+              <div className="text-[11px] text-gray-500 bg-gray-50 p-2.5 rounded-md border border-gray-200 font-mono break-all mt-1">
                 {event.evidence_field}
               </div>
             </div>
@@ -160,11 +214,27 @@ function SecurityIncidentReport({ value }) {
 
       <div className="flex flex-col gap-4 pt-2">
         <h3 className="flex items-center gap-2 text-sm font-bold text-gray-800 border-b border-gray-100 pb-2">
+          <LucideIcon name="HelpCircle" size="18" className="text-orange-500" />
+          Unknowns
+        </h3>
+        <div className="bg-orange-50/50 p-4 rounded-lg border border-orange-100">
+          <ul className="list-disc list-outside ml-4 flex flex-col gap-2">
+            {Array.isArray(data.unknowns) && data.unknowns.map((item, index) => (
+              <li key={index} className="text-sm text-orange-900 leading-relaxed">
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-4 pt-2">
+        <h3 className="flex items-center gap-2 text-sm font-bold text-gray-800 border-b border-gray-100 pb-2">
           <LucideIcon name="Wrench" size="18" className="text-green-600" />
           Remediation Recommendations
         </h3>
         <div className="grid grid-cols-1 gap-3">
-          {Array.isArray(data.remediation_recommendations) && data.remediation_recommendations.map((rec, index) => (
+          {Array.isArray(data.remediations) && data.remediations.map((rec, index) => (
             <div key={index} className="flex gap-4 p-4 bg-green-50/50 rounded-lg border border-green-200">
               <LucideIcon name="CheckCircle" size="20" className="text-green-600 shrink-0 mt-0.5" />
               <div className="flex flex-col gap-1.5 w-full">
