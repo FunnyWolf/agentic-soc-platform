@@ -1,5 +1,4 @@
-import json
-from typing import Dict, List, Optional
+from typing import List
 
 from langchain_core.messages import HumanMessage
 from pydantic import BaseModel, ConfigDict, Field
@@ -7,7 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from Lib.baseplaybook import BasePlaybook
 from PLUGINS.LLM.llmapi import LLMAPI
 from PLUGINS.SIRP.sirpapi import Case
-from PLUGINS.SIRP.sirpcoremodel import AttackStage, CaseModel, CasePriority, Confidence, Impact, Severity
+from PLUGINS.SIRP.sirpcoremodel import AttackStage, CaseModel, CasePriority, CaseVerdict, Confidence, Impact, Severity
 from PLUGINS.SIRP.sirpextramodel import PlaybookModel
 
 
@@ -16,14 +15,12 @@ class AffectedAsset(BaseModel):
     asset_value: str = Field(description="资产的具体标识，例如主机名、IP、用户名、邮箱地址、文件路径、云资源 ARN。")
 
 
-class ArtifactAnalysis(BaseModel):
-    artifact_name: str = Field(description="痕迹、样本或关键对象的标识，例如文件名、进程名、URL、策略名。")
-    artifact_type: str = Field(description="痕迹类型，例如 File、Process、Network Traffic、API Call、IAM Policy。")
-    properties: Dict[str, str] = Field(
-        description="与该痕迹直接相关的关键属性键值对，例如 Hash、Path、CommandLine、UserAgent、APIName、Parameters。"
-    )
-    analysis_result: str = Field(description="针对该痕迹的技术分析结论，说明其行为、作用、风险和与本案的关联。")
-    threat_intelligence: Optional[str] = Field(description="与该痕迹相关的情报、标签或信誉结论；无证据时写空字符串。")
+class EvidenceFinding(BaseModel):
+    title: str = Field(description="关键发现标题，例如 可疑登录成功后修改邮箱转发规则、主机A出现横向移动痕迹。")
+    finding_type: str = Field(description="发现类型，例如 Identity、Host、Process、Network、Email、Cloud、Policy、Ticket、Other。")
+    subject: str = Field(description="该发现围绕的主体，例如某账号、主机、IP、URL、策略名或告警簇。")
+    evidence: str = Field(description="支撑该发现的核心证据摘要，尽量写出可追溯的字段、对象或现象。")
+    conclusion: str = Field(description="基于该证据得出的结论，说明它在本案中意味着什么。")
 
 
 class AttackChainStep(BaseModel):
@@ -43,7 +40,7 @@ class IndicatorOfCompromise(BaseModel):
     context: str = Field(description="该 IOC 在本案中的上下文，例如作为下载地址、C2、落地文件、横向移动命令等。")
 
 
-class RemediationRecommendation(BaseModel):
+class Remediation(BaseModel):
     action_type: str = Field(description="处置动作类型，例如隔离主机、禁用账号、阻断 URL、删除文件、修复配置。")
     description: str = Field(description="可直接执行的处置或加固建议，要求具体。")
     priority: CasePriority = Field(description="该处置动作自身的执行优先级。")
@@ -52,24 +49,19 @@ class RemediationRecommendation(BaseModel):
 class InvestigationReport(BaseModel):
     model_config = ConfigDict(use_enum_values=False)
 
-    severity: Severity = Field(description="AI 评估的事件严重程度，必须结合攻击链深度、权限水平、受影响范围和业务风险判断。")
-    impact: Impact = Field(description="AI 评估的事件影响等级，必须反映事件对资产、账号、数据和业务的实际或潜在影响。")
-    priority: CasePriority = Field(description="AI 评估的响应优先级，必须结合当前风险、是否仍在持续、以及是否需要立即响应判断。")
-    confidence: Confidence = Field(
-        description="事件置信度。High 表示多源证据交叉验证；Medium 表示证据基本闭环但仍有缺口；Low 表示证据不足或更像噪声。"
-    )
-    digest: str = Field(
-        description="事件综合摘要。必须写成详细结论性摘要，至少覆盖：1. 是否真实安全事件；2. 攻击者关键行为与攻击链；3. 已获得的最高权限或控制能力；4. 影响范围与业务风险；5. 关键证据与不确定性。禁止只写一句空泛结论。"
-    )
-    affected_assets: List[AffectedAsset] = Field(
-        description="受影响资产或被攻击者直接操作的目标资产列表。若无法确认真实受影响范围，可列出当前证据支持的潜在目标，并在描述中说明不确定性。"
-    )
-    attack_chain: List[AttackChainStep] = Field(description="基于证据重建的攻击链步骤，按逻辑顺序排列，只保留有证据支撑的阶段。")
-    attack_timeline: List[TimelineEvent] = Field(description="按时间顺序排列的关键事件时间线；无法精确排序时，也要给出相对先后关系。")
+    verdict: CaseVerdict = Field(description="AI 对案件最终性质的判断，例如 True Positive、Suspicious、False Positive、Insufficient Data。")
+    severity: Severity = Field(description="AI 评估的事件严重程度。")
+    impact: Impact = Field(description="AI 评估的事件影响等级。")
+    priority: CasePriority = Field(description="AI 评估的响应优先级。")
+    confidence: Confidence = Field(description="AI 评估的事件置信度。")
+    digest: str = Field(description="事件综合摘要。")
+    affected_assets: List[AffectedAsset] = Field(description="受影响资产列表。")
+    evidence_findings: List[EvidenceFinding] = Field(description="支撑案件结论的关键证据发现列表。")
+    attack_chain: List[AttackChainStep] = Field(description="基于证据重建的攻击链步骤。")
+    attack_timeline: List[TimelineEvent] = Field(description="按时间顺序排列的关键事件时间线。")
     ioc_indicators: List[IndicatorOfCompromise] = Field(description="可用于排查、封禁、搜索或持续监控的 IOC 列表。")
-    remediation_recommendations: List[RemediationRecommendation] = Field(
-        description="面向分析员的处置与加固建议，要求具体、可执行，并按优先级组织。"
-    )
+    remediations: List[Remediation] = Field(description="面向分析员的处置与加固建议。")
+    unknowns: List[str] = Field(description="当前仍无法确认、需要补证或需要进一步排查的不确定点列表。")
 
 
 class Playbook(BasePlaybook):
@@ -95,23 +87,17 @@ class Playbook(BasePlaybook):
         llm = llm.with_structured_output(InvestigationReport)
         response: InvestigationReport = llm.invoke(messages)
 
-        report_payload = response.model_dump(mode="json")
-        comment_payload = {
-            key: value
-            for key, value in report_payload.items()
-            if key not in {"severity", "impact", "priority", "confidence"}
-        }
-
         case_new = CaseModel(
             row_id=self.param_source_row_id,
+            verdict_ai=response.verdict,
             severity_ai=response.severity,
             impact_ai=response.impact,
             priority_ai=response.priority,
             confidence_ai=response.confidence,
-            investigation_report_ai=json.dumps(comment_payload, ensure_ascii=False, indent=2),
+            summary_ai=response.digest,
+            investigation_report_ai_json=response.model_dump_json(),
         )
         Case.update(case_new)
-        print(report_payload)
         return
 
 
