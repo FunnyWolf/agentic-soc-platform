@@ -16,6 +16,7 @@ from Lib.api import get_current_time_str
 from Lib.baseplaybook import LanggraphPlaybook
 from PLUGINS.LLM.llmapi import LLMAPI
 from PLUGINS.SIRP.sirpapi import Case
+from PLUGINS.SIRP.sirpbasemodel import AI_PROFILE_INVESTIGATION
 from PLUGINS.SIRP.sirpextramodel import PlaybookJobStatus, PlaybookModel
 from PLUGINS.SIRP.sirpcoremodel import CaseModel
 
@@ -330,7 +331,7 @@ class Playbook(LanggraphPlaybook):
             system_prompt_template = self.load_system_prompt_template("Intent_System", lang=PROMPT_LANG)
             system_message = system_prompt_template.format()
 
-            human_message = self.load_human_prompt_template("Intent_Human", lang=PROMPT_LANG).format(case=case.model_dump_json_for_ai(),
+            human_message = self.load_human_prompt_template("Intent_Human", lang=PROMPT_LANG).format(case=case.model_dump_json_for_ai(profile=AI_PROFILE_INVESTIGATION),
                                                                                                      user_intent=user_intent)
 
             few_shot_examples = [

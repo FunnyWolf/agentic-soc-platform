@@ -11,13 +11,14 @@ from PLUGINS.SIEM.models import AdaptiveQueryInput, KeywordSearchInput, SchemaEx
 from PLUGINS.SIEM.tools import SIEMToolKit
 from PLUGINS.SIRP.nocolymodel import Group, Condition, Operator
 from PLUGINS.SIRP.sirpapi import Alert, Artifact, Case, Enrichment, Knowledge, Playbook, Ticket
+from PLUGINS.SIRP.sirpbasemodel import AI_PROFILE_MCP
 from PLUGINS.SIRP.sirpcoremodel import TicketStatus, TicketType, ArtifactType, ArtifactRole, ArtifactReputationScore, Severity, AttackStage, Confidence, \
     AlertStatus, CaseStatus, CaseVerdict, EnrichmentModel, TicketModel, ArtifactModel
 from PLUGINS.SIRP.sirpextramodel import PlaybookType, KnowledgeSource, PlaybookJobStatus, KnowledgeAction
 
 
 def _dump_models_for_ai(models, limit: int) -> list[dict]:
-    return [model.model_dump_for_ai() for model in models[:limit]]
+    return [model.model_dump_for_ai(profile=AI_PROFILE_MCP) for model in models[:limit]]
 
 
 # redis stream
@@ -407,7 +408,7 @@ def execute_playbook(
         user_input=user_input,
         record_id=record_id
     )
-    return result.model_dump_json_for_ai()
+    return result.model_dump_json_for_ai(profile=AI_PROFILE_MCP)
 
 
 def list_knowledge(

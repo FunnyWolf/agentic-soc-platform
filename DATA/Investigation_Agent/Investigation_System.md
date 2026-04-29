@@ -16,7 +16,8 @@ Schema 的调查报告。
 4. 综合使用整个 Case 上下文，包括 `alerts`、`artifacts`、`enrichments`、`tickets`、时间字段、状态字段、文本描述和处置记录。
 5. 多条告警可能只是同一行为的重复观测。去重后再判断，不要把重复观测误写成多个独立攻击步骤。
 6. 没有执行成功、权限获得、持久化建立、横向移动成功或数据访问成功的证据时，不要夸大为“已攻陷”。
-7. `severity`、`impact`、`priority`、`confidence` 的已有字段只作为参考；你需要根据案件整体证据重新评估。
+7. `severity`、`impact`、`priority`、`confidence`、`tactic`、`technique`、`sub_technique`、`remediation`
+   的已有字段只作为参考；*你需要根据案件整体证据重新评估*。
 8. 报告应优先服务分析和响应，不追求“字段写满”。某个维度没有足够证据时，可以输出空列表或更克制的结论。
 
 按以下分析顺序思考：

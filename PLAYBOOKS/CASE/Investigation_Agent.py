@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from Lib.baseplaybook import BasePlaybook
 from PLUGINS.LLM.llmapi import LLMAPI
 from PLUGINS.SIRP.sirpapi import Case
+from PLUGINS.SIRP.sirpbasemodel import AI_PROFILE_INVESTIGATION
 from PLUGINS.SIRP.sirpcoremodel import AttackStage, CaseModel, CasePriority, CaseVerdict, Confidence, Impact, Severity
 from PLUGINS.SIRP.sirpextramodel import PlaybookModel
 
@@ -73,7 +74,7 @@ class Playbook(BasePlaybook):
 
     def run(self):
         case = Case.get(self.param_source_row_id)
-        content = case.model_dump_json_for_ai()
+        content = case.model_dump_json_for_ai(profile=AI_PROFILE_INVESTIGATION)
 
         system_message = self.load_system_prompt_template("Investigation_System").format()
 
@@ -106,7 +107,7 @@ if __name__ == "__main__":
 
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ASP.settings")
     django.setup()
-    model = PlaybookModel(source_row_id='b6383d3f-bbdc-432b-9ac7-debb25535617')
+    model = PlaybookModel(source_row_id='91dd3b8f-3143-48d0-b17b-276ff3ae884e')
     module = Playbook()
     module._playbook_model = model
 

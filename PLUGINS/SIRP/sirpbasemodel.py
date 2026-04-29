@@ -1,9 +1,13 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Annotated, Union, ClassVar, Optional
+from typing import Any, Annotated, Union, Optional
 
 from pydantic import BeforeValidator, PlainSerializer, BaseModel, ConfigDict, Field, field_validator, model_serializer
+
+AI_SCHEMA_KEY = "ai"
+AI_PROFILE_INVESTIGATION = "investigation"
+AI_PROFILE_MCP = "mcp"
 
 
 class AccountModel(BaseModel):
@@ -98,19 +102,18 @@ AutoAccount = Annotated[
 
 class BaseSystemModel(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    _AI_EXCLUDE_FIELDS: ClassVar[set[str]] = {"row_owner", "row_createdBy", "row_updatedBy"}  # 不传递给 AI 的字段
 
-    row_id: Optional[str] = Field(default=None, description="Unique row ID (唯一行 ID)")
+    row_id: Optional[str] = Field(default=None, description="Unique row ID (唯一行 ID)",
+                                  json_schema_extra={"ai": [AI_PROFILE_MCP]})
     row_owner: Optional[AutoAccount] = Field(default=None, description="Record owner (记录所有者)")
     row_createdBy: Optional[AutoAccount] = Field(default=None, description="Creator (创建者)")
-    row_createdAt: Optional[AutoDatetime] = Field(alias="create_time", default=None, description="Record created time (记录创建时间)")
-    row_updatedAt: Optional[AutoDatetime] = Field(alias="update_time", default=None, description="Record last updated time (记录最后更新时间)")
+    row_createdAt: Optional[AutoDatetime] = Field(alias="create_time", default=None,
+                                                  description="Record created time (记录创建时间)",
+                                                  json_schema_extra={"ai": [AI_PROFILE_MCP, AI_PROFILE_INVESTIGATION]})
     row_updatedBy: Optional[AutoAccount] = Field(default=None, description="Last updated by (最后更新人)")
-
-    def __init_subclass__(cls, **kwargs):
-        super().__init_subclass__(**kwargs)
-        # 将当前类的集合与父类的集合自动合并
-        cls._AI_EXCLUDE_FIELDS = cls._AI_EXCLUDE_FIELDS | BaseSystemModel._AI_EXCLUDE_FIELDS
+    row_updatedAt: Optional[AutoDatetime] = Field(alias="update_time", default=None,
+                                                  description="Record last updated time (记录最后更新时间)",
+                                                  json_schema_extra={"ai": [AI_PROFILE_MCP, AI_PROFILE_INVESTIGATION]})
 
     @field_validator("row_owner", mode="before")
     @classmethod
@@ -126,37 +129,52 @@ class BaseSystemModel(BaseModel):
             return data
 
         context = info.context if info else None
-        if isinstance(context, dict) and context.get("for_ai"):
-            for field_name in self._AI_EXCLUDE_FIELDS:
-                data.pop(field_name, None)
+        if isinstance(context, dict):
+            profile = context.get("ai_profile")
+        else:
+            profile = None
+
+        if profile:
+            for field_name, field_info in self.__class__.model_fields.items():
+                field_extra = field_info.json_schema_extra or {}
+                ai_profiles = field_extra.get(AI_SCHEMA_KEY)
+                if not isinstance(ai_profiles, list) or profile not in ai_profiles:
+                    output_key = field_info.serialization_alias or field_info.alias or field_name
+                    data.pop(output_key, None)
         return data
 
     def model_dump_for_ai(
             self,
             *,
+            profile: str,
             exclude_none: bool = True,
             exclude_unset: bool = True,
             exclude_default: bool = True,
     ) -> dict[str, Any]:
+        if not profile:
+            raise ValueError("profile is required for model_dump_for_ai")
         return self.model_dump(
             exclude_none=exclude_none,
             exclude_unset=exclude_unset,
             exclude_defaults=exclude_default,
             by_alias=True,
-            context={"for_ai": True}
+            context={"ai_profile": profile}
         )
 
     def model_dump_json_for_ai(
             self,
             *,
+            profile: str,
             exclude_none: bool = True,
             exclude_unset: bool = True,
             exclude_default: bool = True,
     ) -> str:
+        if not profile:
+            raise ValueError("profile is required for model_dump_json_for_ai")
         return self.model_dump_json(
             exclude_none=exclude_none,
             exclude_unset=exclude_unset,
             exclude_defaults=exclude_default,
             by_alias=True,
-            context={"for_ai": True}
+            context={"ai_profile": profile}
         )

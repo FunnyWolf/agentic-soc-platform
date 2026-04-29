@@ -26,7 +26,8 @@ def model_to_fields(model_instance: BaseModel) -> List[Dict[str, Any]]:
             'value': value
         }
         if field_info and field_info.json_schema_extra:
-            field_item.update(field_info.json_schema_extra)
+            if field_info.json_schema_extra.get("type") is not None:
+                field_item["type"] = field_info.json_schema_extra.get("type")
         fields.append(field_item)
     return fields
 

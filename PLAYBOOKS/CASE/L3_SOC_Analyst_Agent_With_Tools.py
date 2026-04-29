@@ -11,6 +11,7 @@ from Lib.baseplaybook import LanggraphPlaybook
 from Lib.llmapi import BaseAgentState
 from PLUGINS.LLM.llmapi import LLMAPI
 from PLUGINS.SIRP.sirpapi import Case, Knowledge
+from PLUGINS.SIRP.sirpbasemodel import AI_PROFILE_INVESTIGATION
 from PLUGINS.SIRP.sirpextramodel import PlaybookJobStatus, PlaybookModel
 from PLUGINS.SIRP.sirpcoremodel import Severity, AttackStage, Confidence, CaseModel
 
@@ -103,7 +104,7 @@ class Playbook(LanggraphPlaybook):
     def init(self):
         def preprocess_node(state: AgentState):
             case = Case.get(self.param_source_row_id)
-            content = f"Current Case Data (includes latest alert): {case.model_dump_json_for_ai()}"
+            content = f"Current Case Data (includes latest alert): {case.model_dump_json_for_ai(profile=AI_PROFILE_INVESTIGATION)}"
             return {"case": case, "messages": [HumanMessage(content=content)]}
 
         def analyze_node(state: AgentState):

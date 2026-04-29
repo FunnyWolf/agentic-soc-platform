@@ -9,6 +9,7 @@ from Lib.baseplaybook import LanggraphPlaybook
 from Lib.llmapi import BaseAgentState
 from PLUGINS.LLM.llmapi import LLMAPI
 from PLUGINS.SIRP.sirpapi import Case
+from PLUGINS.SIRP.sirpbasemodel import AI_PROFILE_INVESTIGATION
 from PLUGINS.SIRP.sirpcoremodel import Severity, AttackStage, Confidence, CaseModel
 from PLUGINS.SIRP.sirpextramodel import PlaybookJobStatus, PlaybookModel
 
@@ -66,7 +67,7 @@ class Playbook(LanggraphPlaybook):
             messages = [
                 system_message,
                 *few_shot_examples,
-                HumanMessage(content=state.case.model_dump_json_for_ai())
+                HumanMessage(content=state.case.model_dump_json_for_ai(profile=AI_PROFILE_INVESTIGATION))
             ]
             llm = llm.with_structured_output(AnalyzeResult)
             response: AnalyzeResult = llm.invoke(messages)
