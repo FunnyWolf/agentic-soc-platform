@@ -623,7 +623,7 @@ class ArtifactModel(BaseSystemModel):
 
 
 class AlertModel(BaseSystemModel):
-    ai_exclude_fields: ClassVar[set[str]] = {'ownerid', 'caid', 'uaid', "comment_ai", "attachments"}
+    ai_exclude_fields: ClassVar[set[str]] = {'ownerid', 'caid', 'uaid', "comment_ai", "attachments", "raw_data", "unmapped"}
     id: Optional[str] = Field(default=None)
     severity: Optional[Severity] = Field(default=None,
                                          description="Source-defined severity")
