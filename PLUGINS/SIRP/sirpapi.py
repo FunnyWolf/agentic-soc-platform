@@ -1,5 +1,6 @@
 import json
 from abc import ABC
+from datetime import datetime, timedelta
 from typing import List, Union, Annotated, Dict, Any, TypeVar, Generic, Type
 
 import requests
@@ -8,11 +9,12 @@ from pydantic import BaseModel
 
 from Lib.log import logger
 from PLUGINS.Embeddings.embeddings_qdrant import get_qdrant_embeddings_api, SIRP_KNOWLEDGE_COLLECTION
+from PLUGINS.Redis.redis_stream_api import RedisStreamAPI
 from PLUGINS.SIRP.CONFIG import SIRP_NOTICE_WEBHOOK
 from PLUGINS.SIRP.nocolyapi import WorksheetRow
 from PLUGINS.SIRP.nocolymodel import Condition, Group, Operator
 from PLUGINS.SIRP.sirpbasemodel import AutoAccount, BaseSystemModel
-from PLUGINS.SIRP.sirpcoremodel import Severity, Confidence, EnrichmentModel, TicketModel, ArtifactModel, AlertModel, CaseModel
+from PLUGINS.SIRP.sirpcoremodel import Severity, Confidence, EnrichmentModel, TicketModel, ArtifactModel, AlertModel, CaseModel, CaseAnalysisStatus
 from PLUGINS.SIRP.sirpextramodel import PlaybookType, PlaybookJobStatus, KnowledgeAction, MessageModel, PlaybookModel, KnowledgeModel
 
 
@@ -579,6 +581,8 @@ class Case(BaseWorksheetEntity[CaseModel]):
     """Case 实体类 - 关联 Alert、Enrichment 和 Ticket"""
     WORKSHEET_ID = "case"
     MODEL_CLASS = CaseModel
+    ANALYSIS_STREAM_NAME = "case_analysis_queue"
+    DEFAULT_ANALYSIS_COOLDOWN_MINUTES = 10
 
     @classmethod
     def _load_relations(cls, model: CaseModel, include_system_fields: bool = True) -> CaseModel:
@@ -755,6 +759,205 @@ class Case(BaseWorksheetEntity[CaseModel]):
         cls.update(case_new)
 
         return ticket_row_id
+
+    @classmethod
+    def mark_analysis_requested(
+            cls,
+            row_id: str,
+            *,
+            force_run: bool = False,
+            cooldown_minutes: int | None = None,
+    ) -> Union[str, None]:
+        case_current = cls.get(row_id, lazy_load=True)
+        if not case_current:
+            return None
+
+        now = datetime.now().astimezone()
+        cooldown = cls._resolve_analysis_cooldown(case_current, cooldown_minutes)
+
+        if case_current.analysis_status == CaseAnalysisStatus.RUNNING:
+            return case_current.row_id
+
+        if case_current.analysis_status == CaseAnalysisStatus.QUEUED:
+            return case_current.row_id
+
+        if force_run:
+            case_patch = CaseModel(
+                row_id=row_id,
+                analysis_status=CaseAnalysisStatus.QUEUED,
+                analysis_cooldown_minutes=cooldown,
+                analysis_queue_message_id="",
+                analysis_next_run_at=None,
+            )
+            return cls._update_analysis_state_and_enqueue(case_patch, "manual_refresh")
+
+        case_patch = CaseModel(
+            row_id=row_id,
+            analysis_cooldown_minutes=cooldown,
+            analysis_queue_message_id="",
+        )
+        if case_current.analysis_status == CaseAnalysisStatus.IDLE:
+            case_patch.analysis_status = CaseAnalysisStatus.COOLING_DOWN
+            case_patch.analysis_next_run_at = now + timedelta(minutes=cooldown)
+        elif case_current.analysis_status == CaseAnalysisStatus.COOLING_DOWN and case_current.analysis_next_run_at is None:
+            case_patch.analysis_next_run_at = now + timedelta(minutes=cooldown)
+        elif case_current.analysis_cooldown_minutes == cooldown:
+            return case_current.row_id
+        return cls.update(case_patch)
+
+    @classmethod
+    def mark_analysis_running(cls, row_id: str) -> Union[str, None]:
+        case_current = cls.get(row_id, lazy_load=True)
+        if not case_current:
+            return None
+
+        if case_current.analysis_status != CaseAnalysisStatus.QUEUED:
+            return case_current.row_id
+
+        case_patch = CaseModel(
+            row_id=row_id,
+            analysis_status=CaseAnalysisStatus.RUNNING,
+            analysis_queue_message_id="",
+            analysis_next_run_at=None,
+            analysis_last_started_at=datetime.now().astimezone(),
+        )
+        return cls.update(case_patch)
+
+    @classmethod
+    def mark_analysis_completed(cls, row_id: str) -> Union[str, None]:
+        case_current = cls.get(row_id, lazy_load=True)
+        if not case_current:
+            return None
+
+        if case_current.analysis_status != CaseAnalysisStatus.RUNNING:
+            return case_current.row_id
+
+        case_patch = CaseModel(
+            row_id=row_id,
+            analysis_status=CaseAnalysisStatus.IDLE,
+            analysis_queue_message_id="",
+            analysis_next_run_at=None,
+            analysis_last_completed_at=datetime.now().astimezone(),
+        )
+        return cls.update(case_patch)
+
+    @classmethod
+    def mark_analysis_failed(cls, row_id: str, error: str = "") -> Union[str, None]:
+        case_current = cls.get(row_id, lazy_load=True)
+        if not case_current:
+            return None
+
+        if case_current.analysis_status != CaseAnalysisStatus.RUNNING:
+            return case_current.row_id
+
+        if error:
+            logger.error(f"Case analysis failed, row_id: {row_id}, error: {error}")
+        case_patch = CaseModel(
+            row_id=row_id,
+            analysis_status=CaseAnalysisStatus.IDLE,
+            analysis_queue_message_id="",
+            analysis_next_run_at=None,
+        )
+        return cls.update(case_patch)
+
+    @classmethod
+    def promote_due_analysis_cases(cls, now: datetime | None = None) -> List[str]:
+        promoted_row_ids: List[str] = []
+        target_now = now or datetime.now().astimezone()
+        due_cases = cls.list_cases_due_for_analysis_promotion(target_now)
+
+        for case_current in due_cases:
+            case_patch = CaseModel(
+                row_id=case_current.row_id,
+                analysis_status=CaseAnalysisStatus.QUEUED,
+                analysis_queue_message_id="",
+                analysis_next_run_at=None,
+            )
+            result = cls._update_analysis_state_and_enqueue(case_patch, "cooldown_ready")
+            if result:
+                promoted_row_ids.append(case_current.row_id)
+        return promoted_row_ids
+
+    @classmethod
+    def list_queued_analysis_cases(cls) -> List[CaseModel]:
+        filter_model = Group(
+            logic="AND",
+            children=[
+                Condition(
+                    field="analysis_status",
+                    operator=Operator.EQ,
+                    value=CaseAnalysisStatus.QUEUED
+                )
+            ]
+        )
+        return cls.list(filter_model, lazy_load=True)
+
+    @classmethod
+    def enqueue_queued_analysis_cases(cls, trigger: str = "queue_repair") -> List[str]:
+        enqueued_row_ids: List[str] = []
+        queued_cases = cls.list_queued_analysis_cases()
+        for case_model in queued_cases:
+            case_patch = CaseModel(
+                row_id=case_model.row_id,
+                analysis_status=CaseAnalysisStatus.QUEUED,
+                analysis_queue_message_id="",
+            )
+            update_result = cls._update_analysis_state_and_enqueue(case_patch, trigger)
+            if update_result:
+                enqueued_row_ids.append(case_model.row_id)
+        return enqueued_row_ids
+
+    @classmethod
+    def list_cases_due_for_analysis_promotion(cls, now: datetime | None = None) -> List[CaseModel]:
+        target_now = now or datetime.now().astimezone()
+        filter_model = Group(
+            logic="AND",
+            children=[
+                Condition(
+                    field="analysis_status",
+                    operator=Operator.EQ,
+                    value=CaseAnalysisStatus.COOLING_DOWN
+                ),
+                Condition(
+                    field="analysis_next_run_at",
+                    operator=Operator.LE,
+                    value=target_now.strftime("%Y-%m-%d %H:%M:%S")
+                )
+            ]
+        )
+        return cls.list(filter_model, lazy_load=True)
+
+    @classmethod
+    def _update_analysis_state_and_enqueue(
+            cls,
+            case_patch: CaseModel,
+            trigger: str,
+    ) -> Union[str, None]:
+        message_id = cls._send_analysis_queue_message(case_patch.row_id, trigger)
+        if not message_id:
+            logger.error(f"Failed to enqueue case analysis job. row_id: {case_patch.row_id}")
+            return None
+
+        case_patch.analysis_queue_message_id = message_id
+        return cls.update(case_patch)
+
+    @classmethod
+    def _send_analysis_queue_message(cls, row_id: str, trigger: str) -> Union[str, None]:
+        return RedisStreamAPI().send_message(
+            cls.ANALYSIS_STREAM_NAME,
+            {
+                "case_row_id": row_id,
+                "trigger": trigger,
+            }
+        )
+
+    @classmethod
+    def _resolve_analysis_cooldown(cls, case: CaseModel, cooldown_minutes: int | None) -> int:
+        if cooldown_minutes is not None:
+            return max(0, cooldown_minutes)
+        if case.analysis_cooldown_minutes is not None:
+            return max(0, case.analysis_cooldown_minutes)
+        return cls.DEFAULT_ANALYSIS_COOLDOWN_MINUTES
 
 
 class Message(BaseWorksheetEntity[MessageModel]):

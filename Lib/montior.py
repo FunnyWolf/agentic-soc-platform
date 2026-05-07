@@ -15,7 +15,7 @@ from Lib.threadmodulemanager import thread_module_manager
 from Lib.xcache import Xcache
 from PLUGINS.Embeddings.embeddings_qdrant import get_qdrant_embeddings_api, SIRP_KNOWLEDGE_COLLECTION
 from PLUGINS.Redis.redis_stream_api import RedisStreamAPI
-from PLUGINS.SIRP.sirpapi import Playbook, Knowledge
+from PLUGINS.SIRP.sirpapi import Playbook, Knowledge, Case
 from PLUGINS.SIRP.sirpextramodel import PlaybookJobStatus, KnowledgeAction, PlaybookModel
 
 
@@ -83,6 +83,7 @@ class MainMonitor(object):
         # Start background tasks
         self.start_background_task(self.subscribe_pending_playbook, "subscribe_pending_playbook", delay_time)
         self.start_background_task(self.subscribe_knowledge_action, "subscribe_knowledge_action", delay_time)
+        self.start_background_task(self.subscribe_case_analysis_cooldown, "subscribe_case_analysis_cooldown", delay_time)
 
         # engine
         # self.engine.start()
@@ -162,3 +163,9 @@ class MainMonitor(object):
 
                 # update status to Done
                 row_id = Knowledge.update(model)
+
+    @staticmethod
+    def subscribe_case_analysis_cooldown():
+        promoted_row_ids = Case.promote_due_analysis_cases()
+        if promoted_row_ids:
+            logger.info(f"Queued {len(promoted_row_ids)} case(s) for analysis after cooldown.")

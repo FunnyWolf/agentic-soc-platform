@@ -285,6 +285,13 @@ class CaseVerdict(StrEnum):
     OTHER = "Other"
 
 
+class CaseAnalysisStatus(StrEnum):
+    IDLE = "Idle"
+    COOLING_DOWN = "Cooling Down"
+    QUEUED = "Queued"
+    RUNNING = "Running"
+
+
 class EnrichmentModel(BaseSystemModel):
     """Artifact/Alert/Case结构化的富化信息"""
     id: Optional[str] = Field(default=None,
@@ -609,6 +616,20 @@ class CaseModel(BaseSystemModel):
                                                                      json_schema_extra={"ai": [AI_PROFILE_INVESTIGATION, AI_PROFILE_MCP]})
     alerts: Optional[List[Union[AlertModel, str]]] = Field(default=None, description="Linked alerts (关联的告警)",
                                                            json_schema_extra={"ai": [AI_PROFILE_INVESTIGATION, AI_PROFILE_MCP]})
+
+    # 内部分析调度字段
+    analysis_status: Optional[CaseAnalysisStatus] = Field(default=CaseAnalysisStatus.IDLE,
+                                                          description="Internal case analysis scheduler status (内部案件分析调度状态)")
+    analysis_cooldown_minutes: Optional[int] = Field(default=10,
+                                                     description="Case analysis cooldown window in minutes (案件分析冷静期分钟数)")
+    analysis_queue_message_id: Optional[str] = Field(default="",
+                                                     description="Latest queued case analysis Redis stream message ID (最近一次案件分析队列消息 ID)")
+    analysis_next_run_at: Optional[AutoDatetime] = Field(default=None,
+                                                         description="Next eligible analysis time after cooldown (冷静期结束后的下一次可运行时间)")
+    analysis_last_started_at: Optional[AutoDatetime] = Field(default=None,
+                                                             description="Last analysis start time (最近一次分析开始时间)")
+    analysis_last_completed_at: Optional[AutoDatetime] = Field(default=None,
+                                                               description="Last analysis completion time (最近一次分析完成时间)")
 
     # ai 字段
     severity_ai: Optional[Severity] = Field(default=None, description="AI-assessed severity (AI 评估严重程度)")
