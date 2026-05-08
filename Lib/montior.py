@@ -15,7 +15,7 @@ from Lib.threadmodulemanager import thread_module_manager
 from Lib.xcache import Xcache
 from PLUGINS.Embeddings.embeddings_qdrant import get_qdrant_embeddings_api, SIRP_KNOWLEDGE_COLLECTION
 from PLUGINS.Redis.redis_stream_api import RedisStreamAPI
-from PLUGINS.SIRP.case_analysis_runner import run_case_analysis
+from PLUGINS.SIRP.analysis import run_case_analysis
 from PLUGINS.SIRP.sirpapi import Playbook, Knowledge, Case
 from PLUGINS.SIRP.sirpextramodel import PlaybookJobStatus, KnowledgeAction, PlaybookModel
 

@@ -140,61 +140,61 @@ def run_case_analysis(case_row_id: str, trigger: str, queue_message_id: str | No
             HumanMessage(content=content),
         ]
 
-        # report: InvestigationReport = llm.invoke(messages)
-
-        logger.info(f"Case analysis test mode active. row_id: {case_row_id}, trigger: {trigger}")
-        import random
-        time.sleep(random.uniform(30.0, 60.0))
-        report = InvestigationReport(
-            verdict=CaseVerdict.SUSPICIOUS,
-            severity=Severity.MEDIUM,
-            impact=Impact.MEDIUM,
-            priority=CasePriority.MEDIUM,
-            confidence=Confidence.MEDIUM,
-            digest=f"Stub investigation report for case {case_row_id}.",
-            affected_assets=[
-                AffectedAsset(asset_type="Host", asset_value="stub-host")
-            ],
-            evidence_findings=[
-                EvidenceFinding(
-                    title="Stub evidence finding",
-                    finding_type="Other",
-                    subject=case.title or case_row_id,
-                    evidence="Synthetic evidence generated for runner validation.",
-                    conclusion="This is a non-production placeholder result for queue and scheduler testing.",
-                )
-            ],
-            attack_chain=[
-                AttackChainStep(
-                    attack_stage=AttackStage.DISCOVERY,
-                    description="Placeholder attack-chain step used for validating the investigation pipeline.",
-                )
-            ],
-            attack_timeline=[
-                TimelineEvent(
-                    timestamp=str(case.row_updatedAt or case.row_createdAt or "unknown"),
-                    attack_behavior="Stub timeline event for pipeline verification.",
-                    evidence_field="synthetic_test_event",
-                )
-            ],
-            ioc_indicators=[
-                IndicatorOfCompromise(
-                    indicator_type="IP",
-                    value="203.0.113.10",
-                    context="Synthetic IOC for non-LLM runner testing.",
-                )
-            ],
-            remediations=[
-                Remediation(
-                    action_type="Review",
-                    description="Review this stub output and verify case state transitions in the UI and worksheet.",
-                    priority=CasePriority.LOW,
-                )
-            ],
-            unknowns=[
-                "This is a stub result; no real investigation was performed."
-            ],
-        )
+        report: InvestigationReport = llm.invoke(messages)
+        #
+        # logger.info(f"Case analysis test mode active. row_id: {case_row_id}, trigger: {trigger}")
+        # import random
+        # time.sleep(random.uniform(30.0, 60.0))
+        # report = InvestigationReport(
+        #     verdict=CaseVerdict.SUSPICIOUS,
+        #     severity=Severity.MEDIUM,
+        #     impact=Impact.MEDIUM,
+        #     priority=CasePriority.MEDIUM,
+        #     confidence=Confidence.MEDIUM,
+        #     digest=f"Stub investigation report for case {case_row_id}.",
+        #     affected_assets=[
+        #         AffectedAsset(asset_type="Host", asset_value="stub-host")
+        #     ],
+        #     evidence_findings=[
+        #         EvidenceFinding(
+        #             title="Stub evidence finding",
+        #             finding_type="Other",
+        #             subject=case.title or case_row_id,
+        #             evidence="Synthetic evidence generated for runner validation.",
+        #             conclusion="This is a non-production placeholder result for queue and scheduler testing.",
+        #         )
+        #     ],
+        #     attack_chain=[
+        #         AttackChainStep(
+        #             attack_stage=AttackStage.DISCOVERY,
+        #             description="Placeholder attack-chain step used for validating the investigation pipeline.",
+        #         )
+        #     ],
+        #     attack_timeline=[
+        #         TimelineEvent(
+        #             timestamp=str(case.row_updatedAt or case.row_createdAt or "unknown"),
+        #             attack_behavior="Stub timeline event for pipeline verification.",
+        #             evidence_field="synthetic_test_event",
+        #         )
+        #     ],
+        #     ioc_indicators=[
+        #         IndicatorOfCompromise(
+        #             indicator_type="IP",
+        #             value="203.0.113.10",
+        #             context="Synthetic IOC for non-LLM runner testing.",
+        #         )
+        #     ],
+        #     remediations=[
+        #         Remediation(
+        #             action_type="Review",
+        #             description="Review this stub output and verify case state transitions in the UI and worksheet.",
+        #             priority=CasePriority.LOW,
+        #         )
+        #     ],
+        #     unknowns=[
+        #         "This is a stub result; no real investigation was performed."
+        #     ],
+        # )
 
         case_patch = CaseModel(
             row_id=case_row_id,
