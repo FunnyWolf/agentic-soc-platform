@@ -285,17 +285,6 @@ class CaseVerdict(StrEnum):
     OTHER = "Other"
 
 
-class CaseAnalysisStatus(StrEnum):
-    IDLE = "Idle"
-    COOLING_DOWN = "Cooling Down"
-    QUEUED = "Queued"
-    RUNNING = "Running"
-
-
-class CaseAnalysisRequestAction(StrEnum):
-    MANUAL_REFRESH = "Manual Refresh"
-
-
 class EnrichmentModel(BaseSystemModel):
     """Artifact/Alert/Case结构化的富化信息"""
     id: Optional[str] = Field(default=None,
@@ -625,12 +614,6 @@ class CaseModel(BaseSystemModel):
                                                            json_schema_extra={"ai": [AI_PROFILE_INVESTIGATION, AI_PROFILE_MCP]})
 
     # 内部分析调度字段
-    analysis_status: Optional[CaseAnalysisStatus] = Field(default=CaseAnalysisStatus.IDLE,
-                                                          description="Internal case analysis scheduler status (内部案件分析调度状态)")
-    analysis_request_action: Optional[CaseAnalysisRequestAction] = Field(default=None,
-                                                                         description="Manual case analysis request action (人工触发的案件分析请求动作)")
-    analysis_cooldown_minutes: Optional[int] = Field(default=DEFAULT_ANALYSIS_COOLDOWN_MINUTES,
-                                                     description="Case analysis cooldown window in minutes (案件分析冷静期分钟数)")
     analysis_queue_message_id: Optional[str] = Field(default="",
                                                      description="Latest queued case analysis Redis stream message ID (最近一次案件分析队列消息 ID)")
     analysis_next_run_at: Optional[AutoDatetime] = Field(default=None,

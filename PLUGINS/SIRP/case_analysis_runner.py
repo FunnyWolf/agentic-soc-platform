@@ -12,7 +12,7 @@ from Lib.log import logger
 from PLUGINS.LLM.llmapi import LLMAPI
 from PLUGINS.SIRP.sirpapi import Case
 from PLUGINS.SIRP.sirpbasemodel import AI_PROFILE_INVESTIGATION
-from PLUGINS.SIRP.sirpcoremodel import AttackStage, CaseAnalysisStatus, CaseModel, CasePriority, CaseVerdict, Confidence, Impact, Severity
+from PLUGINS.SIRP.sirpcoremodel import AttackStage, CaseModel, CasePriority, CaseVerdict, Confidence, Impact, Severity
 
 PROMPT_PATH = Path(DATA_DIR) / "Investigation_Agent" / "Investigation_System.md"
 
@@ -77,17 +77,14 @@ def run_case_analysis(case_row_id: str, trigger: str, queue_message_id: str | No
         logger.error(f"Case analysis skipped, case not found. row_id: {case_row_id}")
         return
 
-    # The queue message may arrive slightly before the case row persists its QUEUED state.
+    # The queue message may arrive slightly before the case row persists the latest queued message ID.
+    # 队列消息可能会比 case 上的最新 message_id 落库更早到达，因此这里做一次短暂重读。
     if queue_message_id and case.analysis_queue_message_id != queue_message_id:
         time.sleep(0.2)
         case = Case.get(case_row_id, lazy_load=False)
         if not case:
             logger.error(f"Case analysis skipped, case missing after queue retry. row_id: {case_row_id}")
             return
-
-    if case.analysis_status != CaseAnalysisStatus.QUEUED:
-        logger.info(f"Case analysis skipped, status is not QUEUED. row_id: {case_row_id}, status: {case.analysis_status}")
-        return
 
     if queue_message_id and case.analysis_queue_message_id and case.analysis_queue_message_id != queue_message_id:
         logger.info(
@@ -96,14 +93,23 @@ def run_case_analysis(case_row_id: str, trigger: str, queue_message_id: str | No
         )
         return
 
-    running_result = Case.mark_analysis_running(case_row_id)
-    if running_result is None:
-        logger.info(f"Case analysis skipped, failed to enter RUNNING state. row_id: {case_row_id}")
+    if queue_message_id and case.analysis_queue_message_id != queue_message_id:
+        logger.info(
+            f"Case analysis skipped because queue message does not match current queued message. "
+            f"row_id: {case_row_id}, case_message_id: {case.analysis_queue_message_id}, queue_message_id: {queue_message_id}"
+        )
+        return
+
+    # Starting the run clears the queue occupancy and consumes the current next_run_at.
+    # 开始执行时会清掉队列占位，并消费当前这一次待执行计划。
+    start_result = Case.mark_analysis_started(case_row_id, queue_message_id=queue_message_id)
+    if start_result is None:
+        logger.info(f"Case analysis skipped, failed to mark analysis as started. row_id: {case_row_id}")
         return
 
     case = Case.get(case_row_id, lazy_load=False)
     if not case:
-        logger.error(f"Case analysis aborted, case missing after RUNNING transition. row_id: {case_row_id}")
+        logger.error(f"Case analysis aborted, case missing after start marker update. row_id: {case_row_id}")
         return
 
     try:
@@ -121,7 +127,7 @@ def run_case_analysis(case_row_id: str, trigger: str, queue_message_id: str | No
 
         logger.info(f"Case analysis test mode active. row_id: {case_row_id}, trigger: {trigger}")
         import random
-        time.sleep(random.uniform(10.0, 20.0))
+        time.sleep(random.uniform(30.0, 60.0))
         report = InvestigationReport(
             verdict=CaseVerdict.SUSPICIOUS,
             severity=Severity.MEDIUM,
@@ -138,7 +144,7 @@ def run_case_analysis(case_row_id: str, trigger: str, queue_message_id: str | No
                     finding_type="Other",
                     subject=case.title or case_row_id,
                     evidence="Synthetic evidence generated for runner validation.",
-                    conclusion="This is a non-production placeholder result for queue and state-machine testing.",
+                    conclusion="This is a non-production placeholder result for queue and scheduler testing.",
                 )
             ],
             attack_chain=[

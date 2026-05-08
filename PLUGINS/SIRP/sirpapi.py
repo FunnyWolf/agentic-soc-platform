@@ -14,8 +14,7 @@ from PLUGINS.SIRP.CONFIG import SIRP_NOTICE_WEBHOOK
 from PLUGINS.SIRP.nocolyapi import WorksheetRow
 from PLUGINS.SIRP.nocolymodel import Condition, Group, Operator
 from PLUGINS.SIRP.sirpbasemodel import AutoAccount, BaseSystemModel
-from PLUGINS.SIRP.sirpcoremodel import Severity, Confidence, EnrichmentModel, TicketModel, ArtifactModel, AlertModel, CaseModel, CaseAnalysisStatus, \
-    CaseAnalysisRequestAction, DEFAULT_ANALYSIS_COOLDOWN_MINUTES
+from PLUGINS.SIRP.sirpcoremodel import Severity, Confidence, EnrichmentModel, TicketModel, ArtifactModel, AlertModel, CaseModel
 from PLUGINS.SIRP.sirpextramodel import PlaybookType, PlaybookJobStatus, KnowledgeAction, MessageModel, PlaybookModel, KnowledgeModel
 
 
@@ -765,102 +764,150 @@ class Case(BaseWorksheetEntity[CaseModel]):
     def mark_analysis_requested(
             cls,
             row_id: str,
-            force_run: bool = False,
-            cooldown_minutes: int | None = None,
+            cooldown_minutes: int = DEFAULT_ANALYSIS_COOLDOWN_MINUTES,
     ) -> Union[str, None]:
+        """
+        Case analysis scheduling model / 案件分析调度模型
+
+        This scheduler intentionally avoids an explicit status machine such as
+        IDLE / COOLING_DOWN / QUEUED / RUNNING.
+        这里刻意不再使用 IDLE / COOLING_DOWN / QUEUED / RUNNING 这类显式状态机。
+
+        Instead, scheduling is derived from a small set of fields:
+        当前调度语义由少量字段组合表达：
+
+        - analysis_next_run_at:
+          The earliest time when the pending request becomes eligible for enqueue.
+          当前待处理请求最早可以进入队列的时间。
+
+        - analysis_queue_message_id:
+          Non-empty means a queue message is already representing this case.
+          非空表示当前已经有一条队列消息代表这个案件。
+
+        - analysis_last_started_at:
+          The latest time an analysis run actually started.
+          最近一次分析真正开始执行的时间。
+
+        - analysis_last_completed_at:
+          The latest time an analysis run finished successfully.
+          最近一次分析成功完成的时间。
+
+        Core rules / 核心规则:
+
+        1. Every meaningful case update should call mark_analysis_requested().
+           每次有意义的案件变化，都应再次调用 mark_analysis_requested()。
+
+        2. The first pending request owns analysis_next_run_at.
+           First request wins; later requests in the same pending window do not overwrite it.
+           第一条待处理请求负责写入 analysis_next_run_at；
+           同一等待窗口内后续请求不能覆盖它。
+
+        3. Later requests do not overwrite an existing next_run_at.
+           This prevents repeated updates from pushing the pending run forever.
+           后续请求不会覆盖已存在的 next_run_at，
+           这样可以防止频繁更新把待执行任务不断向后推迟。
+
+        4. When a worker starts, mark_analysis_started() clears the current
+           analysis_next_run_at and queue_message_id, meaning the current pending
+           schedule has been consumed.
+           worker 开始时，mark_analysis_started() 会清掉当前的
+           analysis_next_run_at 和 queue_message_id，
+           表示这一轮待执行计划已经被消费。
+
+        5. If the case changes again during execution, a later
+           mark_analysis_requested() call will create a fresh next_run_at for the
+           next round.
+           如果运行期间案件再次变化，后续新的 mark_analysis_requested()
+           会为下一轮重新创建 next_run_at。
+
+        6. mark_analysis_completed() only records completion time, and
+           mark_analysis_failed() only releases queue occupancy.
+           There is no automatic follow-up scheduling or retry logic.
+           mark_analysis_completed() 只记录完成时间，
+           mark_analysis_failed() 只释放队列占位，
+           不做自动补跑或自动重试。
+        """
+        # Entry point for all automatic case-analysis scheduling.
+        # 案件分析调度的唯一入口。
         case_current = cls.get(row_id, lazy_load=True)
         if not case_current:
             logger.warning(f"Case analysis request skipped, case not found. row_id: {row_id}")
             return None
 
         now = datetime.now().astimezone()
-        cooldown = cls._resolve_analysis_cooldown(case_current.analysis_cooldown_minutes, cooldown_minutes)
+        earliest_by_cooldown = None
+        if case_current.analysis_last_completed_at is not None:
+            # If the case was analyzed recently, the next run must not happen earlier than
+            # "last completed time + cooldown". This enforces "at most once per cooldown window".
+            # 如果案件刚分析过，下一次运行不能早于“上次完成时间 + 冷静期”，
+            # 这样才能保证“每个冷静期窗口内最多执行一次”。
+            earliest_by_cooldown = case_current.analysis_last_completed_at + timedelta(minutes=cooldown_minutes)
+
+        # Two candidate times are considered:
+        # 1. now + cooldown: debounce from the current request
+        # 2. last_completed_at + cooldown: throttle from the previous completed run
+        # We take the later one so the case is neither executed too frequently nor delayed forever.
+        # 这里有两个候选时间：
+        # 1. now + cooldown：基于当前请求的等待窗口
+        # 2. last_completed_at + cooldown：基于上次完成时间的频率限制
+        # 取两者较晚值，既避免过于频繁执行，也避免语义不一致。
+        scheduled_next_run_at = now + timedelta(minutes=cooldown_minutes)
+        if earliest_by_cooldown is not None:
+            scheduled_next_run_at = max(scheduled_next_run_at, earliest_by_cooldown)
+
         logger.info(
             f"Case analysis request received. row_id: {row_id}, time: {now.isoformat()}, "
-            f"current_status: {case_current.analysis_status}, force_run: {force_run}, "
-            f"requested_cooldown_minutes: {cooldown_minutes}, resolved_cooldown_minutes: {cooldown}, "
-            f"current_next_run_at: {case_current.analysis_next_run_at}, queue_message_id: {case_current.analysis_queue_message_id}"
+            f"requested_cooldown_minutes: {cooldown_minutes} "
+            f"current_next_run_at: {case_current.analysis_next_run_at}, queue_message_id: {case_current.analysis_queue_message_id}, "
+            f"last_started_at: {case_current.analysis_last_started_at}, last_completed_at: {case_current.analysis_last_completed_at}"
         )
 
-        if case_current.analysis_status == CaseAnalysisStatus.RUNNING:
-            logger.info(
-                f"Case analysis request skipped because case is RUNNING. "
-                f"row_id: {row_id}, time: {now.isoformat()}"
-            )
-            return case_current.row_id
+        case_patch = CaseModel(row_id=row_id)
 
-        if case_current.analysis_status == CaseAnalysisStatus.QUEUED:
+        if not case_current.analysis_next_run_at:
+            # No pending schedule exists, so this request becomes the owner of next_run_at.
+            # Once next_run_at is written, later requests in the same pending window must not overwrite it.
+            # Only the first pending request sets next_run_at.
+            # Later requests do not push the window backward.
+            # 当前没有待执行计划，因此由这次请求来确定 next_run_at；
+            # 一旦写入，后续同一等待窗口内的新请求不能覆盖它。
+            # 只有第一条待处理请求会设置 next_run_at；
+            # 后续请求不会把窗口继续往后推，避免一直分析不上。
+            case_patch.analysis_next_run_at = scheduled_next_run_at
             logger.info(
-                f"Case analysis request skipped because case is already QUEUED. "
-                f"row_id: {row_id}, time: {now.isoformat()}, queue_message_id: {case_current.analysis_queue_message_id}"
-            )
-            return case_current.row_id
-
-        if force_run:
-            case_patch = CaseModel(
-                row_id=row_id,
-                analysis_status=CaseAnalysisStatus.QUEUED,
-                analysis_cooldown_minutes=cooldown,
-                analysis_queue_message_id="",
-                analysis_next_run_at=None,
-            )
-            logger.info(
-                f"Case analysis request will queue immediately due to force_run. "
-                f"row_id: {row_id}, time: {now.isoformat()}"
-            )
-            return cls._update_analysis_state_and_enqueue(case_patch, "manual_refresh")
-
-        case_patch = CaseModel(
-            row_id=row_id,
-            analysis_cooldown_minutes=cooldown,
-            analysis_queue_message_id="",
-        )
-        if case_current.analysis_status == CaseAnalysisStatus.IDLE:
-            case_patch.analysis_status = CaseAnalysisStatus.COOLING_DOWN
-            case_patch.analysis_next_run_at = now + timedelta(minutes=cooldown)
-            logger.info(
-                f"Case analysis request moved case from IDLE to COOLING_DOWN. "
+                f"Case analysis request scheduled a new next_run_at. "
                 f"row_id: {row_id}, time: {now.isoformat()}, next_run_at: {case_patch.analysis_next_run_at}"
             )
-        elif case_current.analysis_status == CaseAnalysisStatus.COOLING_DOWN and case_current.analysis_next_run_at is None:
-            case_patch.analysis_next_run_at = now + timedelta(minutes=cooldown)
-            logger.info(
-                f"Case analysis request filled missing next_run_at while case remains COOLING_DOWN. "
-                f"row_id: {row_id}, time: {now.isoformat()}, next_run_at: {case_patch.analysis_next_run_at}"
-            )
-        elif case_current.analysis_cooldown_minutes == cooldown:
-            logger.info(
-                f"Case analysis request skipped because cooldown state is unchanged. "
-                f"row_id: {row_id}, time: {now.isoformat()}, current_status: {case_current.analysis_status}, "
-                f"next_run_at: {case_current.analysis_next_run_at}, cooldown_minutes: {case_current.analysis_cooldown_minutes}"
-            )
-            return case_current.row_id
         else:
+            # A pending schedule already exists, so this request intentionally keeps the original next_run_at.
+            # 说明已经存在一条待执行计划，因此这次请求故意保留原来的 next_run_at。
             logger.info(
-                f"Case analysis request updates cooldown_minutes only. "
-                f"row_id: {row_id}, time: {now.isoformat()}, old_cooldown_minutes: {case_current.analysis_cooldown_minutes}, "
-                f"new_cooldown_minutes: {cooldown}"
+                f"Case analysis request kept existing next_run_at to avoid postponing the pending run. "
+                f"row_id: {row_id}, time: {now.isoformat()}, existing_next_run_at: {case_current.analysis_next_run_at}"
             )
         return cls.update(case_patch)
 
     @classmethod
-    def mark_analysis_running(cls, row_id: str) -> Union[str, None]:
+    def mark_analysis_started(cls, row_id: str, queue_message_id: str | None = None) -> Union[str, None]:
         case_current = cls.get(row_id, lazy_load=True)
         if not case_current:
-            logger.warning(f"Case analysis RUNNING transition skipped, case not found. row_id: {row_id}")
+            logger.warning(f"Case analysis start skipped, case not found. row_id: {row_id}")
             return None
 
-        if case_current.analysis_status != CaseAnalysisStatus.QUEUED:
+        if queue_message_id and case_current.analysis_queue_message_id != queue_message_id:
             logger.info(
-                f"Case analysis RUNNING transition skipped due to unexpected status. "
-                f"row_id: {row_id}, current_status: {case_current.analysis_status}, "
-                f"queue_message_id: {case_current.analysis_queue_message_id}"
+                f"Case analysis start skipped due to stale queue message. "
+                f"row_id: {row_id}, case_message_id: {case_current.analysis_queue_message_id}, "
+                f"queue_message_id: {queue_message_id}"
             )
             return None
 
+        # Starting a run consumes the current pending schedule.
+        # Any new request arriving during execution must create a fresh next_run_at by itself.
+        # 开始分析即视为消费掉当前待执行计划；
+        # 如果运行过程中又有新请求，必须由新的请求自行生成下一次 next_run_at。
         case_patch = CaseModel(
             row_id=row_id,
-            analysis_status=CaseAnalysisStatus.RUNNING,
             analysis_queue_message_id="",
             analysis_next_run_at=None,
             analysis_last_started_at=datetime.now().astimezone(),
@@ -869,110 +916,71 @@ class Case(BaseWorksheetEntity[CaseModel]):
 
     @classmethod
     def mark_analysis_completed(cls, row_id: str) -> Union[str, None]:
-        case_current = cls.get(row_id, lazy_load=True)
-        if not case_current:
+        if not cls.get(row_id, lazy_load=True):
             logger.warning(f"Case analysis completion skipped, case not found. row_id: {row_id}")
             return None
 
-        if case_current.analysis_status != CaseAnalysisStatus.RUNNING:
-            logger.info(
-                f"Case analysis completion skipped due to unexpected status. "
-                f"row_id: {row_id}, current_status: {case_current.analysis_status}"
-            )
-            return None
+        # Completion only records completion time.
+        # It does not schedule a follow-up run; follow-up requests must come through mark_analysis_requested().
+        # 分析完成只记录完成时间，不负责安排下一轮；
+        # 后续如果还要再跑，必须重新调用 mark_analysis_requested()。
+        completed_at = datetime.now().astimezone()
+        logger.info(
+            f"Case analysis completed. row_id: {row_id}, completed_at: {completed_at.isoformat()}"
+        )
 
         case_patch = CaseModel(
             row_id=row_id,
-            analysis_status=CaseAnalysisStatus.IDLE,
             analysis_queue_message_id="",
-            analysis_next_run_at=None,
-            analysis_last_completed_at=datetime.now().astimezone(),
+            analysis_last_completed_at=completed_at,
         )
         return cls.update(case_patch)
 
     @classmethod
     def mark_analysis_failed(cls, row_id: str, error: str = "") -> Union[str, None]:
-        case_current = cls.get(row_id, lazy_load=True)
-        if not case_current:
-            logger.warning(f"Case analysis failure transition skipped, case not found. row_id: {row_id}")
+        if not cls.get(row_id, lazy_load=True):
+            logger.warning(f"Case analysis failure skipped, case not found. row_id: {row_id}")
             return None
 
-        if case_current.analysis_status != CaseAnalysisStatus.RUNNING:
-            logger.info(
-                f"Case analysis failure transition skipped due to unexpected status. "
-                f"row_id: {row_id}, current_status: {case_current.analysis_status}, error: {error}"
-            )
-            return None
-
+        # Failure only releases queue occupancy.
+        # There is no automatic retry; a later external request will schedule the next run.
+        # 分析失败只释放队列占位，不做自动重试；
+        # 之后若还需要重跑，依赖外部再次发起请求。
         if error:
             logger.error(f"Case analysis failed, row_id: {row_id}, error: {error}")
         case_patch = CaseModel(
             row_id=row_id,
-            analysis_status=CaseAnalysisStatus.IDLE,
             analysis_queue_message_id="",
-            analysis_next_run_at=None,
         )
         return cls.update(case_patch)
 
     @classmethod
     def promote_due_analysis_cases(cls, now: datetime | None = None) -> List[str]:
         promoted_row_ids: List[str] = []
-        failed_row_ids: List[str] = []
         target_now = now or datetime.now().astimezone()
         due_cases = cls.list_cases_due_for_analysis_promotion(target_now)
         for case_current in due_cases:
+            # This loop is a pure scheduler: find due cases and enqueue them once.
+            # 这个循环只做调度：找到到点的案件，并确保每个案件只入队一次。
             logger.info(
-                f"Case analysis cooldown promotion attempting enqueue. "
-                f"row_id: {case_current.row_id}, current_status: {case_current.analysis_status}, "
-                f"next_run_at: {case_current.analysis_next_run_at}, trigger: cooldown_ready"
+                f"Case analysis promotion attempting enqueue. "
+                f"row_id: {case_current.row_id}, last_started_at: {case_current.analysis_last_started_at}, "
+                f"last_completed_at: {case_current.analysis_last_completed_at}, "
+                f"next_run_at: {case_current.analysis_next_run_at}, trigger: scheduled_ready"
             )
-            case_patch = CaseModel(
-                row_id=case_current.row_id,
-                analysis_status=CaseAnalysisStatus.QUEUED,
-                analysis_queue_message_id="",
-                analysis_next_run_at=None,
-            )
-            result = cls._update_analysis_state_and_enqueue(case_patch, "cooldown_ready")
+            result = cls._enqueue_analysis_case(case_current.row_id, "scheduled_ready")
             if result:
                 promoted_row_ids.append(case_current.row_id)
                 logger.info(
-                    f"Case analysis cooldown promotion succeeded. "
-                    f"row_id: {case_current.row_id}, trigger: cooldown_ready, time: {target_now.isoformat()}"
+                    f"Case analysis promotion succeeded. "
+                    f"row_id: {case_current.row_id}, trigger: scheduled_ready, time: {target_now.isoformat()}"
                 )
             else:
-                failed_row_ids.append(case_current.row_id)
                 logger.warning(
-                    f"Case analysis cooldown promotion failed. "
-                    f"row_id: {case_current.row_id}, trigger: cooldown_ready, time: {target_now.isoformat()}"
+                    f"Case analysis promotion failed. "
+                    f"row_id: {case_current.row_id}, trigger: scheduled_ready, time: {target_now.isoformat()}"
                 )
         return promoted_row_ids
-
-    @classmethod
-    def consume_manual_analysis_requests(cls) -> List[str]:
-        queued_row_ids: List[str] = []
-        requested_cases = cls.list_cases_with_manual_analysis_request()
-
-        for case_current in requested_cases:
-            if case_current.analysis_status == CaseAnalysisStatus.RUNNING:
-                logger.info(f"Manual case analysis request ignored because case is RUNNING. row_id: {case_current.row_id}")
-                case_patch = CaseModel(
-                    row_id=case_current.row_id,
-                    analysis_request_action=None,
-                )
-                cls.update(case_patch)
-                continue
-
-            case_patch = CaseModel(
-                row_id=case_current.row_id,
-                analysis_status=CaseAnalysisStatus.QUEUED,
-                analysis_request_action=None,
-                analysis_queue_message_id="",
-                analysis_next_run_at=None,
-            )
-            result = cls._update_analysis_state_and_enqueue(case_patch, "manual_refresh")
-            if result:
-                queued_row_ids.append(case_current.row_id)
-        return queued_row_ids
 
     @classmethod
     def list_cases_due_for_analysis_promotion(cls, now: datetime | None = None) -> List[CaseModel]:
@@ -980,46 +988,51 @@ class Case(BaseWorksheetEntity[CaseModel]):
         filter_model = Group(
             logic="AND",
             children=[
+                # Not currently represented by a queued message.
+                # 当前没有队列中的消息占位。
                 Condition(
-                    field="analysis_status",
-                    operator=Operator.IN,
-                    value=[CaseAnalysisStatus.COOLING_DOWN]
+                    field="analysis_queue_message_id",
+                    operator=Operator.IS_EMPTY,
                 ),
+                # The scheduled time has arrived.
+                # 已经到达计划执行时间。
                 Condition(
                     field="analysis_next_run_at",
                     operator=Operator.LE,
                     value=target_now.strftime("%Y-%m-%d %H:%M:%S")
-                )
+                ),
             ]
         )
+        # Under the current scheduling invariants, these worksheet conditions are already sufficient:
+        # 1. analysis_next_run_at has arrived
+        # 2. no queue message is currently occupying the case
+        #
+        # In other words, once next_run_at exists it already represents a pending run request.
+        # mark_analysis_started() consumes that request by clearing next_run_at,
+        # so no extra pending marker is required.
+        #
+        # 按当前调度不变量，这里的工作表条件已经足够：
+        # 1. analysis_next_run_at 已到时间
+        # 2. 当前没有队列消息占位
+        #
+        # 换句话说，只要 next_run_at 存在，它本身就代表一条待执行请求；
+        # mark_analysis_started() 会通过清空 next_run_at 来消费这条请求，
+        # 因此不再需要额外的 pending 标记字段。
         return cls.list(filter_model, lazy_load=True)
 
     @classmethod
-    def list_cases_with_manual_analysis_request(cls) -> List[CaseModel]:
-        filter_model = Group(
-            logic="AND",
-            children=[
-                Condition(
-                    field="analysis_request_action",
-                    operator=Operator.IN,
-                    value=[CaseAnalysisRequestAction.MANUAL_REFRESH]
-                )
-            ]
-        )
-        return cls.list(filter_model, lazy_load=True)
-
-    @classmethod
-    def _update_analysis_state_and_enqueue(
-            cls,
-            case_patch: CaseModel,
-            trigger: str,
-    ) -> Union[str, None]:
-        message_id = cls._send_analysis_queue_message(case_patch.row_id, trigger)
+    def _enqueue_analysis_case(cls, row_id: str, trigger: str) -> Union[str, None]:
+        message_id = cls._send_analysis_queue_message(row_id, trigger)
         if not message_id:
-            logger.error(f"Failed to enqueue case analysis job. row_id: {case_patch.row_id}")
+            logger.error(f"Failed to enqueue case analysis job. row_id: {row_id}")
             return None
 
-        case_patch.analysis_queue_message_id = message_id
+        # Persist the latest queue message ID so the worker can reject stale messages.
+        # 保存最新队列消息 ID，worker 可以据此丢弃旧消息。
+        case_patch = CaseModel(
+            row_id=row_id,
+            analysis_queue_message_id=message_id,
+        )
         return cls.update(case_patch)
 
     @classmethod
@@ -1031,14 +1044,6 @@ class Case(BaseWorksheetEntity[CaseModel]):
                 "trigger": trigger,
             }
         )
-
-    @classmethod
-    def _resolve_analysis_cooldown(cls, analysis_cooldown_minutes: int | None, cooldown_minutes: int | None) -> int:
-        if cooldown_minutes is not None:
-            return max(0, cooldown_minutes)
-        if analysis_cooldown_minutes is not None:
-            return max(0, analysis_cooldown_minutes)
-        return DEFAULT_ANALYSIS_COOLDOWN_MINUTES
 
 
 class Message(BaseWorksheetEntity[MessageModel]):

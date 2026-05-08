@@ -7,8 +7,7 @@ from Lib.basemodule import BaseModule
 from PLUGINS.SIRP.correlation import Correlation
 from PLUGINS.SIRP.sirpapi import Alert, Case
 from PLUGINS.SIRP.sirpcoremodel import ArtifactType, ArtifactRole, Severity, Impact, Disposition, AlertAction, Confidence, AlertAnalyticType, ProductCategory, \
-    AlertPolicyType, AlertRiskLevel, AlertStatus, CasePriority, ArtifactModel, AlertModel, CaseModel, EnrichmentModel, CaseStatus, CaseAnalysisStatus, \
-    DEFAULT_ANALYSIS_COOLDOWN_MINUTES
+    AlertPolicyType, AlertRiskLevel, AlertStatus, CasePriority, ArtifactModel, AlertModel, CaseModel, EnrichmentModel, CaseStatus
 
 
 class Module(BaseModule):
@@ -191,7 +190,7 @@ class Module(BaseModule):
                 row_id=existing_case_row_id
             )
             Case.update(update_case)
-            Case.mark_analysis_requested(row_id=existing_case_row_id)
+            Case.mark_analysis_requested(row_id=existing_case_row_id, cooldown_minutes=3)
         else:
             # 根据 Alert 计算 Case字段
             new_case = CaseModel(
@@ -206,14 +205,10 @@ class Module(BaseModule):
                 category=ProductCategory.CLOUD,
                 tags=["iam", "aws", "privesc"],
                 correlation_uid=correlation_uid,
-
-                analysis_status=CaseAnalysisStatus.IDLE,
-                analysis_cooldown_minutes=DEFAULT_ANALYSIS_COOLDOWN_MINUTES,
-
                 alerts=[saved_alert_row_id]
             )
             created_case_row_id = Case.create(new_case)
-            Case.mark_analysis_requested(row_id=created_case_row_id)
+            Case.mark_analysis_requested(row_id=created_case_row_id, cooldown_minutes=3)
         return True
 
 
@@ -235,6 +230,6 @@ if __name__ == "__main__":
     module = Module()
     message_ids = module.read_stream_head_ids(60)
     for message_id in message_ids:
-        time.sleep(60)
+        time.sleep(10)
         module.debug_message_id = message_id
         module.run()

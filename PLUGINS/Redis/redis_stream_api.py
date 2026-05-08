@@ -147,7 +147,7 @@ class RedisStreamAPI(object):
                     message_id = message_id.decode()
                 data: dict = json.loads(fields["data"])
 
-                logger.info(f"Received: {stream_name} -> {message_id}")
+                logger.debug(f"Received: {stream_name} -> {message_id}")
                 return {
                     "message_id": message_id,
                     "data": data,
