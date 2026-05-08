@@ -136,6 +136,12 @@ class WorksheetRow(object):
                 return value
         elif field_type in ['Checkbox']:
             return bool(int(value))
+        elif field_type in ["Number"]:
+            try:
+                new_value = float(value)
+            except Exception as E:
+                new_value = 0
+            return new_value
         else:
             return value
 

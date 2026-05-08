@@ -14,7 +14,8 @@ from PLUGINS.SIRP.CONFIG import SIRP_NOTICE_WEBHOOK
 from PLUGINS.SIRP.nocolyapi import WorksheetRow
 from PLUGINS.SIRP.nocolymodel import Condition, Group, Operator
 from PLUGINS.SIRP.sirpbasemodel import AutoAccount, BaseSystemModel
-from PLUGINS.SIRP.sirpcoremodel import Severity, Confidence, EnrichmentModel, TicketModel, ArtifactModel, AlertModel, CaseModel, CaseAnalysisStatus
+from PLUGINS.SIRP.sirpcoremodel import Severity, Confidence, EnrichmentModel, TicketModel, ArtifactModel, AlertModel, CaseModel, CaseAnalysisStatus, \
+    CaseAnalysisRequestAction, DEFAULT_ANALYSIS_COOLDOWN_MINUTES
 from PLUGINS.SIRP.sirpextramodel import PlaybookType, PlaybookJobStatus, KnowledgeAction, MessageModel, PlaybookModel, KnowledgeModel
 
 
@@ -581,7 +582,7 @@ class Case(BaseWorksheetEntity[CaseModel]):
     """Case 实体类 - 关联 Alert、Enrichment 和 Ticket"""
     WORKSHEET_ID = "case"
     MODEL_CLASS = CaseModel
-    ANALYSIS_STREAM_NAME = "case_analysis_queue"
+    ANALYSIS_STREAM_NAME = "CASE_ANALYSIS_QUEUE"
     DEFAULT_ANALYSIS_COOLDOWN_MINUTES = 10
 
     @classmethod
@@ -764,21 +765,35 @@ class Case(BaseWorksheetEntity[CaseModel]):
     def mark_analysis_requested(
             cls,
             row_id: str,
-            *,
             force_run: bool = False,
             cooldown_minutes: int | None = None,
     ) -> Union[str, None]:
         case_current = cls.get(row_id, lazy_load=True)
         if not case_current:
+            logger.warning(f"Case analysis request skipped, case not found. row_id: {row_id}")
             return None
 
         now = datetime.now().astimezone()
-        cooldown = cls._resolve_analysis_cooldown(case_current, cooldown_minutes)
+        cooldown = cls._resolve_analysis_cooldown(case_current.analysis_cooldown_minutes, cooldown_minutes)
+        logger.info(
+            f"Case analysis request received. row_id: {row_id}, time: {now.isoformat()}, "
+            f"current_status: {case_current.analysis_status}, force_run: {force_run}, "
+            f"requested_cooldown_minutes: {cooldown_minutes}, resolved_cooldown_minutes: {cooldown}, "
+            f"current_next_run_at: {case_current.analysis_next_run_at}, queue_message_id: {case_current.analysis_queue_message_id}"
+        )
 
         if case_current.analysis_status == CaseAnalysisStatus.RUNNING:
+            logger.info(
+                f"Case analysis request skipped because case is RUNNING. "
+                f"row_id: {row_id}, time: {now.isoformat()}"
+            )
             return case_current.row_id
 
         if case_current.analysis_status == CaseAnalysisStatus.QUEUED:
+            logger.info(
+                f"Case analysis request skipped because case is already QUEUED. "
+                f"row_id: {row_id}, time: {now.isoformat()}, queue_message_id: {case_current.analysis_queue_message_id}"
+            )
             return case_current.row_id
 
         if force_run:
@@ -788,6 +803,10 @@ class Case(BaseWorksheetEntity[CaseModel]):
                 analysis_cooldown_minutes=cooldown,
                 analysis_queue_message_id="",
                 analysis_next_run_at=None,
+            )
+            logger.info(
+                f"Case analysis request will queue immediately due to force_run. "
+                f"row_id: {row_id}, time: {now.isoformat()}"
             )
             return cls._update_analysis_state_and_enqueue(case_patch, "manual_refresh")
 
@@ -799,20 +818,45 @@ class Case(BaseWorksheetEntity[CaseModel]):
         if case_current.analysis_status == CaseAnalysisStatus.IDLE:
             case_patch.analysis_status = CaseAnalysisStatus.COOLING_DOWN
             case_patch.analysis_next_run_at = now + timedelta(minutes=cooldown)
+            logger.info(
+                f"Case analysis request moved case from IDLE to COOLING_DOWN. "
+                f"row_id: {row_id}, time: {now.isoformat()}, next_run_at: {case_patch.analysis_next_run_at}"
+            )
         elif case_current.analysis_status == CaseAnalysisStatus.COOLING_DOWN and case_current.analysis_next_run_at is None:
             case_patch.analysis_next_run_at = now + timedelta(minutes=cooldown)
+            logger.info(
+                f"Case analysis request filled missing next_run_at while case remains COOLING_DOWN. "
+                f"row_id: {row_id}, time: {now.isoformat()}, next_run_at: {case_patch.analysis_next_run_at}"
+            )
         elif case_current.analysis_cooldown_minutes == cooldown:
+            logger.info(
+                f"Case analysis request skipped because cooldown state is unchanged. "
+                f"row_id: {row_id}, time: {now.isoformat()}, current_status: {case_current.analysis_status}, "
+                f"next_run_at: {case_current.analysis_next_run_at}, cooldown_minutes: {case_current.analysis_cooldown_minutes}"
+            )
             return case_current.row_id
+        else:
+            logger.info(
+                f"Case analysis request updates cooldown_minutes only. "
+                f"row_id: {row_id}, time: {now.isoformat()}, old_cooldown_minutes: {case_current.analysis_cooldown_minutes}, "
+                f"new_cooldown_minutes: {cooldown}"
+            )
         return cls.update(case_patch)
 
     @classmethod
     def mark_analysis_running(cls, row_id: str) -> Union[str, None]:
         case_current = cls.get(row_id, lazy_load=True)
         if not case_current:
+            logger.warning(f"Case analysis RUNNING transition skipped, case not found. row_id: {row_id}")
             return None
 
         if case_current.analysis_status != CaseAnalysisStatus.QUEUED:
-            return case_current.row_id
+            logger.info(
+                f"Case analysis RUNNING transition skipped due to unexpected status. "
+                f"row_id: {row_id}, current_status: {case_current.analysis_status}, "
+                f"queue_message_id: {case_current.analysis_queue_message_id}"
+            )
+            return None
 
         case_patch = CaseModel(
             row_id=row_id,
@@ -827,10 +871,15 @@ class Case(BaseWorksheetEntity[CaseModel]):
     def mark_analysis_completed(cls, row_id: str) -> Union[str, None]:
         case_current = cls.get(row_id, lazy_load=True)
         if not case_current:
+            logger.warning(f"Case analysis completion skipped, case not found. row_id: {row_id}")
             return None
 
         if case_current.analysis_status != CaseAnalysisStatus.RUNNING:
-            return case_current.row_id
+            logger.info(
+                f"Case analysis completion skipped due to unexpected status. "
+                f"row_id: {row_id}, current_status: {case_current.analysis_status}"
+            )
+            return None
 
         case_patch = CaseModel(
             row_id=row_id,
@@ -845,10 +894,15 @@ class Case(BaseWorksheetEntity[CaseModel]):
     def mark_analysis_failed(cls, row_id: str, error: str = "") -> Union[str, None]:
         case_current = cls.get(row_id, lazy_load=True)
         if not case_current:
+            logger.warning(f"Case analysis failure transition skipped, case not found. row_id: {row_id}")
             return None
 
         if case_current.analysis_status != CaseAnalysisStatus.RUNNING:
-            return case_current.row_id
+            logger.info(
+                f"Case analysis failure transition skipped due to unexpected status. "
+                f"row_id: {row_id}, current_status: {case_current.analysis_status}, error: {error}"
+            )
+            return None
 
         if error:
             logger.error(f"Case analysis failed, row_id: {row_id}, error: {error}")
@@ -863,10 +917,15 @@ class Case(BaseWorksheetEntity[CaseModel]):
     @classmethod
     def promote_due_analysis_cases(cls, now: datetime | None = None) -> List[str]:
         promoted_row_ids: List[str] = []
+        failed_row_ids: List[str] = []
         target_now = now or datetime.now().astimezone()
         due_cases = cls.list_cases_due_for_analysis_promotion(target_now)
-
         for case_current in due_cases:
+            logger.info(
+                f"Case analysis cooldown promotion attempting enqueue. "
+                f"row_id: {case_current.row_id}, current_status: {case_current.analysis_status}, "
+                f"next_run_at: {case_current.analysis_next_run_at}, trigger: cooldown_ready"
+            )
             case_patch = CaseModel(
                 row_id=case_current.row_id,
                 analysis_status=CaseAnalysisStatus.QUEUED,
@@ -876,36 +935,44 @@ class Case(BaseWorksheetEntity[CaseModel]):
             result = cls._update_analysis_state_and_enqueue(case_patch, "cooldown_ready")
             if result:
                 promoted_row_ids.append(case_current.row_id)
+                logger.info(
+                    f"Case analysis cooldown promotion succeeded. "
+                    f"row_id: {case_current.row_id}, trigger: cooldown_ready, time: {target_now.isoformat()}"
+                )
+            else:
+                failed_row_ids.append(case_current.row_id)
+                logger.warning(
+                    f"Case analysis cooldown promotion failed. "
+                    f"row_id: {case_current.row_id}, trigger: cooldown_ready, time: {target_now.isoformat()}"
+                )
         return promoted_row_ids
 
     @classmethod
-    def list_queued_analysis_cases(cls) -> List[CaseModel]:
-        filter_model = Group(
-            logic="AND",
-            children=[
-                Condition(
-                    field="analysis_status",
-                    operator=Operator.EQ,
-                    value=CaseAnalysisStatus.QUEUED
-                )
-            ]
-        )
-        return cls.list(filter_model, lazy_load=True)
+    def consume_manual_analysis_requests(cls) -> List[str]:
+        queued_row_ids: List[str] = []
+        requested_cases = cls.list_cases_with_manual_analysis_request()
 
-    @classmethod
-    def enqueue_queued_analysis_cases(cls, trigger: str = "queue_repair") -> List[str]:
-        enqueued_row_ids: List[str] = []
-        queued_cases = cls.list_queued_analysis_cases()
-        for case_model in queued_cases:
+        for case_current in requested_cases:
+            if case_current.analysis_status == CaseAnalysisStatus.RUNNING:
+                logger.info(f"Manual case analysis request ignored because case is RUNNING. row_id: {case_current.row_id}")
+                case_patch = CaseModel(
+                    row_id=case_current.row_id,
+                    analysis_request_action=None,
+                )
+                cls.update(case_patch)
+                continue
+
             case_patch = CaseModel(
-                row_id=case_model.row_id,
+                row_id=case_current.row_id,
                 analysis_status=CaseAnalysisStatus.QUEUED,
+                analysis_request_action=None,
                 analysis_queue_message_id="",
+                analysis_next_run_at=None,
             )
-            update_result = cls._update_analysis_state_and_enqueue(case_patch, trigger)
-            if update_result:
-                enqueued_row_ids.append(case_model.row_id)
-        return enqueued_row_ids
+            result = cls._update_analysis_state_and_enqueue(case_patch, "manual_refresh")
+            if result:
+                queued_row_ids.append(case_current.row_id)
+        return queued_row_ids
 
     @classmethod
     def list_cases_due_for_analysis_promotion(cls, now: datetime | None = None) -> List[CaseModel]:
@@ -915,13 +982,27 @@ class Case(BaseWorksheetEntity[CaseModel]):
             children=[
                 Condition(
                     field="analysis_status",
-                    operator=Operator.EQ,
-                    value=CaseAnalysisStatus.COOLING_DOWN
+                    operator=Operator.IN,
+                    value=[CaseAnalysisStatus.COOLING_DOWN]
                 ),
                 Condition(
                     field="analysis_next_run_at",
                     operator=Operator.LE,
                     value=target_now.strftime("%Y-%m-%d %H:%M:%S")
+                )
+            ]
+        )
+        return cls.list(filter_model, lazy_load=True)
+
+    @classmethod
+    def list_cases_with_manual_analysis_request(cls) -> List[CaseModel]:
+        filter_model = Group(
+            logic="AND",
+            children=[
+                Condition(
+                    field="analysis_request_action",
+                    operator=Operator.IN,
+                    value=[CaseAnalysisRequestAction.MANUAL_REFRESH]
                 )
             ]
         )
@@ -952,12 +1033,12 @@ class Case(BaseWorksheetEntity[CaseModel]):
         )
 
     @classmethod
-    def _resolve_analysis_cooldown(cls, case: CaseModel, cooldown_minutes: int | None) -> int:
+    def _resolve_analysis_cooldown(cls, analysis_cooldown_minutes: int | None, cooldown_minutes: int | None) -> int:
         if cooldown_minutes is not None:
             return max(0, cooldown_minutes)
-        if case.analysis_cooldown_minutes is not None:
-            return max(0, case.analysis_cooldown_minutes)
-        return cls.DEFAULT_ANALYSIS_COOLDOWN_MINUTES
+        if analysis_cooldown_minutes is not None:
+            return max(0, analysis_cooldown_minutes)
+        return DEFAULT_ANALYSIS_COOLDOWN_MINUTES
 
 
 class Message(BaseWorksheetEntity[MessageModel]):

@@ -107,6 +107,56 @@ class RedisStreamAPI(object):
                 logger.error(f"Error reading from stream {stream_name}: {e}")
                 time.sleep(1)  # 发生异常(如网络闪断)时稍作停顿，防止死循环刷屏
 
+    def read_stream_message_with_id(self, stream_name: str, consumer_group: str = None,
+                                    consumer_name: str = None, timeout: int = 5000) -> dict:
+        """
+        从指定stream读取一条消息，并返回 Redis message_id 与消息体。
+
+        Returns:
+            {
+                "message_id": str,
+                "data": dict
+            }
+        """
+        if consumer_group is None:
+            consumer_group = REDIS_CONSUMER_GROUP
+        if consumer_name is None:
+            consumer_name = REDIS_CONSUMER_NAME
+
+        if stream_name not in self._checked_groups:
+            if self._ensure_consumer_group(stream_name, consumer_group):
+                self._checked_groups.add(stream_name)
+
+        while True:
+            try:
+                messages = self.redis_client.xreadgroup(
+                    consumer_group,
+                    consumer_name,
+                    {stream_name: '>'},
+                    count=1,
+                    block=timeout,
+                    noack=True,
+                )
+
+                if not messages or not messages[0][1]:
+                    continue
+
+                _, stream_messages = messages[0]
+                message_id, fields = stream_messages[0]
+                if isinstance(message_id, bytes):
+                    message_id = message_id.decode()
+                data: dict = json.loads(fields["data"])
+
+                logger.info(f"Received: {stream_name} -> {message_id}")
+                return {
+                    "message_id": message_id,
+                    "data": data,
+                }
+
+            except Exception as e:
+                logger.error(f"Error reading from stream {stream_name}: {e}")
+                time.sleep(1)
+
     def read_stream_head(self, stream_name: str, n: int, timeout: Optional[float] = None) -> List[dict]:
         """
         读取指定 stream 的前 n 条消息（非阻塞）.

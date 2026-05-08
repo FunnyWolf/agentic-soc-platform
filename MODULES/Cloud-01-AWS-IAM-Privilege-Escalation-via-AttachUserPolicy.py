@@ -7,7 +7,8 @@ from Lib.basemodule import BaseModule
 from PLUGINS.SIRP.correlation import Correlation
 from PLUGINS.SIRP.sirpapi import Alert, Case
 from PLUGINS.SIRP.sirpcoremodel import ArtifactType, ArtifactRole, Severity, Impact, Disposition, AlertAction, Confidence, AlertAnalyticType, ProductCategory, \
-    AlertPolicyType, AlertRiskLevel, AlertStatus, CasePriority, ArtifactModel, AlertModel, CaseModel, EnrichmentModel, CaseStatus
+    AlertPolicyType, AlertRiskLevel, AlertStatus, CasePriority, ArtifactModel, AlertModel, CaseModel, EnrichmentModel, CaseStatus, CaseAnalysisStatus, \
+    DEFAULT_ANALYSIS_COOLDOWN_MINUTES
 
 
 class Module(BaseModule):
@@ -180,35 +181,39 @@ class Module(BaseModule):
         saved_alert_row_id = Alert.create(alert_model)
 
         # 5. Case 处理 (Case Management)
-        try:
-            existing_case = Case.get_by_correlation_uid(correlation_uid, lazy_load=True)
-            if existing_case:
-                # 附加到已有 Case
-                update_case = CaseModel(
-                    alerts=[*existing_case.alerts, saved_alert_row_id],
-                    row_id=existing_case.row_id
-                )
-                Case.update(update_case)
-            else:
-                # 根据 Alert 计算 Case字段
-                new_case = CaseModel(
-                    title=f"Potential IAM Privilege Escalation in Account {account_id}",
-                    status=CaseStatus.NEW,  # 创建时显式设置为New
-                    severity=severity,
-                    impact=Impact.HIGH if outcome == "success" else Impact.MEDIUM,
-                    priority=CasePriority.HIGH if outcome == "success" else CasePriority.MEDIUM,
-                    confidence=Confidence.HIGH,
-                    description=f"Investigation required for multiple AttachUserPolicy attempts by {principal_user} "
-                                f"targeting {target_user} in account {account_id}.",
-                    category=ProductCategory.CLOUD,
-                    tags=["iam", "aws", "privesc"],
-                    correlation_uid=correlation_uid,
-                    alerts=[saved_alert_row_id]
-                )
-                Case.create(new_case)
-        except Exception as e:
-            self.logger.error(f"Case operation failed: {str(e)}")
 
+        existing_case = Case.get_by_correlation_uid(correlation_uid, lazy_load=True)
+        if existing_case:
+            # 附加到已有 Case
+            existing_case_row_id: str = existing_case.row_id
+            update_case = CaseModel(
+                alerts=[*existing_case.alerts, saved_alert_row_id],
+                row_id=existing_case_row_id
+            )
+            Case.update(update_case)
+            Case.mark_analysis_requested(row_id=existing_case_row_id)
+        else:
+            # 根据 Alert 计算 Case字段
+            new_case = CaseModel(
+                title=f"Potential IAM Privilege Escalation in Account {account_id}",
+                status=CaseStatus.NEW,  # 创建时显式设置为New
+                severity=severity,
+                impact=Impact.HIGH if outcome == "success" else Impact.MEDIUM,
+                priority=CasePriority.HIGH if outcome == "success" else CasePriority.MEDIUM,
+                confidence=Confidence.HIGH,
+                description=f"Investigation required for multiple AttachUserPolicy attempts by {principal_user} "
+                            f"targeting {target_user} in account {account_id}.",
+                category=ProductCategory.CLOUD,
+                tags=["iam", "aws", "privesc"],
+                correlation_uid=correlation_uid,
+
+                analysis_status=CaseAnalysisStatus.IDLE,
+                analysis_cooldown_minutes=DEFAULT_ANALYSIS_COOLDOWN_MINUTES,
+
+                alerts=[saved_alert_row_id]
+            )
+            created_case_row_id = Case.create(new_case)
+            Case.mark_analysis_requested(row_id=created_case_row_id)
         return True
 
 
@@ -225,8 +230,11 @@ if __name__ == "__main__":
     # module.run()
 
     # 批量测试最早的100条告警
+    import time
+
     module = Module()
-    message_ids = module.read_stream_head_ids(100)
+    message_ids = module.read_stream_head_ids(60)
     for message_id in message_ids:
+        time.sleep(60)
         module.debug_message_id = message_id
         module.run()

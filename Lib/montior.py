@@ -15,6 +15,7 @@ from Lib.threadmodulemanager import thread_module_manager
 from Lib.xcache import Xcache
 from PLUGINS.Embeddings.embeddings_qdrant import get_qdrant_embeddings_api, SIRP_KNOWLEDGE_COLLECTION
 from PLUGINS.Redis.redis_stream_api import RedisStreamAPI
+from PLUGINS.SIRP.case_analysis_runner import run_case_analysis
 from PLUGINS.SIRP.sirpapi import Playbook, Knowledge, Case
 from PLUGINS.SIRP.sirpextramodel import PlaybookJobStatus, KnowledgeAction, PlaybookModel
 
@@ -81,9 +82,11 @@ class MainMonitor(object):
         delay_time = 3
 
         # Start background tasks
-        self.start_background_task(self.subscribe_pending_playbook, "subscribe_pending_playbook", delay_time)
-        self.start_background_task(self.subscribe_knowledge_action, "subscribe_knowledge_action", delay_time)
+        # self.start_background_task(self.subscribe_pending_playbook, "subscribe_pending_playbook", delay_time)
+        # self.start_background_task(self.subscribe_knowledge_action, "subscribe_knowledge_action", delay_time)
         self.start_background_task(self.subscribe_case_analysis_cooldown, "subscribe_case_analysis_cooldown", delay_time)
+        self.start_background_task(self.subscribe_case_analysis_manual_request, "subscribe_case_analysis_manual_request", delay_time)
+        self.start_background_task(self.subscribe_case_analysis_queue, "subscribe_case_analysis_queue", delay_time)
 
         # engine
         # self.engine.start()
@@ -169,3 +172,25 @@ class MainMonitor(object):
         promoted_row_ids = Case.promote_due_analysis_cases()
         if promoted_row_ids:
             logger.info(f"Queued {len(promoted_row_ids)} case(s) for analysis after cooldown.")
+
+    @staticmethod
+    def subscribe_case_analysis_manual_request():
+        queued_row_ids = Case.consume_manual_analysis_requests()
+        if queued_row_ids:
+            logger.info(f"Queued {len(queued_row_ids)} case(s) for manual analysis request.")
+
+    def subscribe_case_analysis_queue(self):
+        message = self.redis_stream_api.read_stream_message_with_id(
+            stream_name=Case.ANALYSIS_STREAM_NAME,
+            consumer_name="case-analysis-worker",
+        )
+        queue_message_id = message.get("message_id")
+        payload = message.get("data", {})
+        case_row_id = payload.get("case_row_id")
+        trigger = payload.get("trigger", "unknown")
+
+        if not case_row_id:
+            logger.error("Case analysis queue message missing case_row_id.")
+            return
+
+        run_case_analysis(case_row_id, trigger, queue_message_id=queue_message_id)
