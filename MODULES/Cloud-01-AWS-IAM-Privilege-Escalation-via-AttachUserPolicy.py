@@ -228,7 +228,7 @@ if __name__ == "__main__":
     import time
 
     module = Module()
-    message_ids = module.read_stream_head_ids(60)
+    message_ids = module.read_stream_head_ids(2)
     for message_id in message_ids:
         time.sleep(10)
         module.debug_message_id = message_id

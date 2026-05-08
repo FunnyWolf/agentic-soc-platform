@@ -5,8 +5,12 @@ import sys
 if __name__ == '__main__':
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'ASP.settings')
     if len(sys.argv) > 1 and sys.argv[1] == 'runserver':
-        os.environ['ASP_START_BACKGROUND_SERVICES'] = '1'
-        os.environ['ASP_BACKGROUND_SERVICES_SOURCE'] = 'manage.py runserver'
+        # Django's autoreloader starts a parent process and then a child worker.
+        # Only the real worker should boot background services, but --noreload
+        # still needs to start them in the single process.
+        if '--noreload' in sys.argv or os.environ.get('RUN_MAIN') == 'true':
+            os.environ['ASP_START_BACKGROUND_SERVICES'] = '1'
+            os.environ['ASP_BACKGROUND_SERVICES_SOURCE'] = 'manage.py runserver'
     try:
         from django.core.management import execute_from_command_line
     except ImportError as exc:

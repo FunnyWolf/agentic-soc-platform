@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import time
+from datetime import datetime
 from pathlib import Path
 from typing import List
 
@@ -71,6 +72,16 @@ class InvestigationReport(BaseModel):
     unknowns: List[str] = Field(description="当前仍无法确认、需要补证或需要进一步排查的不确定点列表。")
 
 
+class AnalysisRecord(BaseModel):
+    """调度元数据 + AI 调查报告的完整存储单元。"""
+    trigger: str | None = Field(default=None, description="触发本次分析的来源标识。")
+    analysis_queue_message_id: str | None = Field(default=None, description="触发本次分析的队列消息 ID。")
+    analysis_next_run_at: str | None = Field(default=None, description="下一次分析执行时间（ISO 8601）。")
+    analysis_last_started_at: str | None = Field(default=None, description="本次分析实际开始时间（ISO 8601）。")
+    analysis_last_completed_at: str | None = Field(default=None, description="本次分析完成时间（ISO 8601）。")
+    report: InvestigationReport
+
+
 def run_case_analysis(case_row_id: str, trigger: str, queue_message_id: str | None = None) -> None:
     case = Case.get(case_row_id, lazy_load=False)
     if not case:
@@ -102,6 +113,12 @@ def run_case_analysis(case_row_id: str, trigger: str, queue_message_id: str | No
 
     # Starting the run clears the queue occupancy and consumes the current next_run_at.
     # 开始执行时会清掉队列占位，并消费当前这一次待执行计划。
+    # Capture scheduling metadata before start clears queue_message_id and next_run_at.
+    # 在 start 前采集调度元数据（start 之后这两个字段会被清空）。
+    _pre_start_queue_message_id = case.analysis_queue_message_id
+    _pre_start_next_run_at = (
+        case.analysis_next_run_at.isoformat() if case.analysis_next_run_at else None
+    )
     start_result = Case.mark_analysis_started(case_row_id, queue_message_id=queue_message_id)
     if start_result is None:
         logger.info(f"Case analysis skipped, failed to mark analysis as started. row_id: {case_row_id}")
@@ -186,8 +203,18 @@ def run_case_analysis(case_row_id: str, trigger: str, queue_message_id: str | No
             impact_ai=report.impact,
             priority_ai=report.priority,
             confidence_ai=report.confidence,
-            investigation_report_ai_json=report.model_dump_json(),
+            investigation_report_ai_json=AnalysisRecord(
+                trigger=trigger,
+                analysis_queue_message_id=_pre_start_queue_message_id,
+                analysis_next_run_at=_pre_start_next_run_at,
+                analysis_last_started_at=(
+                    case.analysis_last_started_at.isoformat() if case.analysis_last_started_at else None
+                ),
+                analysis_last_completed_at=datetime.now().astimezone().isoformat(),
+                report=report,
+            ).model_dump_json(),
         )
+
         Case.update(case_patch)
         Case.mark_analysis_completed(case_row_id)
         logger.info(f"Case analysis completed. row_id: {case_row_id}, trigger: {trigger}")
