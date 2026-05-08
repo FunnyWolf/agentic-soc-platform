@@ -2,13 +2,14 @@ import json
 from datetime import datetime
 from typing import Optional, Union, Dict, Any, List
 
+from dateutil import parser
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.graph import StateGraph, END
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.types import Command
 from pydantic import BaseModel, Field
 
-from Lib.api import string_to_string_time, get_current_time_str
+from Lib.api import get_current_time
 from Lib.basemodule import LanggraphModule
 from Lib.llmapi import BaseAgentState
 from PLUGINS.LLM.llmapi import LLMAPI
@@ -56,11 +57,7 @@ class Module(LanggraphModule):
             mail_subject = headers.get("Subject", "")
             mail_date = headers.get("Date", "")
 
-            alert_date = string_to_string_time(
-                mail_date,
-                "%a, %d %b %Y %H:%M:%S %z",
-                "%Y-%m-%dT%H:%M:%SZ"
-            ) if mail_date else get_current_time_str()
+            alert_date = parser.parse(mail_date) if mail_date else get_current_time()
 
             alert_model = AlertModel(
                 title=f"User Reported Phishing Email: {mail_subject}",
@@ -79,28 +76,22 @@ class Module(LanggraphModule):
                 raw_data=json.dumps(alert_raw)
             )
 
-            artifacts: List[ArtifactModel] = []
-
-            artifacts.append(ArtifactModel(
+            artifacts: List[ArtifactModel] = [ArtifactModel(
                 type=ArtifactType.EMAIL_ADDRESS,
                 role=ArtifactRole.ACTOR,
                 value=mail_from,
                 name=f"Sender Email: {mail_from}"
-            ))
-
-            artifacts.append(ArtifactModel(
+            ), ArtifactModel(
                 type=ArtifactType.EMAIL_ADDRESS,
                 role=ArtifactRole.TARGET,
                 value=mail_to,
                 name=f"Recipient Email: {mail_to}"
-            ))
-
-            artifacts.append(ArtifactModel(
+            ), ArtifactModel(
                 type=ArtifactType.MESSAGE,
                 role=ArtifactRole.RELATED,
                 value=mail_subject,
                 name=f"Email Subject: {mail_subject}"
-            ))
+            )]
 
             alert_model.artifacts = artifacts
             return {"alert": alert_model}
@@ -283,8 +274,6 @@ class Module(LanggraphModule):
             if analyze_result.is_phishing:
                 labels.append("confirmed-phishing")
             alert_model.labels = labels
-
-
 
             saved_alert = Alert.create(alert_model)
 

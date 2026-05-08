@@ -38,43 +38,43 @@ T = TypeVar('T', bound=BaseSystemModel)
 
 
 class BaseSimpleEntity(ABC):
-    """简化的工作表实体基类（不使用模型）"""
+    """Simplified worksheet entity base class without model binding (简化的工作表实体基类，不使用模型)"""
 
     WORKSHEET_ID: str
 
     @classmethod
     def list(cls, filter_dict: dict) -> List[Dict]:
-        """列表查询
+        """List query (列表查询)
 
         Args:
-            filter_dict: 过滤条件字典
+            filter_dict: Filter condition dictionary (过滤条件字典)
 
         Returns:
-            字典列表
+            List of dictionaries (字典列表)
         """
         return WorksheetRow.list(cls.WORKSHEET_ID, filter_dict, include_system_fields=False)
 
     @classmethod
     def get(cls, row_id: str) -> Dict:
-        """获取单条记录
+        """Get a single record (获取单条记录)
 
         Args:
-            row_id: 记录ID
+            row_id: Record ID (记录ID)
 
         Returns:
-            字典
+            Dictionary (字典)
         """
         return WorksheetRow.get(cls.WORKSHEET_ID, row_id, include_system_fields=False)
 
     @classmethod
     def create(cls, fields: List[Dict]) -> str:
-        """创建记录
+        """Create a record (创建记录)
 
         Args:
-            fields: 字段列表
+            fields: Field list (字段列表)
 
         Returns:
-            新创建的记录ID
+            Newly created record ID (新创建的记录ID)
         """
         return WorksheetRow.create(cls.WORKSHEET_ID, fields)
 

@@ -9,14 +9,13 @@ from langchain_classic.retrievers import ContextualCompressionRetriever
 from langchain_classic.retrievers.document_compressors import CrossEncoderReranker
 from langchain_community.cross_encoders import HuggingFaceCrossEncoder
 from langchain_core.documents import Document
-from langchain_ollama import OllamaEmbeddings
 from langchain_openai import OpenAIEmbeddings
 from langchain_qdrant import QdrantVectorStore, FastEmbedSparse, RetrievalMode
 from qdrant_client import models
 
 from Lib.configs import BASE_DIR
 from Lib.log import logger
-from PLUGINS.Embeddings.CONFIG import EMBEDDINGS_TYPE, EMBEDDINGS_BASE_URL, EMBEDDINGS_MODEL, EMBEDDINGS_API_KEY, EMBEDDINGS_SIZE, EMBEDDINGS_PROXY
+from PLUGINS.Embeddings.CONFIG import EMBEDDINGS_BASE_URL, EMBEDDINGS_MODEL, EMBEDDINGS_API_KEY, EMBEDDINGS_SIZE, EMBEDDINGS_PROXY
 from PLUGINS.Qdrant.qdrant import Qdrant
 
 SIRP_KNOWLEDGE_COLLECTION = "SIRP_KNOWLEDGE_COLLECTION"
@@ -44,24 +43,15 @@ class EmbeddingsAPI(object):
 
     @staticmethod
     def get_dense_model():
-        if EMBEDDINGS_TYPE not in ['openai', 'ollama']:
-            raise ValueError(f"Invalid EMBEDDINGS_TYPE in CONFIG.py: '{EMBEDDINGS_TYPE}'. Must be 'openai' or 'ollama'.")
         http_client = httpx.Client(proxy=EMBEDDINGS_PROXY) if EMBEDDINGS_PROXY else None
-        if EMBEDDINGS_TYPE == 'openai':
-            # noinspection PyTypeChecker
-            dense_model = OpenAIEmbeddings(
-                base_url=EMBEDDINGS_BASE_URL,
-                model=EMBEDDINGS_MODEL,
-                api_key=EMBEDDINGS_API_KEY,
-                check_embedding_ctx_length=False,
-                http_client=http_client
-            )
-            return dense_model
-        elif EMBEDDINGS_TYPE == 'ollama':
-            dense_model = OllamaEmbeddings(base_url=EMBEDDINGS_BASE_URL, model=EMBEDDINGS_MODEL)
-            return dense_model
-        else:
-            raise ValueError(f"Unsupported client_type: {EMBEDDINGS_TYPE}")
+        dense_model = OpenAIEmbeddings(
+            base_url=EMBEDDINGS_BASE_URL,
+            model=EMBEDDINGS_MODEL,
+            api_key=EMBEDDINGS_API_KEY,
+            check_embedding_ctx_length=False,
+            http_client=http_client
+        )
+        return dense_model
 
     def search_with_rerank(self, collection_name: str, query: str, k: int = 20, top_n: int = 5):
         # 使用封装好的检索器直接查询

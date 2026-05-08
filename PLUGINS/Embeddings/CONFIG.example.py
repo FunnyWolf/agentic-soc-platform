@@ -5,7 +5,6 @@
 # Please note, if you switch models during use, all vector database content needs to be reinitialized
 
 
-EMBEDDINGS_TYPE = "ollama"  # "openai", "ollama"
 EMBEDDINGS_API_KEY = 'ollama'
 EMBEDDINGS_BASE_URL = 'http://192.168.241.128:8080'
 EMBEDDINGS_MODEL = "bge-m3:latest"
