@@ -104,12 +104,12 @@ Enrichment（横切附加层，独立于三级体系之外）
 
 ### 各层说明
 
-| 层级 | 对象 | 说明 |
-|------|------|------|
-| 顶层 | Case | 一次完整的调查事件，包含多条相关 Alert |
-| 二级 | Alert | 一次 SIEM 规则触发，对应一条 raw_alert |
-| 三级 | Artifact | 最小调查原子（实体），是后续威胁情报查询、关联分析的基础 |
-| 横切 | Enrichment | 结构化附加上下文，不属于三级体系，可按需挂载到任意层级 |
+| 层级 | 对象         | 说明                           |
+|----|------------|------------------------------|
+| 顶层 | Case       | 一次完整的调查事件，包含多条相关 Alert       |
+| 二级 | Alert      | 一次 SIEM 规则触发，对应一条 raw_alert  |
+| 三级 | Artifact   | 最小调查原子（实体），是后续威胁情报查询、关联分析的基础 |
+| 横切 | Enrichment | 结构化附加上下文，不属于三级体系，可按需挂载到任意层级  |
 
 ---
 
@@ -119,19 +119,20 @@ Enrichment（横切附加层，独立于三级体系之外）
 
 **判断标准：** 这些告警是否描述的是"同一个攻击者对同一个目标的同一类行为"？
 
-| 聚合键粒度 | 后果 |
-|-----------|------|
-| 太宽泛（如只用 account_id） | 不相关的告警混入同一 Case，调查噪音大 |
-| 太精细（如包含随机 session_id） | 同一次攻击的多条告警被拆成多个 Case，丢失上下文 |
-| 合适（如 principal_user + target_user + account_id） | 同一攻击者针对同一目标的行为聚合在一起 |
+| 聚合键粒度                                           | 后果                         |
+|-------------------------------------------------|----------------------------|
+| 太宽泛（如只用 account_id）                             | 不相关的告警混入同一 Case，调查噪音大      |
+| 太精细（如包含随机 session_id）                           | 同一次攻击的多条告警被拆成多个 Case，丢失上下文 |
+| 合适（如 principal_user + target_user + account_id） | 同一攻击者针对同一目标的行为聚合在一起        |
 
 **生成方式：**
+
 ```python
 correlation_uid = Correlation.generate_correlation_uid(
-    rule_id=self.module_name,   # 模块名称，隔离不同规则
-    time_window="24h",          # 时间窗口，超出则开新 Case
-    keys=[key1, key2, key3],    # 聚合键列表
-    timestamp=event_time        # 事件发生时间
+    rule_id=self.module_name,  # 模块名称，隔离不同规则
+    time_window="24h",  # 时间窗口，超出则开新 Case
+    keys=[key1, key2, key3],  # 聚合键列表
+    timestamp=event_time  # 事件发生时间
 )
 ```
 
@@ -149,12 +150,12 @@ correlation_uid = Correlation.generate_correlation_uid(
 
 ## 关键文件索引
 
-| 文件 | 用途 |
-|------|------|
-| `MODULES/<rule-name>.py` | 告警处理模块，一个 rule 对应一个文件 |
-| `Lib/basemodule.py` | BaseModule 基类，提供 `read_stream_message()` 等基础能力 |
-| `PLUGINS/SIRP/sirpcoremodel.py` | 所有数据模型和枚举定义 |
-| `PLUGINS/SIRP/sirpapi.py` | Alert / Case 的 CRUD 操作接口 |
-| `PLUGINS/SIRP/correlation.py` | `Correlation.generate_correlation_uid()` |
-| `MODULES/Cloud-01-AWS-IAM-Privilege-Escalation-via-AttachUserPolicy.py` | 参考实现 |
-| `DATA/<rule-name>/raw_alert_*.json` | 开发调试用的 raw_alert 样本 |
+| 文件                                                                      | 用途                                             |
+|-------------------------------------------------------------------------|------------------------------------------------|
+| `MODULES/<rule-name>.py`                                                | 告警处理模块，一个 rule 对应一个文件                          |
+| `Lib/basemodule.py`                                                     | BaseModule 基类，提供 `read_stream_message()` 等基础能力 |
+| `PLUGINS/SIRP/sirpcoremodel.py`                                         | 所有数据模型和枚举定义                                    |
+| `PLUGINS/SIRP/sirpapi.py`                                               | Alert / Case 的 CRUD 操作接口                       |
+| `PLUGINS/SIRP/correlation.py`                                           | `Correlation.generate_correlation_uid()`       |
+| `MODULES/Cloud-01-AWS-IAM-Privilege-Escalation-via-AttachUserPolicy.py` | 参考实现                                           |
+| `DATA/<rule-name>/raw_alert_*.json`                                     | 开发调试用的 raw_alert 样本                            |

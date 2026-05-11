@@ -32,7 +32,8 @@ SIEM Rule name
     = MODULES/<filename>.py  (without .py)
 ```
 
-All three must be identical (case-sensitive). The framework relies on this convention to route alerts to the correct module. Any mismatch means alerts will not be consumed.
+All three must be identical (case-sensitive). The framework relies on this convention to route alerts to the correct
+module. Any mismatch means alerts will not be consumed.
 
 ---
 
@@ -107,12 +108,12 @@ Enrichment  (cross-cutting attachment layer, outside the three-tier hierarchy)
 
 ### Layer Summary
 
-| Level | Object | Description |
-|-------|--------|-------------|
-| Top | Case | A complete investigation event containing multiple related Alerts |
-| Second | Alert | A single SIEM rule trigger, corresponding to one raw_alert |
-| Third | Artifact | The smallest investigation atom (entity); the foundation for threat intel queries and correlation analysis |
-| Cross-cutting | Enrichment | Structured supplementary context; independent of the three-tier hierarchy; attach to any level as needed |
+| Level         | Object     | Description                                                                                                |
+|---------------|------------|------------------------------------------------------------------------------------------------------------|
+| Top           | Case       | A complete investigation event containing multiple related Alerts                                          |
+| Second        | Alert      | A single SIEM rule trigger, corresponding to one raw_alert                                                 |
+| Third         | Artifact   | The smallest investigation atom (entity); the foundation for threat intel queries and correlation analysis |
+| Cross-cutting | Enrichment | Structured supplementary context; independent of the three-tier hierarchy; attach to any level as needed   |
 
 ---
 
@@ -122,19 +123,20 @@ Enrichment  (cross-cutting attachment layer, outside the three-tier hierarchy)
 
 **Key question:** Do these alerts describe the same attacker targeting the same victim with the same type of behaviour?
 
-| Key granularity | Consequence |
-|-----------------|-------------|
-| Too broad (e.g. only `account_id`) | Unrelated alerts merge into the same Case, creating investigation noise |
-| Too narrow (e.g. includes a random `session_id`) | Alerts from the same attack are split into multiple Cases, losing context |
+| Key granularity                                                | Consequence                                                                  |
+|----------------------------------------------------------------|------------------------------------------------------------------------------|
+| Too broad (e.g. only `account_id`)                             | Unrelated alerts merge into the same Case, creating investigation noise      |
+| Too narrow (e.g. includes a random `session_id`)               | Alerts from the same attack are split into multiple Cases, losing context    |
 | Appropriate (e.g. `principal_user + target_user + account_id`) | Alerts from the same attacker targeting the same victim are grouped together |
 
 **Generation:**
+
 ```python
 correlation_uid = Correlation.generate_correlation_uid(
-    rule_id=self.module_name,   # module name, isolates different rules
-    time_window="24h",          # time window; a new Case opens after expiry
-    keys=[key1, key2, key3],    # aggregation key list
-    timestamp=event_time        # event occurrence time
+    rule_id=self.module_name,  # module name, isolates different rules
+    time_window="24h",  # time window; a new Case opens after expiry
+    keys=[key1, key2, key3],  # aggregation key list
+    timestamp=event_time  # event occurrence time
 )
 ```
 
@@ -142,22 +144,26 @@ correlation_uid = Correlation.generate_correlation_uid(
 
 ## Artifact Design Principles
 
-- Artifacts are the foundation for downstream investigation (threat intel queries, correlation analysis, Playbook execution); extract as many as possible from raw_alert
+- Artifacts are the foundation for downstream investigation (threat intel queries, correlation analysis, Playbook
+  execution); extract as many as possible from raw_alert
 - Create one Artifact per valuable entity — do not merge multiple entities into one
 - Use the `ArtifactType` enum for the `type` field (IP_ADDRESS, USER_NAME, RESOURCE_UID, etc.)
-- Use the `role` field to distinguish the entity's role in the event (ACTOR = attacker side, TARGET = victim side, RELATED = related party)
-- Prefer storing threat intelligence and Owner attribution directly in the corresponding `ArtifactModel` fields (`owner`, `reputation_score`, `reputation_provider`); create an EnrichmentModel only when richer structured content is needed
+- Use the `role` field to distinguish the entity's role in the event (ACTOR = attacker side, TARGET = victim side,
+  RELATED = related party)
+- Prefer storing threat intelligence and Owner attribution directly in the corresponding `ArtifactModel` fields (
+  `owner`, `reputation_score`, `reputation_provider`); create an EnrichmentModel only when richer structured content is
+  needed
 
 ---
 
 ## Key File Index
 
-| File | Purpose |
-|------|---------|
-| `MODULES/<rule-name>.py` | Alert processing module; one file per rule |
-| `Lib/basemodule.py` | BaseModule base class; provides `read_stream_message()` and other core capabilities |
-| `PLUGINS/SIRP/sirpcoremodel.py` | All data model and enum definitions |
-| `PLUGINS/SIRP/sirpapi.py` | Alert / Case CRUD operation interfaces |
-| `PLUGINS/SIRP/correlation.py` | `Correlation.generate_correlation_uid()` |
-| `MODULES/Cloud-01-AWS-IAM-Privilege-Escalation-via-AttachUserPolicy.py` | Reference implementation |
-| `DATA/<rule-name>/raw_alert_*.json` | raw_alert samples for development and debugging |
+| File                                                                    | Purpose                                                                             |
+|-------------------------------------------------------------------------|-------------------------------------------------------------------------------------|
+| `MODULES/<rule-name>.py`                                                | Alert processing module; one file per rule                                          |
+| `Lib/basemodule.py`                                                     | BaseModule base class; provides `read_stream_message()` and other core capabilities |
+| `PLUGINS/SIRP/sirpcoremodel.py`                                         | All data model and enum definitions                                                 |
+| `PLUGINS/SIRP/sirpapi.py`                                               | Alert / Case CRUD operation interfaces                                              |
+| `PLUGINS/SIRP/correlation.py`                                           | `Correlation.generate_correlation_uid()`                                            |
+| `MODULES/Cloud-01-AWS-IAM-Privilege-Escalation-via-AttachUserPolicy.py` | Reference implementation                                                            |
+| `DATA/<rule-name>/raw_alert_*.json`                                     | raw_alert samples for development and debugging                                     |

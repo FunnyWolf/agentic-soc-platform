@@ -15,41 +15,53 @@ from PLUGINS.SIRP.sirpapi import Case
 from PLUGINS.SIRP.sirpbasemodel import AI_PROFILE_INVESTIGATION
 from PLUGINS.SIRP.sirpcoremodel import AttackStage, CaseModel, CasePriority, CaseVerdict, Confidence, Impact, Severity
 
-PROMPT_PATH = Path(DATA_DIR) / "ANALYSIS" / "System_EN.md"
+PROMPT_PATH = Path(DATA_DIR) / "SYSTEM" / "ANALYSIS" / "System_EN.md"
 
 
 class AffectedAsset(BaseModel):
-    asset_type: str = Field(description="Type of asset affected or directly operated by the attacker, e.g. Host, IP, User, Mailbox, File, Cloud Resource. 受影响或被攻击者直接操作的资产类型，例如 Host、IP、User、Mailbox、File、Cloud Resource。")
-    asset_value: str = Field(description="Specific identifier of the asset, e.g. hostname, IP, username, email address, file path, cloud resource ARN. 资产的具体标识，例如主机名、IP、用户名、邮箱地址、文件路径、云资源 ARN。")
+    asset_type: str = Field(
+        description="Type of asset affected or directly operated by the attacker, e.g. Host, IP, User, Mailbox, File, Cloud Resource. 受影响或被攻击者直接操作的资产类型，例如 Host、IP、User、Mailbox、File、Cloud Resource。")
+    asset_value: str = Field(
+        description="Specific identifier of the asset, e.g. hostname, IP, username, email address, file path, cloud resource ARN. 资产的具体标识，例如主机名、IP、用户名、邮箱地址、文件路径、云资源 ARN。")
 
 
 class EvidenceFinding(BaseModel):
-    title: str = Field(description="Title of the key finding, e.g. Suspicious login followed by mailbox forwarding rule modification, Lateral movement detected on Host A. 关键发现标题，例如 可疑登录成功后修改邮箱转发规则、主机A出现横向移动痕迹。")
-    finding_type: str = Field(description="Type of finding, e.g. Identity, Host, Process, Network, Email, Cloud, Policy, Ticket, Other. 发现类型，例如 Identity、Host、Process、Network、Email、Cloud、Policy、Ticket、Other。")
-    subject: str = Field(description="The subject of this finding, e.g. an account, host, IP, URL, policy name, or alert cluster. 该发现围绕的主体，例如某账号、主机、IP、URL、策略名或告警簇。")
-    evidence: str = Field(description="Summary of core evidence supporting this finding; include traceable fields, objects, or phenomena where possible. 支撑该发现的核心证据摘要，尽量写出可追溯的字段、对象或现象。")
-    conclusion: str = Field(description="Conclusion drawn from the evidence, explaining what it means in the context of this case. 基于该证据得出的结论，说明它在本案中意味着什么。")
+    title: str = Field(
+        description="Title of the key finding, e.g. Suspicious login followed by mailbox forwarding rule modification, Lateral movement detected on Host A. 关键发现标题，例如 可疑登录成功后修改邮箱转发规则、主机A出现横向移动痕迹。")
+    finding_type: str = Field(
+        description="Type of finding, e.g. Identity, Host, Process, Network, Email, Cloud, Policy, Ticket, Other. 发现类型，例如 Identity、Host、Process、Network、Email、Cloud、Policy、Ticket、Other。")
+    subject: str = Field(
+        description="The subject of this finding, e.g. an account, host, IP, URL, policy name, or alert cluster. 该发现围绕的主体，例如某账号、主机、IP、URL、策略名或告警簇。")
+    evidence: str = Field(
+        description="Summary of core evidence supporting this finding; include traceable fields, objects, or phenomena where possible. 支撑该发现的核心证据摘要，尽量写出可追溯的字段、对象或现象。")
+    conclusion: str = Field(
+        description="Conclusion drawn from the evidence, explaining what it means in the context of this case. 基于该证据得出的结论，说明它在本案中意味着什么。")
 
 
 class AttackChainStep(BaseModel):
     attack_stage: AttackStage = Field(description="MITRE ATT&CK attack stage. MITRE ATT&CK 攻击阶段。")
-    description: str = Field(description="What happened at this stage, how the attacker achieved it, and the supporting evidence. 该阶段发生了什么、攻击者如何实现、证据依据是什么。")
+    description: str = Field(
+        description="What happened at this stage, how the attacker achieved it, and the supporting evidence. 该阶段发生了什么、攻击者如何实现、证据依据是什么。")
 
 
 class TimelineEvent(BaseModel):
-    timestamp: str = Field(description="Time the event occurred; use relative or approximate time if exact time cannot be determined. 事件发生时间；若无法精确确定，可填相对时间或近似时间。")
+    timestamp: str = Field(
+        description="Time the event occurred; use relative or approximate time if exact time cannot be determined. 事件发生时间；若无法精确确定，可填相对时间或近似时间。")
     attack_behavior: str = Field(description="Key behavior, operation, or detection phenomenon at this point in time. 该时间点发生的关键行为、操作或检测现象。")
-    evidence_field: str = Field(description="Key log field, raw excerpt, or correlated evidence supporting this conclusion. 支撑该结论的关键日志字段、原文片段或关联证据。")
+    evidence_field: str = Field(
+        description="Key log field, raw excerpt, or correlated evidence supporting this conclusion. 支撑该结论的关键日志字段、原文片段或关联证据。")
 
 
 class IndicatorOfCompromise(BaseModel):
     indicator_type: str = Field(description="IOC type;IOC 类型。")
     value: str = Field(description="The specific value of the IOC. IOC 的具体值。")
-    context: str = Field(description="Context of this IOC in the case, e.g. used as download URL, C2, dropped file, lateral movement command. 该 IOC 在本案中的上下文，例如作为下载地址、C2、落地文件、横向移动命令等。")
+    context: str = Field(
+        description="Context of this IOC in the case, e.g. used as download URL, C2, dropped file, lateral movement command. 该 IOC 在本案中的上下文，例如作为下载地址、C2、落地文件、横向移动命令等。")
 
 
 class Remediation(BaseModel):
-    action_type: str = Field(description="Type of remediation action, e.g. Isolate host, Disable account, Block URL, Delete file, Fix configuration. 处置动作类型，例如隔离主机、禁用账号、阻断 URL、删除文件、修复配置。")
+    action_type: str = Field(
+        description="Type of remediation action, e.g. Isolate host, Disable account, Block URL, Delete file, Fix configuration. 处置动作类型，例如隔离主机、禁用账号、阻断 URL、删除文件、修复配置。")
     description: str = Field(description="Specific and directly actionable remediation or hardening recommendation. 可直接执行的处置或加固建议，要求具体。")
     priority: CasePriority = Field(description="Execution priority of this remediation action itself. 该处置动作自身的执行优先级。")
 
@@ -57,19 +69,23 @@ class Remediation(BaseModel):
 class InvestigationReport(BaseModel):
     model_config = ConfigDict(use_enum_values=False)
 
-    verdict: CaseVerdict = Field(description="AI's final determination of the case nature, e.g. True Positive, Suspicious, False Positive, Insufficient Data. AI 对案件最终性质的判断，例如 True Positive、Suspicious、False Positive、Insufficient Data。")
+    verdict: CaseVerdict = Field(
+        description="AI's final determination of the case nature, e.g. True Positive, Suspicious, False Positive, Insufficient Data. AI 对案件最终性质的判断，例如 True Positive、Suspicious、False Positive、Insufficient Data。")
     severity: Severity = Field(description="Severity level of the incident as assessed by AI. AI 评估的事件严重程度。")
     impact: Impact = Field(description="Impact level of the incident as assessed by AI. AI 评估的事件影响等级。")
     priority: CasePriority = Field(description="Response priority as assessed by AI. AI 评估的响应优先级。")
     confidence: Confidence = Field(description="Confidence level of the assessment as determined by AI. AI 评估的事件置信度。")
     digest: str = Field(description="Comprehensive summary of the incident. 事件综合摘要。")
     affected_assets: List[AffectedAsset] = Field(description="List of affected assets. 受影响资产列表。")
-    evidence_findings: List[EvidenceFinding] = Field(description="List of key evidence findings supporting the case conclusion. 支撑案件结论的关键证据发现列表。")
+    evidence_findings: List[EvidenceFinding] = Field(
+        description="List of key evidence findings supporting the case conclusion. 支撑案件结论的关键证据发现列表。")
     attack_chain: List[AttackChainStep] = Field(description="Attack chain steps reconstructed from evidence. 基于证据重建的攻击链步骤。")
     attack_timeline: List[TimelineEvent] = Field(description="Chronologically ordered list of key events. 按时间顺序排列的关键事件时间线。")
-    ioc_indicators: List[IndicatorOfCompromise] = Field(description="IOC list for investigation, blocking, hunting, or ongoing monitoring. 可用于排查、封禁、搜索或持续监控的 IOC 列表。")
+    ioc_indicators: List[IndicatorOfCompromise] = Field(
+        description="IOC list for investigation, blocking, hunting, or ongoing monitoring. 可用于排查、封禁、搜索或持续监控的 IOC 列表。")
     remediations: List[Remediation] = Field(description="Remediation and hardening recommendations for analysts. 面向分析员的处置与加固建议。")
-    unknowns: List[str] = Field(description="List of unconfirmed points that require additional evidence or further investigation. 当前仍无法确认、需要补证或需要进一步排查的不确定点列表。")
+    unknowns: List[str] = Field(
+        description="List of unconfirmed points that require additional evidence or further investigation. 当前仍无法确认、需要补证或需要进一步排查的不确定点列表。")
 
 
 class AnalysisRecord(BaseModel):

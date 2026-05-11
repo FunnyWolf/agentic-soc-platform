@@ -33,7 +33,7 @@ Use this skill when the user wants to create or update a SIEM index configuratio
 ## Decision Flow
 
 1. If `index_name` or `backend` is missing, ask the user first.
-2. If `DATA/Plugin_SIEM_Indexes/<index_name>.yaml` already exists, read it as a baseline for comparison.
+2. If `DATA//Plugin/SIEM/<index_name>.yaml` already exists, read it as a baseline for comparison.
 3. Call `siem_discover_index_fields` to get live fields.
 4. Generate a draft and present it for user review.
 5. Write the file only after user confirmation.

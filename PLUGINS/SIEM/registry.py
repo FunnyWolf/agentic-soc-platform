@@ -6,6 +6,7 @@ from typing import Dict, List
 
 import yaml
 
+from Lib.configs import DATA_DIR
 from Lib.log import logger
 from PLUGINS.SIEM.models import SchemaFieldInfo, IndexInfo
 
@@ -14,14 +15,12 @@ from PLUGINS.SIEM.models import SchemaFieldInfo, IndexInfo
 def _load_yaml_configs() -> Dict[str, IndexInfo]:
     registry: Dict[str, IndexInfo] = {}
 
-    script_path = Path(__file__).resolve()
-    project_root = script_path.parents[2]
-    indexs_dir = project_root / "DATA" / "Plugin_SIEM_Indexes"
+    INDEX_DIR = Path(DATA_DIR) / "PLUGINS" / "SIEM"
 
-    if not indexs_dir.exists():
+    if not INDEX_DIR.exists():
         return registry
 
-    for yaml_file in indexs_dir.glob("*.yaml"):
+    for yaml_file in INDEX_DIR.glob("*.yaml"):
         try:
             with open(yaml_file, "r", encoding="utf-8") as file:
                 data = yaml.safe_load(file) or {}

@@ -33,7 +33,7 @@ metadata:
 ## 决策流程
 
 1. 如果用户未提供 `index_name` 或 `backend`，先询问。
-2. 如果 `DATA/Plugin_SIEM_Indexes/<index_name>.yaml` 已存在，读取并作为对比基线。
+2. 如果 `DATA/Plugin/SIEM/<index_name>.yaml` 已存在，读取并作为对比基线。
 3. 调用 `siem_discover_index_fields` 获取实时字段。
 4. 生成草案，展示给用户 review。
 5. 用户确认后写入文件。

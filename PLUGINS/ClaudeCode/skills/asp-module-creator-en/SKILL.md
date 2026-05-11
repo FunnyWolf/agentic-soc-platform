@@ -63,7 +63,7 @@ Call `ASP:read_stream_head(stream_name="<rule-name>")` to read the first few ale
 Or call `ASP:read_stream_message_by_id(stream_name="<rule-name>", message_id=<id>)` to read a specific message.
 
 **Method B (offline development):**
-Ask the user to copy one or more raw_alert JSON samples to `DATA/<rule-name>/raw_alert_1.json` (and so on), then read the file.
+Ask the user to copy one or more raw_alert JSON samples to `DATA/MODULES/<rule-name>/raw_alert_*.json`, then read the file.
 
 **Method C (direct paste):**
 Ask the user to open Redis Insight, select the `<rule-name>` stream, copy a message's JSON content, and paste it into the conversation.
