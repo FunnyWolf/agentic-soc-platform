@@ -18,9 +18,9 @@ from PLUGINS.SIRP.sirpcoremodel import Severity, Confidence, EnrichmentModel, Ti
 from PLUGINS.SIRP.sirpextramodel import PlaybookType, PlaybookJobStatus, KnowledgeAction, PlaybookModel, KnowledgeModel
 
 
-def model_to_fields(model_instance: BaseModel) -> List[Dict[str, Any]]:
+def model_to_fields(model_instance: BaseModel, exclude_unset: bool = True) -> List[Dict[str, Any]]:
     fields = []
-    model_data = model_instance.model_dump(mode='json', exclude_unset=True)
+    model_data = model_instance.model_dump(mode='json', exclude_unset=exclude_unset)
     for key, value in model_data.items():
         field_info = model_instance.model_fields.get(key)
         field_item = {
@@ -232,7 +232,7 @@ class BaseWorksheetEntity(ABC, Generic[T]):
         """
         model = cls._prepare_for_save(model)
 
-        fields = model_to_fields(model)
+        fields = model_to_fields(model, exclude_unset=False)
         row_id = WorksheetRow.create(cls.WORKSHEET_ID, fields)
         return row_id
 
@@ -270,11 +270,11 @@ class BaseWorksheetEntity(ABC, Generic[T]):
         """
         model = cls._prepare_for_save(model)
 
-        fields = model_to_fields(model)
-
         if model.row_id is None:
+            fields = model_to_fields(model, exclude_unset=False)
             row_id = WorksheetRow.create(cls.WORKSHEET_ID, fields)
         else:
+            fields = model_to_fields(model)
             row_id = WorksheetRow.update(cls.WORKSHEET_ID, model.row_id, fields)
 
         return row_id

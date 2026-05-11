@@ -19,7 +19,7 @@ if __name__ == "__main__":
         #     },
         # ]
     }
-    worksheet_id_list = ["artifact", "alert", "case", "enrichment", "ticket", "playbook", "message"]
+    worksheet_id_list = ["artifact", "alert", "case", "enrichment", "ticket", "playbook"]
     for worksheet_id in worksheet_id_list:
         row_ids = []
         rows = WorksheetRow.list(worksheet_id, filter=filter)
