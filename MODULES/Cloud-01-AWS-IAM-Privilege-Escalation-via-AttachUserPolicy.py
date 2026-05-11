@@ -225,8 +225,8 @@ if __name__ == "__main__":
     # module.run()
 
     # 批量测试最早的100条告警
-    # module = Module()
-    # message_ids = module.read_stream_head_ids(2)
-    # for message_id in message_ids:
-    #     module.debug_message_id = message_id
-    #     module.run()
+    module = Module()
+    message_ids = module.read_stream_head_ids(5)
+    for message_id in message_ids:
+        module.debug_message_id = message_id
+        module.run()

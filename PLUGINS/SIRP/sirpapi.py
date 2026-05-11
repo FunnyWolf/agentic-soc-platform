@@ -15,7 +15,7 @@ from PLUGINS.SIRP.nocolyapi import WorksheetRow
 from PLUGINS.SIRP.nocolymodel import Condition, Group, Operator
 from PLUGINS.SIRP.sirpbasemodel import AutoAccount, BaseSystemModel
 from PLUGINS.SIRP.sirpcoremodel import Severity, Confidence, EnrichmentModel, TicketModel, ArtifactModel, AlertModel, CaseModel
-from PLUGINS.SIRP.sirpextramodel import PlaybookType, PlaybookJobStatus, KnowledgeAction, MessageModel, PlaybookModel, KnowledgeModel
+from PLUGINS.SIRP.sirpextramodel import PlaybookType, PlaybookJobStatus, KnowledgeAction, PlaybookModel, KnowledgeModel
 
 
 def model_to_fields(model_instance: BaseModel) -> List[Dict[str, Any]]:
@@ -1086,12 +1086,6 @@ class Case(BaseWorksheetEntity[CaseModel]):
                 "trigger": trigger,
             }
         )
-
-
-class Message(BaseWorksheetEntity[MessageModel]):
-    """Message 实体类"""
-    WORKSHEET_ID = "message"
-    MODEL_CLASS = MessageModel
 
 
 class Playbook(BaseWorksheetEntity[PlaybookModel]):

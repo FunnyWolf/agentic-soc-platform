@@ -62,6 +62,10 @@ class BaseAPI(ABC):
 
             if os.path.isfile(os.path.join(DATA_DIR, fname)):  # "ES-Rule-21-Phishing_user_report_mail/senior_phishing_expert.md"
                 template_path = os.path.join(DATA_DIR, fname)
+            elif os.path.isfile(os.path.join(DATA_DIR, "PLAYBOOKS", self.module_name, fname)):  # "ES-Rule-21-Phishing_user_report_mail/senior_phishing_expert.md"
+                template_path = os.path.join(DATA_DIR, "PLAYBOOKS", self.module_name, fname)
+            elif os.path.isfile(os.path.join(DATA_DIR, "MODULES",self.module_name, fname)):  # "ES-Rule-21-Phishing_user_report_mail/senior_phishing_expert.md"
+                 template_path = os.path.join(DATA_DIR, "MODULES", self.module_name, fname)
             else:
                 template_path = os.path.join(DATA_DIR, self.module_name, fname)
 

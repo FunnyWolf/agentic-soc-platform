@@ -12,8 +12,8 @@ from Lib.llmapi import BaseAgentState
 from PLUGINS.LLM.llmapi import LLMAPI
 from PLUGINS.SIRP.sirpapi import Case, Knowledge
 from PLUGINS.SIRP.sirpbasemodel import AI_PROFILE_INVESTIGATION
-from PLUGINS.SIRP.sirpextramodel import PlaybookJobStatus, PlaybookModel
 from PLUGINS.SIRP.sirpcoremodel import Severity, AttackStage, Confidence, CaseModel
+from PLUGINS.SIRP.sirpextramodel import PlaybookJobStatus, PlaybookModel
 
 
 class AgentState(BaseAgentState):
@@ -122,9 +122,6 @@ class Playbook(LanggraphPlaybook):
                     content="You have reached the maximum iterations limit. Based on all the information collected above, provide your final analysis using the AnalyzeResult tool immediately."))
 
             response = llm_with_tools.invoke(messages)
-            for message in messages:
-                self.add_message_to_playbook(message, node="analyze_node")
-            self.add_message_to_playbook(response, node="analyze_node")
             return {"loop_count": state.loop_count + 1, "messages": [response]}
 
         def should_continue(state: AgentState):

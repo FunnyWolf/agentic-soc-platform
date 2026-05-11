@@ -17,8 +17,8 @@ from Lib.baseplaybook import LanggraphPlaybook
 from PLUGINS.LLM.llmapi import LLMAPI
 from PLUGINS.SIRP.sirpapi import Case
 from PLUGINS.SIRP.sirpbasemodel import AI_PROFILE_INVESTIGATION
-from PLUGINS.SIRP.sirpextramodel import PlaybookJobStatus, PlaybookModel
 from PLUGINS.SIRP.sirpcoremodel import CaseModel
+from PLUGINS.SIRP.sirpextramodel import PlaybookJobStatus, PlaybookModel
 
 MAX_ITERATIONS = 3
 MAX_ITERATIONS_OF_FUNCTIONS_CALL = 2
@@ -225,11 +225,6 @@ class Playbook(LanggraphPlaybook):
                     self.logger.info("Stripping hallucinated tool calls in final round.")
                     response.tool_calls = []
 
-            for message in messages:
-                self.add_message_to_playbook(message, node="analyst_node")
-
-            self.add_message_to_playbook(response, node="analyst_node")
-
             return {"loop_count": state.loop_count + 1, "messages": [response]}
 
         # Tool node
@@ -275,12 +270,6 @@ class Playbook(LanggraphPlaybook):
             formatter_llm = llm_api.get_model(tag=["cheap", "structured_output"])
             structured_llm = formatter_llm.with_structured_output(AnalystOutput)
             response: AnalystOutput = structured_llm.invoke(messages)
-
-            # update record
-            for message in messages:
-                self.add_message_to_playbook(message, node="final_answer_node")
-
-            self.add_message_to_playbook(response, node="final_answer_node")
 
             return {
                 "answer": response.answer,
@@ -331,8 +320,9 @@ class Playbook(LanggraphPlaybook):
             system_prompt_template = self.load_system_prompt_template("Intent_System", lang=PROMPT_LANG)
             system_message = system_prompt_template.format()
 
-            human_message = self.load_human_prompt_template("Intent_Human", lang=PROMPT_LANG).format(case=case.model_dump_json_for_ai(profile=AI_PROFILE_INVESTIGATION),
-                                                                                                     user_intent=user_intent)
+            human_message = self.load_human_prompt_template("Intent_Human", lang=PROMPT_LANG).format(
+                case=case.model_dump_json_for_ai(profile=AI_PROFILE_INVESTIGATION),
+                user_intent=user_intent)
 
             few_shot_examples = [
             ]
@@ -346,11 +336,6 @@ class Playbook(LanggraphPlaybook):
             llm_api = LLMAPI()
             llm = llm_api.get_model(tag="fast")
             response: AIMessage = llm.invoke(messages)
-
-            for message in messages:
-                self.add_message_to_playbook(message, node="intent_node")
-
-            self.add_message_to_playbook(response, node="intent_node")
 
             node_out = {
                 "case": case,
@@ -419,10 +404,6 @@ class Playbook(LanggraphPlaybook):
             current_plan = response.current_plan
 
             self.logger.debug(f"Generated Plan for Round {iteration_count}")
-
-            for message in messages:
-                self.add_message_to_playbook(message, node="planner_node")
-            self.add_message_to_playbook(response, node="planner_node")
 
             node_out = {
                 "current_plan": current_plan,
@@ -515,10 +496,6 @@ class Playbook(LanggraphPlaybook):
             case_new = CaseModel(row_id=self.param_source_row_id, threat_hunting_report_ai=response.content)
             Case.update(case_new)
 
-            for message in messages:
-                self.add_message_to_playbook(message, node="planner_node")
-            self.add_message_to_playbook(response, node="planner_node")
-
             node_out = {"report": response.content}
 
             self.update_playbook_status(PlaybookJobStatus.SUCCESS, "Threat Hunting Agent Finish.")
@@ -560,9 +537,9 @@ if __name__ == "__main__":
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ASP.settings")
     django.setup()
     model = PlaybookModel(
-                          source_row_id='141a4bd0-f3cf-4e0c-91b6-f8d9fff6f653',
-                          user_input="Has the host in the case been infected",
-                          row_id="401ca83c-4579-4e6f-8329-2e61a6c3405a")
+        source_row_id='141a4bd0-f3cf-4e0c-91b6-f8d9fff6f653',
+        user_input="Has the host in the case been infected",
+        row_id="401ca83c-4579-4e6f-8329-2e61a6c3405a")
     module = Playbook()
     module._playbook_model = model
 
