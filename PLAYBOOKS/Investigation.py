@@ -29,9 +29,9 @@ class Playbook(BasePlaybook):
             self.logger.error(f"Case not found. row_id: {case_row_id}")
             return
 
-        PROMPT_PATH = Path(DATA_DIR) / "SYSTEM" / "ANALYSIS" / "System_EN.md"
+        prompt_path = Path(DATA_DIR) / "SYSTEM" / "ANALYSIS" / "System_EN.md"
         content = case.model_dump_json_for_ai(profile=AI_PROFILE_INVESTIGATION)
-        system_message = self.load_system_prompt_template(PROMPT_PATH).format()
+        system_message = self.load_system_prompt_template(prompt_path).format()
 
         llm_api = LLMAPI()
         llm = llm_api.get_model(tag="structured_output").with_structured_output(InvestigationReport)
