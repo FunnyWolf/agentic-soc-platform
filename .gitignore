@@ -178,8 +178,7 @@ Docker/log/*
 Docker/huggingface/bge-reranker-v2-m3/*
 !Docker/huggingface/bge-reranker-v2-m3/.gitkeep
 
-Docker/Huggingface/bm25/*
-!Docker/Huggingface/bm25/.gitkeep
+
 
 
 Docker/mcp_uuid

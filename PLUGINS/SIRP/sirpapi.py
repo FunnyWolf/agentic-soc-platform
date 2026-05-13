@@ -4,18 +4,16 @@ from datetime import datetime, timedelta
 from typing import List, Union, Annotated, Dict, Any, TypeVar, Generic, Type
 
 import requests
-from langchain_core.documents import Document
 from pydantic import BaseModel
 
 from Lib.log import logger
-from PLUGINS.Embeddings.embeddings_qdrant import get_qdrant_embeddings_api, SIRP_KNOWLEDGE_COLLECTION
 from PLUGINS.Redis.redis_stream_api import RedisStreamAPI
 from PLUGINS.SIRP.CONFIG import SIRP_NOTICE_WEBHOOK
 from PLUGINS.SIRP.nocolyapi import WorksheetRow
 from PLUGINS.SIRP.nocolymodel import Condition, Group, Operator
-from PLUGINS.SIRP.sirpbasemodel import AutoAccount, BaseSystemModel
+from PLUGINS.SIRP.sirpbasemodel import AutoAccount, BaseSystemModel, AI_PROFILE_MCP
 from PLUGINS.SIRP.sirpcoremodel import Severity, Confidence, EnrichmentModel, TicketModel, ArtifactModel, AlertModel, CaseModel
-from PLUGINS.SIRP.sirpextramodel import PlaybookType, PlaybookJobStatus, KnowledgeAction, PlaybookModel, KnowledgeModel
+from PLUGINS.SIRP.sirpextramodel import PlaybookType, PlaybookJobStatus, PlaybookModel, KnowledgeModel
 
 
 def model_to_fields(model_instance: BaseModel, exclude_unset: bool = True) -> List[Dict[str, Any]]:
@@ -1199,28 +1197,12 @@ class Knowledge(BaseWorksheetEntity[KnowledgeModel]):
             return None
 
     @classmethod
-    def list_undone_action_records(cls) -> List[KnowledgeModel]:
-        """获取未完成的actions"""
-        filter_model = Group(
-            logic="AND",
-            children=[
-                Condition(
-                    field="action",
-                    operator=Operator.IN,
-                    value=[KnowledgeAction.STORE, KnowledgeAction.REMOVE]
-                )
-            ]
-        )
-        return cls.list(filter_model)
-
-    @classmethod
     def update_by_id(
             cls,
             knowledge_id: str,
             title: Union[str, None] = None,
             body: Union[str, None] = None,
-            using: Union[bool, None] = None,
-            action=None,
+            expires_at=None,
             source=None,
             tags: Union[List[str], None] = None
     ) -> Union[str, None]:
@@ -1228,21 +1210,19 @@ class Knowledge(BaseWorksheetEntity[KnowledgeModel]):
         if not knowledge_old:
             return None
 
-        knowledge_new = KnowledgeModel()
-        knowledge_new.row_id = knowledge_old.row_id
+        update_data = {"row_id": knowledge_old.row_id}
         if title is not None:
-            knowledge_new.title = title
+            update_data["title"] = title
         if body is not None:
-            knowledge_new.body = body
-        if using is not None:
-            knowledge_new.using = using
-        if action is not None:
-            knowledge_new.action = action
+            update_data["body"] = body
+        if expires_at is not None:
+            update_data["expires_at"] = expires_at
         if source is not None:
-            knowledge_new.source = source
+            update_data["source"] = source
         if tags is not None:
-            knowledge_new.tags = tags
+            update_data["tags"] = tags
 
+        knowledge_new = KnowledgeModel(**update_data)
         return cls.update(knowledge_new)
 
     @classmethod
@@ -1252,14 +1232,31 @@ class Knowledge(BaseWorksheetEntity[KnowledgeModel]):
         Search the internal knowledge base for specific entities, business-specific logic, SOPs, or historical context.
         """
         logger.debug(f"knowledge search : {query}")
-        threshold = 0.5
-        result_all = []
-        docs_qdrant = get_qdrant_embeddings_api().search_documents_with_rerank(collection_name=SIRP_KNOWLEDGE_COLLECTION, query=query, k=10, top_n=3)
-        logger.debug(docs_qdrant)
-        for doc in docs_qdrant:
-            doc: Document
-            if doc.metadata["rerank_score"] >= threshold:
-                result_all.append(doc.page_content)
+        keywords = [keyword.strip() for keyword in query.split() if keyword.strip()]
+        if not keywords:
+            return "[]"
+
+        keyword_conditions = []
+        for keyword in keywords:
+            keyword_conditions.append(Condition(field="title", operator=Operator.CONTAINS, value=keyword))
+            keyword_conditions.append(Condition(field="body", operator=Operator.CONTAINS, value=keyword))
+
+        now = datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S")
+        filter_model = Group(
+            logic="AND",
+            children=[
+                Group(logic="OR", children=keyword_conditions),
+                Group(
+                    logic="OR",
+                    children=[
+                        Condition(field="expires_at", operator=Operator.IS_EMPTY),
+                        Condition(field="expires_at", operator=Operator.GE, value=now),
+                    ]
+                )
+            ]
+        )
+        models = cls.list(filter_model, lazy_load=True)
+        result_all = [model.model_dump_for_ai(profile=AI_PROFILE_MCP) for model in models[:10]]
 
         results = json.dumps(result_all, ensure_ascii=False)
         logger.debug(f"Knowledge search results : {results}")

@@ -13,11 +13,10 @@ from Lib.moduleengine import ModuleEngine
 from Lib.playbookloader import PlaybookLoader
 from Lib.threadmodulemanager import thread_module_manager
 from Lib.xcache import Xcache
-from PLUGINS.Embeddings.embeddings_qdrant import get_qdrant_embeddings_api, SIRP_KNOWLEDGE_COLLECTION
 from PLUGINS.Redis.redis_stream_api import RedisStreamAPI
 from PLUGINS.SIRP.analysis import run_case_analysis
-from PLUGINS.SIRP.sirpapi import Playbook, Knowledge, Case
-from PLUGINS.SIRP.sirpextramodel import PlaybookJobStatus, KnowledgeAction, PlaybookModel
+from PLUGINS.SIRP.sirpapi import Playbook, Case
+from PLUGINS.SIRP.sirpextramodel import PlaybookJobStatus, PlaybookModel
 
 
 class MainMonitor(object):
@@ -82,8 +81,7 @@ class MainMonitor(object):
         delay_time = 3
 
         # Start background tasks
-        # self.start_background_task(self.subscribe_pending_playbook, "subscribe_pending_playbook", delay_time)
-        self.start_background_task(self.subscribe_knowledge_action, "subscribe_knowledge_action", delay_time)
+        self.start_background_task(self.subscribe_pending_playbook, "subscribe_pending_playbook", delay_time)
         # self.start_background_task(self.subscribe_case_analysis_scheduler, "subscribe_case_analysis_scheduler", delay_time)
         # self.start_background_task(self.subscribe_case_analysis_queue, "subscribe_case_analysis_queue", delay_time)
 
@@ -133,38 +131,6 @@ class MainMonitor(object):
                 model_tmp.job_id = job_id
                 Playbook.update(model_tmp)
 
-    @staticmethod
-    def subscribe_knowledge_action():
-        models = Knowledge.list_undone_action_records()
-        if models:
-            for model in models:
-                payload_content = f"# {model.title}\n\n{model.body}"
-                if model.action == KnowledgeAction.STORE:
-                    logger.info(f"Knowledge storing,row_id: {model.row_id}")
-                    try:
-                        doc_id = get_qdrant_embeddings_api().add_document(SIRP_KNOWLEDGE_COLLECTION, model.row_id, payload_content, {"row_id": model.row_id})
-                    except Exception as E:
-                        logger.exception(E)
-
-                    model.action = KnowledgeAction.DONE
-                    model.using = True
-                    logger.info(f"Knowledge stored,row_id: {model.row_id}")
-                elif model.action == KnowledgeAction.REMOVE:
-                    logger.info(f"Knowledge removing,row_id: {model.row_id}")
-                    try:
-                        result = get_qdrant_embeddings_api().delete_document(SIRP_KNOWLEDGE_COLLECTION, model.row_id)
-                    except Exception as E:
-                        logger.exception(E)
-
-                    model.action = KnowledgeAction.DONE
-                    model.using = False
-                    logger.info(f"Knowledge removed,row_id: {model.row_id}")
-                else:
-                    logger.error(f"Unknown knowledge action: {model.action}")
-                    continue
-
-                # update status to Done
-                row_id = Knowledge.update(model)
 
     @staticmethod
     def subscribe_case_analysis_scheduler():

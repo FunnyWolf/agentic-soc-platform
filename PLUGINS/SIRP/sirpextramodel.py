@@ -5,7 +5,7 @@ from typing import Optional, List
 
 from pydantic import Field
 
-from PLUGINS.SIRP.sirpbasemodel import BaseSystemModel, AutoAccount, AI_PROFILE_MCP
+from PLUGINS.SIRP.sirpbasemodel import BaseSystemModel, AutoAccount, AutoDatetime, AI_PROFILE_MCP
 
 
 class MessageType(StrEnum):
@@ -31,12 +31,6 @@ class PlaybookJobStatus(StrEnum):
     FAILED = 'Failed'
     PENDING = 'Pending'
     RUNNING = 'Running'
-
-
-class KnowledgeAction(StrEnum):
-    STORE = 'Store'
-    REMOVE = 'Remove'
-    DONE = 'Done'
 
 
 class PlaybookModel(BaseSystemModel):
@@ -68,10 +62,8 @@ class KnowledgeModel(BaseSystemModel):
                                  json_schema_extra={"ai": [AI_PROFILE_MCP]})
     body: Optional[str] = Field(default="", description="Knowledge content (知识内容)",
                                 json_schema_extra={"ai": [AI_PROFILE_MCP]})
-    using: Optional[bool] = Field(default=False, description="Currently in use (当前正在使用)",
-                                  json_schema_extra={"ai": [AI_PROFILE_MCP]})
-    action: Optional[KnowledgeAction] = Field(default=None, description="Knowledge action (知识操作)",
-                                              json_schema_extra={"ai": [AI_PROFILE_MCP]})
+    expires_at: Optional[AutoDatetime] = Field(default=None, description="Knowledge expiration time; empty means permanently valid (知识过期时间，空表示永久有效)",
+                                               json_schema_extra={"ai": [AI_PROFILE_MCP]})
     source: Optional[KnowledgeSource] = Field(default=None, description="Knowledge source (知识来源)",
                                               json_schema_extra={"ai": [AI_PROFILE_MCP]})
     tags: Optional[List[str]] = Field(default=[], description="Knowledge tags (知识标签)",

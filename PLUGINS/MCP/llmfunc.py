@@ -14,7 +14,7 @@ from PLUGINS.SIRP.sirpapi import Alert, Artifact, Case, Enrichment, Knowledge, P
 from PLUGINS.SIRP.sirpbasemodel import AI_PROFILE_MCP
 from PLUGINS.SIRP.sirpcoremodel import TicketStatus, TicketType, ArtifactType, ArtifactRole, ArtifactReputationScore, Severity, AttackStage, Confidence, \
     AlertStatus, CaseStatus, CaseVerdict, EnrichmentModel, TicketModel, ArtifactModel
-from PLUGINS.SIRP.sirpextramodel import PlaybookType, KnowledgeSource, PlaybookJobStatus, KnowledgeAction
+from PLUGINS.SIRP.sirpextramodel import PlaybookType, KnowledgeSource, PlaybookJobStatus
 
 
 def _dump_models_for_ai(models, limit: int) -> list[dict]:
@@ -413,9 +413,7 @@ def execute_playbook(
 
 def list_knowledge(
         row_id: Annotated[Optional[str], Field(description="Knowledge row ID filter, e.g. 03c26478-b213-44c8-b651-3cc88abaac01 (知识条目行 ID 过滤)")] = None,
-        action: Annotated[Optional[list[KnowledgeAction]], Field(description="Knowledge action filter (知识操作过滤)")] = None,
         source: Annotated[Optional[list[KnowledgeSource]], Field(description="Knowledge source filter (知识来源过滤)")] = None,
-        using: Annotated[Optional[bool], Field(description="Knowledge using flag filter (知识使用中标志过滤)")] = None,
         title: Annotated[Optional[str], Field(description="Fuzzy knowledge title filter (知识标题模糊过滤)")] = None,
         body: Annotated[Optional[str], Field(description="Fuzzy knowledge body filter (知识内容模糊过滤)")] = None,
         tags: Annotated[Optional[list[str]], Field(description="Knowledge tag filter (知识标签过滤)")] = None,
@@ -426,12 +424,8 @@ def list_knowledge(
 
     if row_id:
         conditions.append(Condition(field="rowId", operator=Operator.EQ, value=row_id))
-    if action:
-        conditions.append(Condition(field="action", operator=Operator.IN, value=action))
     if source:
         conditions.append(Condition(field="source", operator=Operator.IN, value=source))
-    if using is not None:
-        conditions.append(Condition(field="using", operator=Operator.EQ, value=using))
     if title:
         conditions.append(Condition(field="title", operator=Operator.CONTAINS, value=title))
     if body:
@@ -448,7 +442,7 @@ def update_knowledge(
         knowledge_id: Annotated[str, Field(description="Knowledge ID to update (待更新的知识条目 ID)")],
         title: Annotated[Optional[str], Field(description="Updated knowledge title (更新知识标题)")] = None,
         body: Annotated[Optional[str], Field(description="Updated knowledge body (更新知识内容)")] = None,
-        action: Annotated[Optional[KnowledgeAction], Field(description="Updated knowledge action (更新知识操作)")] = None,
+        expires_at: Annotated[Optional[str], Field(description="Updated expiration time; omit or keep empty for permanently valid knowledge (更新过期时间，不填写表示永久有效)")] = None,
         tags: Annotated[Optional[list[str]], Field(description="Updated knowledge tags; pass [] to clear (更新知识标签,传 [] 可清空)")] = None
 ) -> Annotated[Optional[str], Field(description="Updated knowledge row ID, or None if not found (更新后的知识条目行 ID,不存在时返回 None)")]:
     """Update one knowledge record in SIRP. (更新 SIRP 中一条知识条目)"""
@@ -456,7 +450,7 @@ def update_knowledge(
         knowledge_id=knowledge_id,
         title=title,
         body=body,
-        action=action,
+        expires_at=expires_at,
         tags=tags
     )
 
