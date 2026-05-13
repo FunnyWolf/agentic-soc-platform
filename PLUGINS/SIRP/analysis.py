@@ -148,7 +148,7 @@ def search_knowledge_records(keywords: List[str]) -> List[dict[str, Any]]:
     if not keywords:
         return []
     try:
-        records = Knowledge.search_models(" ".join(keywords), limit=MAX_KNOWLEDGE_RECORDS)
+        records = Knowledge.search_models(keywords, limit=MAX_KNOWLEDGE_RECORDS)
         knowledge_records = [record.model_dump_for_ai(profile=AI_PROFILE_MCP) for record in records]
         return knowledge_records
     except Exception as e:

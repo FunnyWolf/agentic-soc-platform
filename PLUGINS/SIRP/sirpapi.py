@@ -1226,17 +1226,48 @@ class Knowledge(BaseWorksheetEntity[KnowledgeModel]):
         return cls.update(knowledge_new)
 
     @classmethod
-    def search_models(cls, query: str, limit: int = 10) -> List[KnowledgeModel]:
+    def search_models(cls, keywords: List[str], limit: int = 10) -> List[KnowledgeModel]:
         """
-        Search the internal knowledge base and return KnowledgeModel records.
+        Search Knowledge records by keywords.
+        按关键词搜索 Knowledge 记录。
+
+        Args:
+            keywords: Keyword list. Records matching at least one keyword are returned.
+                关键词列表。返回匹配至少一个关键词的记录。
+            limit: Maximum number of KnowledgeModel records to return.
+                最多返回的 KnowledgeModel 记录数量。
+
+        Returns:
+            Unexpired KnowledgeModel records whose title or body contains any keyword.
+            title 或 body 包含任意关键词且未过期的 KnowledgeModel 记录。
+
+        Raises:
+            TypeError: If keywords is a string instead of a list. Use search() for public keyword search.
+                当 keywords 是字符串而不是列表时抛出。公开关键词搜索请使用 search()。
         """
-        logger.debug(f"knowledge search : {query}")
-        keywords = [keyword.strip() for keyword in query.split() if keyword.strip()]
-        if not keywords:
+        logger.debug(f"knowledge search keywords : {keywords}")
+        if isinstance(keywords, str):
+            raise TypeError("Knowledge.search_models expects List[str]. Use Knowledge.search for one keyword or phrase.")
+
+        normalized_keywords = []
+        seen_keywords = set()
+        for keyword in keywords or []:
+            if not isinstance(keyword, str):
+                continue
+            keyword = keyword.strip()
+            if not keyword:
+                continue
+            keyword_key = keyword.casefold()
+            if keyword_key in seen_keywords:
+                continue
+            normalized_keywords.append(keyword)
+            seen_keywords.add(keyword_key)
+
+        if not normalized_keywords:
             return []
 
         keyword_conditions = []
-        for keyword in keywords:
+        for keyword in normalized_keywords:
             keyword_conditions.append(Condition(field="title", operator=Operator.CONTAINS, value=keyword))
             keyword_conditions.append(Condition(field="body", operator=Operator.CONTAINS, value=keyword))
 
@@ -1255,15 +1286,38 @@ class Knowledge(BaseWorksheetEntity[KnowledgeModel]):
             ]
         )
         models = cls.list(filter_model, lazy_load=True)
-        return models[:limit]
+        limited_models = models[:limit]
+        return limited_models
 
     @classmethod
-    def search(cls, query: Annotated[str, "The search query."]) -> Annotated[
+    def search(
+            cls,
+            keyword: Annotated[Union[str, List[str]], "Search keyword or keyword list."],
+            limit: int = 10
+    ) -> Annotated[
         str, "relevant knowledge entries, policies, and special handling instructions."]:
         """
-        Search the internal knowledge base for specific entities, business-specific logic, SOPs, or historical context.
+        Search the internal knowledge base by keyword and return a JSON list string.
+        按关键词搜索内部知识库，并返回 JSON 列表字符串。
+
+        Args:
+            keyword: A keyword string or a keyword list. When a list is provided, records matching at least one item are returned.
+                关键词字符串或关键词列表。传入列表时，返回匹配至少一个列表项的记录。
+            limit: Maximum number of knowledge records to return.
+                最多返回的知识记录数量。
+
+        Returns:
+            JSON list string containing relevant unexpired knowledge entries.
+            包含相关且未过期知识记录的 JSON 列表字符串。
         """
-        models = cls.search_models(query, limit=10)
+        if isinstance(keyword, str):
+            keywords = [keyword]
+        elif isinstance(keyword, list):
+            keywords = keyword
+        else:
+            raise TypeError("Knowledge.search expects str or List[str].")
+
+        models = cls.search_models(keywords, limit=limit)
         result_all = [model.model_dump_for_ai(profile=AI_PROFILE_MCP) for model in models]
 
         results = json.dumps(result_all, ensure_ascii=False)

@@ -456,10 +456,11 @@ def update_knowledge(
 
 
 def search_knowledge(
-        query: Annotated[str, Field(description="The search query (搜索关键词或问题)")]
-) -> Annotated[str, Field(description="Relevant knowledge entries, policies, and special handling instructions (相关知识条目、策略及特殊处理说明)")]:
-    """Search the internal knowledge base for specific entities, business-specific logic, SOPs, or historical context. (在内部知识库中搜索实体、业务逻辑、SOP 或历史上下文)"""
-    results = Knowledge.search(query)
+        keyword: Annotated[Union[str, list[str]], Field(description="Search keyword or keyword list; when a list is provided, records matching at least one item are returned (搜索关键词或关键词列表；传入列表时返回匹配至少一个列表项的记录)")],
+        limit: Annotated[int, Field(description="Maximum number of knowledge records to return (最多返回的知识记录数量)")] = 10
+) -> Annotated[str, Field(description="Relevant knowledge entries, policies, and special handling instructions as a JSON list string (JSON 列表字符串形式的相关知识条目、策略及特殊处理说明)")]:
+    """Search the internal knowledge base by keyword. (按关键词搜索内部知识库)"""
+    results = Knowledge.search(keyword, limit=limit)
     return results
 
 
