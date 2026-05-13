@@ -107,12 +107,12 @@ class Module(BaseModule):
             artifacts.append(ArtifactModel(type=ArtifactType.ACCOUNT, role=ArtifactRole.RELATED, value=account_id, name="AWS Account ID"))
 
         # 3. 计算 correlation_uid (Correlation Logic)
-        # 选择 [主体用户, 目标用户, 账号] 作为聚合键，这能有效捕获针对特定目标的持续攻击
+        # 选择 [目标用户, 账号] 作为聚合键，这能有效捕获针对特定目标的持续攻击
 
         correlation_uid = Correlation.generate_correlation_uid(
             rule_id=self.module_name,
             time_window="24h",
-            keys=[principal_user, target_user, account_id],
+            keys=[target_user, account_id],
             timestamp=event_time_formatted
         )
 
@@ -194,7 +194,7 @@ class Module(BaseModule):
         else:
             # 根据 Alert 计算 Case字段
             new_case = CaseModel(
-                title=f"Potential IAM Privilege Escalation in Account {account_id}",
+                title=f"Potential IAM Privilege Escalation in Account {account_id} by {target_user}",
                 severity=severity,
                 impact=Impact.HIGH if outcome == "success" else Impact.MEDIUM,
                 priority=CasePriority.HIGH if outcome == "success" else CasePriority.MEDIUM,
@@ -225,7 +225,7 @@ if __name__ == "__main__":
 
     # 批量测试最早的100条告警
     module = Module()
-    message_ids = module.read_stream_head_ids(3)
+    message_ids = module.read_stream_head_ids(100)
     for message_id in message_ids:
         module.debug_message_id = message_id
         module.run()

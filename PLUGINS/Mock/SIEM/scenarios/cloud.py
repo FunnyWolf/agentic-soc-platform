@@ -10,7 +10,7 @@ class CloudPrivilegeEscalationScenario(object):
         self.attacker_user = random.choice(settings.IAM_USERS)
         self.target_account = random.choice(settings.AWS_ACCOUNTS)
         self.region = random.choice(settings.REGIONS)
-        self.malicious_new_user = f"service_account_{random.randint(1000, 1020)}"
+        self.malicious_new_user = f"service_account_{random.randint(1000, 1002)}"
         self.attacker_key = f"AKIA{uuid.uuid4().hex[:16].upper()}"
         self.malicious_key = f"AKIA{uuid.uuid4().hex[:16].upper()}"
         self.malicious_user_id = f"AIDAI{uuid.uuid4().hex[:16].upper()}"

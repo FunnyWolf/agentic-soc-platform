@@ -49,13 +49,9 @@ PROCESSES = [
 
 # 云环境实体池
 # --- 云环境实体扩展 ---
-AWS_ACCOUNTS = [f"12345678{i:04d}" for i in range(1, 5)]
+AWS_ACCOUNTS = [f"12345678{i:04d}" for i in range(1, 3)]
 
-IAM_USERS = [
-                "admin-cli", "terraform-executor", "github-actions-role",
-                "read-only-auditor", "break-glass-admin",
-                "dev-user-alpha", "dev-user-beta", "billing-manager"
-            ] + [f"iam-user-{i:02d}" for i in range(1, 5)]
+IAM_USERS = ["admin-cli", "terraform-executor", "github-actions-role", "iam-user-01"]
 
 REGIONS = [
     "us-east-1", "us-west-2", "eu-central-1", "eu-west-1",
