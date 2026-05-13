@@ -1,15 +1,14 @@
-from datetime import datetime
-from pathlib import Path
-
-from langchain_core.messages import HumanMessage
-
 from Lib.baseplaybook import BasePlaybook
-from Lib.configs import DATA_DIR
-from PLUGINS.LLM.llmapi import LLMAPI
-from PLUGINS.SIRP.analysis import AnalysisRecord, InvestigationReport
+from PLUGINS.SIRP.analysis import (
+    build_analysis_input_json,
+    build_analysis_record,
+    build_case_analysis_patch,
+    extract_knowledge_keywords,
+    generate_investigation_report,
+    search_knowledge_records,
+)
 from PLUGINS.SIRP.sirpapi import Case
 from PLUGINS.SIRP.sirpbasemodel import AI_PROFILE_INVESTIGATION
-from PLUGINS.SIRP.sirpcoremodel import CaseModel
 from PLUGINS.SIRP.sirpextramodel import PlaybookModel
 
 
@@ -21,7 +20,7 @@ class Playbook(BasePlaybook):
         super().__init__()  # do not delete this code
 
     def run(self):
-        trigger = f"playbook:{self.NAME}"
+        trigger = f"playbook"
         case_row_id = self.param_source_row_id
 
         case = Case.get(case_row_id, lazy_load=False)
@@ -29,36 +28,23 @@ class Playbook(BasePlaybook):
             self.logger.error(f"Case not found. row_id: {case_row_id}")
             return
 
-        prompt_path = Path(DATA_DIR) / "SYSTEM" / "ANALYSIS" / "System_EN.md"
-        content = case.model_dump_json_for_ai(profile=AI_PROFILE_INVESTIGATION)
-        system_message = self.load_system_prompt_template(prompt_path).format()
-
-        llm_api = LLMAPI()
-        llm = llm_api.get_model(tag="structured_output").with_structured_output(InvestigationReport)
-
-        messages = [
-            system_message,
-            HumanMessage(content=content)
-        ]
-        report: InvestigationReport = llm.invoke(messages)
-
-        case_new = CaseModel(
-            row_id=case_row_id,
-            verdict_ai=report.verdict,
-            severity_ai=report.severity,
-            impact_ai=report.impact,
-            priority_ai=report.priority,
-            confidence_ai=report.confidence,
-            investigation_report_ai_json=AnalysisRecord(
-                trigger=trigger,
-                analysis_last_started_at=(
-                    case.analysis_last_started_at.isoformat() if case.analysis_last_started_at else None
-                ),
-                analysis_last_completed_at=datetime.now().astimezone().isoformat(),
-                report=report,
-            ).model_dump_json(),
+        case_json = case.model_dump_json_for_ai(profile=AI_PROFILE_INVESTIGATION)
+        knowledge_keywords = extract_knowledge_keywords(case_json)
+        knowledge_records = search_knowledge_records(knowledge_keywords)
+        analysis_input_json = build_analysis_input_json(case_json, knowledge_keywords, knowledge_records)
+        report = generate_investigation_report(analysis_input_json)
+        analysis_record = build_analysis_record(
+            trigger=trigger,
+            queue_message_id=None,
+            next_run_at=None,
+            case=case,
+            knowledge_keywords=knowledge_keywords,
+            knowledge_records=knowledge_records,
+            report=report,
         )
-        Case.update(case_new)
+        case_patch = build_case_analysis_patch(case_row_id, report, analysis_record)
+
+        Case.update(case_patch)
         self.logger.info(f"Case analysis completed. row_id: {case_row_id}, trigger: {trigger}")
 
 
@@ -68,7 +54,7 @@ if __name__ == "__main__":
 
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ASP.settings")
     django.setup()
-    model = PlaybookModel(source_row_id='58cac985-341e-4391-814a-c58733a61d35')
+    model = PlaybookModel(source_row_id='b084aea5-7d00-4429-a96f-058c63319d87')
     module = Playbook()
     module._playbook_model = model
 

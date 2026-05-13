@@ -291,7 +291,6 @@ def run_case_analysis(case_row_id: str, trigger: str, queue_message_id: str | No
 
         Case.update(case_patch)
         Case.mark_analysis_completed(case_row_id)
-        logger.info(f"Case analysis completed. row_id: {case_row_id}, trigger: {trigger}")
     except Exception as e:
         logger.exception(e)
         Case.mark_analysis_failed(case_row_id, error=str(e))

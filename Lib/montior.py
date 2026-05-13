@@ -82,8 +82,8 @@ class MainMonitor(object):
 
         # Start background tasks
         self.start_background_task(self.subscribe_pending_playbook, "subscribe_pending_playbook", delay_time)
-        # self.start_background_task(self.subscribe_case_analysis_scheduler, "subscribe_case_analysis_scheduler", delay_time)
-        # self.start_background_task(self.subscribe_case_analysis_queue, "subscribe_case_analysis_queue", delay_time)
+        self.start_background_task(self.subscribe_case_analysis_scheduler, "subscribe_case_analysis_scheduler", delay_time)
+        self.start_background_task(self.subscribe_case_analysis_queue, "subscribe_case_analysis_queue", delay_time)
 
         # engine
         # self.engine.start()
@@ -130,7 +130,6 @@ class MainMonitor(object):
                 model_tmp.job_status = PlaybookJobStatus.RUNNING
                 model_tmp.job_id = job_id
                 Playbook.update(model_tmp)
-
 
     @staticmethod
     def subscribe_case_analysis_scheduler():

@@ -7,7 +7,7 @@ from Lib.basemodule import BaseModule
 from PLUGINS.SIRP.correlation import Correlation
 from PLUGINS.SIRP.sirpapi import Alert, Case
 from PLUGINS.SIRP.sirpcoremodel import ArtifactType, ArtifactRole, Severity, Impact, Disposition, AlertAction, Confidence, AlertAnalyticType, ProductCategory, \
-    AlertPolicyType, AlertRiskLevel, AlertStatus, CasePriority, ArtifactModel, AlertModel, CaseModel, EnrichmentModel, CaseStatus
+    AlertPolicyType, AlertRiskLevel, AlertStatus, CasePriority, ArtifactModel, AlertModel, CaseModel, EnrichmentModel
 
 
 class Module(BaseModule):
@@ -225,7 +225,7 @@ if __name__ == "__main__":
 
     # 批量测试最早的100条告警
     module = Module()
-    message_ids = module.read_stream_head_ids(10)
+    message_ids = module.read_stream_head_ids(3)
     for message_id in message_ids:
         module.debug_message_id = message_id
         module.run()
