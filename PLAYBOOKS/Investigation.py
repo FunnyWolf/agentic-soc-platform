@@ -9,7 +9,7 @@ from PLUGINS.SIRP.analysis import (
 )
 from PLUGINS.SIRP.sirpapi import Case
 from PLUGINS.SIRP.sirpbasemodel import AI_PROFILE_INVESTIGATION
-from PLUGINS.SIRP.sirpextramodel import PlaybookModel
+from PLUGINS.SIRP.sirpextramodel import PlaybookModel, PlaybookJobStatus
 
 
 class Playbook(BasePlaybook):
@@ -46,6 +46,7 @@ class Playbook(BasePlaybook):
 
         Case.update(case_patch)
         self.logger.info(f"Case analysis completed. row_id: {case_row_id}, trigger: {trigger}")
+        self.update_playbook_status(PlaybookJobStatus.SUCCESS, "Case Investigation Success.")
 
 
 if __name__ == "__main__":

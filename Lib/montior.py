@@ -3,7 +3,8 @@
 import importlib
 import threading
 import time
-from typing import Callable
+import uuid
+from typing import Callable, Dict, Optional
 
 from apscheduler.schedulers.background import BackgroundScheduler
 
@@ -20,6 +21,48 @@ from PLUGINS.SIRP.sirpextramodel import PlaybookJobStatus, PlaybookModel
 
 
 class MainMonitor(object):
+    @staticmethod
+    def on_playbook_task_finished(thread_id: str, task_obj: BasePlaybook, result: object,
+                                  exception: Optional[Exception], context: Optional[Dict[str, str]] = None):
+        context = context or {}
+        playbook_row_id = context.get("playbook_row_id")
+        if not isinstance(playbook_row_id, str) or playbook_row_id == "":
+            logger.error(f"[Thread {thread_id}] Missing playbook_row_id in callback context.")
+            return
+
+        try:
+            playbook_current = Playbook.get(playbook_row_id, lazy_load=True)
+        except Exception as e:
+            logger.error(f"[Thread {thread_id}] Failed to load playbook for fallback status update.")
+            logger.exception(e)
+            return
+
+        # Business code has already written a terminal state; do not overwrite.
+        if playbook_current.job_status != PlaybookJobStatus.RUNNING:
+            logger.info(
+                f"[Thread {thread_id}] Skip fallback status update, current status: {playbook_current.job_status}, "
+                f"row_id: {playbook_row_id}"
+            )
+            return
+
+        fallback_status = PlaybookJobStatus.SUCCESS if exception is None else PlaybookJobStatus.FAILED
+        if exception is None:
+            remark = f"source=thread_fallback; thread_id={thread_id}; message=Task finished without explicit business status update."
+        else:
+            remark = (
+                f"source=thread_fallback; thread_id={thread_id}; "
+                f"exception={type(exception).__name__}; message={exception}"
+            )
+
+        model_tmp = PlaybookModel(row_id=playbook_row_id)
+        model_tmp.job_status = fallback_status
+        model_tmp.remark = remark
+        Playbook.update(model_tmp)
+
+        logger.info(
+            f"[Thread {thread_id}] Applied fallback status update: {fallback_status}, row_id: {playbook_row_id}"
+        )
+
     MainScheduler: BackgroundScheduler
     _background_threads = {}
 
@@ -119,17 +162,27 @@ class MainMonitor(object):
                 Playbook.update(model_tmp)
                 continue
 
-            job_id = thread_module_manager.start_task(playbook_intent)
-            if not job_id:
+            job_id = str(uuid.uuid1())
+            model_tmp.job_status = PlaybookJobStatus.RUNNING
+            model_tmp.job_id = job_id
+            Playbook.update(model_tmp)
+
+            try:
+                thread_module_manager.start_task(
+                    playbook_intent,
+                    thread_id=job_id,
+                    on_finished=MainMonitor.on_playbook_task_finished,
+                    callback_context={
+                        "playbook_row_id": model.row_id,
+                    },
+                )
+            except Exception as e:
                 model_tmp.job_status = PlaybookJobStatus.FAILED
-                model_tmp.remark = "Failed to create playbook job."
+                model_tmp.remark = f"Failed to create playbook job. exception={type(e).__name__}; message={e}"
                 Playbook.update(model_tmp)
                 continue
-            else:
-                logger.info(f"Create playbook job success: {job_id}")
-                model_tmp.job_status = PlaybookJobStatus.RUNNING
-                model_tmp.job_id = job_id
-                Playbook.update(model_tmp)
+
+            logger.info(f"Create playbook job success: {job_id}")
 
     @staticmethod
     def subscribe_case_analysis_scheduler():

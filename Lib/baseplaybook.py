@@ -10,7 +10,6 @@ from PLUGINS.SIRP.sirpextramodel import PlaybookJobStatus, PlaybookModel
 
 
 class BasePlaybook(BaseAPI):
-    RUN_AS_JOB = True  # 是否作为后台任务运行
     NAME = None
 
     def __init__(self):
@@ -40,11 +39,8 @@ class BasePlaybook(BaseAPI):
         return result
 
     def execute(self):
-        try:
-            self.run()
-        except Exception as e:
-            self.logger.exception(e)
-            self.update_playbook_status(PlaybookJobStatus.FAILED, str(e))
+        result = self.run()
+        return result
 
 
 class LanggraphPlaybook(BasePlaybook):
