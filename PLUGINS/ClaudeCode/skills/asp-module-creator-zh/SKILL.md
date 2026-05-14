@@ -31,7 +31,7 @@ metadata:
 - SIRP 数据层级：`Case → Alert → Artifact`（三级体系）。Artifact 是调查的最小原子实体（一个 IP、一个用户名），应尽量从 raw_alert
   中提取；Alert 挂在 Case 下；同类告警通过 `correlation_uid` 聚合到同一个 Case。Enrichment 是独立于三级体系之外的横切附加层，可按需挂载到
   Case / Alert / Artifact 任意一级。
-- 参考实现：`MODULES/Cloud-01-AWS-IAM-Privilege-Escalation-via-AttachUserPolicy.py`。
+- 参考实现：`MODULES/Cloud-01-AWS-IAM-Privilege-Escalation-via-AttachUserPolicy.py`，体现当前推荐的 raw_alert 消费、Artifact 提取、Alert/Case 组装、Case 去重追加和分析调度调用方式。
 - 数据模型参考：`PLUGINS/SIRP/sirpcoremodel.py`。
 
 ## 决策流程
@@ -113,7 +113,8 @@ metadata:
 - 同一恶意 URL/域名投递：用 URL 域名或归一化 URL + 发件域；如果 URL 中包含一次性 token，应只取域名或稳定路径。
 - 主机恶意进程/命令：用主机 + 进程名/命令行稳定特征；如果判断为横向传播或同一 hash 大范围爆发，可用文件 hash/命令特征，不一定加入主机。
 - 云 IAM 异常操作：通常用云账号/租户 + 主体身份 + API/目标资源；如果关注一次大范围攻击，可按主体身份或源 IP
-  聚合，再用目标资源作为辅助信息。
+  聚合，再用目标资源作为辅助信息。例如 `AttachUserPolicy` 这类高危权限变更，如果 Case 表示"同一主体对同一目标用户的高危授权活动"，可使用
+  `account_id + principal_user/principal_id + target_user`；不要加入 `policyArn`、`requestID`、`eventID` 这类会拆散同一活动或缺乏聚合价值的字段。
 - C2 通信：用目标 C2 IP/域名 + 内部主机；如果同一 C2 影响多台主机，允许按 C2 先聚合，再在 Case 中保留受影响主机列表。
 
 **时间窗口参考：**
@@ -194,28 +195,31 @@ class Module(BaseModule):
         self.logger.info(f"Alert created: {saved_alert_row_id}")
 
         # 7. Case 处理
-        try:
-            existing_case = Case.get_by_correlation_uid(correlation_uid, lazy_load=True)
-            if existing_case:
-                update_case = CaseModel(
-                    alerts=[*existing_case.alerts, saved_alert_row_id],
-                    row_id=existing_case.row_id
-                )
-                Case.update(update_case)
-            else:
-                new_case = CaseModel(
-                    title=...,
-                    severity=...,
-                    impact=...,
-                    priority=...,
-                    confidence=Confidence.HIGH,
-                    description=...,
-                    correlation_uid=correlation_uid,
-                    alerts=[saved_alert_row_id]
-                )
-                Case.create(new_case)
-        except Exception as e:
-            self.logger.error(f"Case operation failed: {str(e)}")
+        existing_case = Case.get_by_correlation_uid(correlation_uid, lazy_load=True)
+        if existing_case:
+            existing_case_row_id = existing_case.row_id
+            assert existing_case_row_id is not None
+            existing_alerts = existing_case.alerts or []
+            updated_alerts = existing_alerts if saved_alert_row_id in existing_alerts else [*existing_alerts, saved_alert_row_id]
+            update_case = CaseModel(
+                alerts=updated_alerts,
+                row_id=existing_case_row_id
+            )
+            Case.update(update_case)
+            Case.mark_analysis_requested(row_id=existing_case_row_id, cooldown_minutes=3)
+        else:
+            new_case = CaseModel(
+                title=...,
+                severity=...,
+                impact=...,
+                priority=...,
+                confidence=Confidence.HIGH,
+                description=...,
+                correlation_uid=correlation_uid,
+                alerts=[saved_alert_row_id]
+            )
+            created_case_row_id = Case.create(new_case)
+            Case.mark_analysis_requested(row_id=created_case_row_id, cooldown_minutes=3)
 
         return True
 ```
@@ -232,8 +236,13 @@ class Module(BaseModule):
 - MITRE ATT&CK 字段（`tactic`、`technique`、`sub_technique`）根据告警类型硬编码。
 - `Alert.create(alert_model)` 会自动级联创建 artifacts 记录，并将生成的 row_id 列表回写到 AlertModel.artifacts，再创建
   alert 记录——因此 artifacts 应挂载到 alert_model 上，不要单独调用 Artifact.create。
+- Artifact 选择原则：优先选择稳定、可复用、可调查的实体；判断一个字段是否适合作为 Artifact 时，重点看它能否帮助跨告警关联、调查取证或自动化处置。
+- 避免把单事件随机标识作为 Artifact，例如 request_id、event_id、trace_id、session_id、uuid 等；除非该 rule 的调查目标就是这些 ID。
+- 优先保留原始、完整、稳定的实体值，避免只保存过度裁剪或泛化后的派生值；派生值更适合放在 Alert label、描述或 unmapped 中。
+- ArtifactRole 应表达实体在事件中的关系：行为发起方通常为 `ACTOR`，被操作对象通常为 `TARGET`，受影响资产/环境通常为 `AFFECTED`，仅提供上下文的信息通常为 `RELATED` 或 `OTHER`。
 - 如果 unmapped 中有特殊价值的字段需要结构化存储，可创建 `EnrichmentModel` 记录并挂载到 ArtifactModel / AlertModel /
   CaseModel 的 enrichments 字段。
+- Enrichment 只用于补充对调查有帮助但不适合作为核心 Alert/Case/Artifact 字段的信息。不要把所有 unmapped 字段都转成 Enrichment；默认先放入 `unmapped`，只有需要结构化展示或后续自动化消费时再创建 Enrichment。
 - 针对实体的威胁情报信息或 Owner 归属，优先直接存储到 `ArtifactModel` 的对应字段（如 `owner`、`reputation_score`、
   `reputation_provider`）；若需要更丰富的结构化内容，再创建 EnrichmentModel 挂载到 ArtifactModel。
 

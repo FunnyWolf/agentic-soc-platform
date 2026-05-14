@@ -29,7 +29,7 @@ Use this skill to guide the user through the full workflow — from requirement 
 - Before writing code, read `PLUGINS/SIRP/sirpcoremodel.py`; enum values must come only from the actual definitions in that file, never from memory or inference.
 - All modules must inherit `BaseModule` and implement the `run()` method.
 - SIRP data hierarchy: `Case → Alert → Artifact` (three-tier). Artifact is the smallest atomic investigation entity (an IP, a username); Alerts are attached to Cases; related alerts are aggregated into the same Case via `correlation_uid`. Enrichment is a cross-cutting attachment layer independent of the three-tier hierarchy — it can be attached to any level (Case / Alert / Artifact).
-- Reference implementation: `MODULES/Cloud-01-AWS-IAM-Privilege-Escalation-via-AttachUserPolicy.py`.
+- Reference implementation: `MODULES/Cloud-01-AWS-IAM-Privilege-Escalation-via-AttachUserPolicy.py`, which demonstrates the current recommended pattern for consuming raw_alerts, extracting Artifacts, assembling Alert/Case records, deduplicating appended alerts, and requesting case analysis scheduling.
 - Data model reference: `PLUGINS/SIRP/sirpcoremodel.py`.
 
 ## Decision Flow
@@ -101,7 +101,7 @@ Before determining `correlation_uid`, first identify what kind of SOC scenario t
 - User-reported phishing mail: prefer sender/sender domain. If the email title does not contain random values such as recipient names, timestamps, or order numbers, include a normalized title. Usually do not include recipient. Recommended window: `12h`, which keeps one phishing wave together without delaying notifications and response too much.
 - Same malicious URL/domain delivery: use URL domain or normalized URL + sender domain. If the URL contains one-time tokens, use only the domain or stable path.
 - Malicious process/command on endpoint: use host + stable process/command signature. If it looks like lateral movement or a hash-wide outbreak, aggregate by file hash/command signature and do not necessarily include host.
-- Cloud IAM abnormal operation: usually use cloud account/tenant + principal identity + API/target resource. If investigating one broad attack wave, aggregate by principal identity or source IP and keep target resources as supporting context.
+- Cloud IAM abnormal operation: usually use cloud account/tenant + principal identity + API/target resource. If investigating one broad attack wave, aggregate by principal identity or source IP and keep target resources as supporting context. For high-risk permission changes such as `AttachUserPolicy`, if a Case represents "the same principal granting high-risk permissions to the same target user", use `account_id + principal_user/principal_id + target_user`; do not include fields such as `policyArn`, `requestID`, or `eventID` when they would fragment one activity or add little aggregation value.
 - C2 communication: use C2 IP/domain + internal host. If one C2 affects many hosts, aggregate by C2 first and keep affected hosts in the Case.
 
 **Time-window guidance:**
@@ -180,28 +180,31 @@ class Module(BaseModule):
         self.logger.info(f"Alert created: {saved_alert_row_id}")
 
         # 7. Case management
-        try:
-            existing_case = Case.get_by_correlation_uid(correlation_uid, lazy_load=True)
-            if existing_case:
-                update_case = CaseModel(
-                    alerts=[*existing_case.alerts, saved_alert_row_id],
-                    row_id=existing_case.row_id
-                )
-                Case.update(update_case)
-            else:
-                new_case = CaseModel(
-                    title=...,
-                    severity=...,
-                    impact=...,
-                    priority=...,
-                    confidence=Confidence.HIGH,
-                    description=...,
-                    correlation_uid=correlation_uid,
-                    alerts=[saved_alert_row_id]
-                )
-                Case.create(new_case)
-        except Exception as e:
-            self.logger.error(f"Case operation failed: {str(e)}")
+        existing_case = Case.get_by_correlation_uid(correlation_uid, lazy_load=True)
+        if existing_case:
+            existing_case_row_id = existing_case.row_id
+            assert existing_case_row_id is not None
+            existing_alerts = existing_case.alerts or []
+            updated_alerts = existing_alerts if saved_alert_row_id in existing_alerts else [*existing_alerts, saved_alert_row_id]
+            update_case = CaseModel(
+                alerts=updated_alerts,
+                row_id=existing_case_row_id
+            )
+            Case.update(update_case)
+            Case.mark_analysis_requested(row_id=existing_case_row_id, cooldown_minutes=3)
+        else:
+            new_case = CaseModel(
+                title=...,
+                severity=...,
+                impact=...,
+                priority=...,
+                confidence=Confidence.HIGH,
+                description=...,
+                correlation_uid=correlation_uid,
+                alerts=[saved_alert_row_id]
+            )
+            created_case_row_id = Case.create(new_case)
+            Case.mark_analysis_requested(row_id=created_case_row_id, cooldown_minutes=3)
 
         return True
 ```
@@ -215,7 +218,12 @@ Field mapping principles:
 - AlertModel field population priority: ① map directly from the raw alert; ② derive via calculation or transformation from raw alert fields; ③ use a sensible default only when both previous steps fail.
 - MITRE ATT&CK fields (`tactic`, `technique`, `sub_technique`) should be hardcoded based on the alert type.
 - `Alert.create(alert_model)` automatically cascade-creates artifact records, writes the resulting row_id list back to `AlertModel.artifacts`, and then creates the alert record — attach artifacts to `alert_model`, do not call `Artifact.create` separately.
+- Artifact selection principles: prefer stable, reusable, investigable entities; when deciding whether a field should become an Artifact, focus on whether it helps cross-alert correlation, investigation, evidence collection, or automated response.
+- Avoid single-event random identifiers as Artifacts, such as request_id, event_id, trace_id, session_id, and uuid, unless the rule specifically investigates those IDs.
+- Prefer preserving original, complete, stable entity values instead of only storing over-trimmed or overly generic derived values; derived values often fit better in Alert labels, descriptions, or unmapped data.
+- ArtifactRole should describe the entity's relationship to the event: initiators are usually `ACTOR`, operated objects are usually `TARGET`, affected assets/environments are usually `AFFECTED`, and contextual entities are usually `RELATED` or `OTHER`.
 - If fields in `unmapped` (or other high-value fields) need structured storage, create an `EnrichmentModel` record and attach it to the `enrichments` field of ArtifactModel / AlertModel / CaseModel.
+- Use Enrichment only for supplementary information that is useful for investigation but does not fit core Alert/Case/Artifact fields. Do not convert every unmapped field into an Enrichment; keep it in `unmapped` by default and create Enrichment only when structured display or automation consumption is needed.
 - For threat intelligence or Owner attribution on an entity, prefer storing directly in the corresponding `ArtifactModel` fields (`owner`, `reputation_score`, `reputation_provider`); create an EnrichmentModel and attach it to ArtifactModel only when richer structured content is needed.
 
 ### Step 6 — Add the Debug Entry Point
