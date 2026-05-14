@@ -260,6 +260,7 @@ for message_id in message_ids:
 - Keep code comments concise and in English, consistent with the `-en` convention.
 - After generating the code, briefly explain the mapping logic for key fields so the user can review.
 - Do not output content unrelated to the module code.
+- AlertModel and CaseModel `description` fields support markdown rendering, but are displayed as inline component in the frontend — avoid `#` `##` `###` heading syntax, `---` horizontal rules, HTML tags, and images, as they break the page layout. Other markdown features (bold, inline code, code blocks, lists, tables, links, blockquotes) are supported and should be used to improve readability.
 
 ## Failure Handling
 
