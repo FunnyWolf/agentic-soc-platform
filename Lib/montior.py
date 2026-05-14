@@ -125,11 +125,11 @@ class MainMonitor(object):
 
         # Start background tasks
         self.start_background_task(self.subscribe_pending_playbook, "subscribe_pending_playbook", delay_time)
-        # self.start_background_task(self.subscribe_case_analysis_scheduler, "subscribe_case_analysis_scheduler", delay_time)
-        # self.start_background_task(self.subscribe_case_analysis_queue, "subscribe_case_analysis_queue", delay_time)
+        self.start_background_task(self.subscribe_case_analysis_scheduler, "subscribe_case_analysis_scheduler", delay_time)
+        self.start_background_task(self.subscribe_case_analysis_queue, "subscribe_case_analysis_queue", delay_time)
 
         # engine
-        # self.engine.start()
+        self.engine.start()
         logger.info("Background services started.")
 
     @staticmethod
