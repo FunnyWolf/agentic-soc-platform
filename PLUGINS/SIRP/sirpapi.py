@@ -769,12 +769,11 @@ class Case(BaseWorksheetEntity[CaseModel]):
             severity: Union[Severity, None] = None,
             status=None,
             verdict=None,
+            comment: Union[str, None] = None,
+            summary: Union[str, None] = None,
             severity_ai: Union[Severity, None] = None,
             confidence_ai: Union[Confidence, None] = None,
-            attack_stage_ai=None,
-            comment_ai: Union[str, None] = None,
             verdict_ai=None,
-            summary_ai: Union[str, None] = None
     ) -> Union[str, None]:
         case_old = cls.get_by_id(case_id, lazy_load=True)
         if not case_old:
@@ -788,18 +787,16 @@ class Case(BaseWorksheetEntity[CaseModel]):
             case_new.status = status
         if verdict is not None:
             case_new.verdict = verdict
+        if comment is not None:
+            case_new.comment = comment
+        if summary is not None:
+            case_new.summary = summary
         if severity_ai is not None:
             case_new.severity_ai = severity_ai
         if confidence_ai is not None:
             case_new.confidence_ai = confidence_ai
-        if attack_stage_ai is not None:
-            case_new.attack_stage_ai = attack_stage_ai
-        if comment_ai is not None:
-            case_new.comment_ai = comment_ai
         if verdict_ai is not None:
             case_new.verdict_ai = verdict_ai
-        if summary_ai is not None:
-            case_new.summary_ai = summary_ai
 
         return cls.update(case_new)
 

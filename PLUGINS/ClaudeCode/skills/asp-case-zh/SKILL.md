@@ -22,7 +22,6 @@ Case。
 
 - 用户给出一个 case ID，希望查看、分诊或快速总结。
 - 用户希望按状态、严重级别、置信度、verdict、correlation UID、标题或标签查找 case。
-- 用户想查看 case 的讨论上下文。
 - 用户想更新 case 工作流字段或 AI 分析字段。
 - 用户想把 enrichment 或结构化分析附加到 case。
 - 用户想把外部 ticket 记录附加到 case。
@@ -38,10 +37,9 @@ Case。
 
 ## 决策流程
 
-1. 如果用户提供了具体 case ID，或说要“open”“show”“review”“summarize”某个 case，调用 `list_cases(case_id=<id>, limit=1)`。
-2. 如果用户想看讨论历史或分析上下文，在取回 case 后调用 `get_case_discussions`。
-3. 如果用户要查找、浏览或对比 case，使用 `list_cases`。
-4. 如果用户要修改 status、verdict、severity 或 AI 字段，使用 `update_case`。
+1. 如果用户提供了具体 case ID，或说要”open””show””review””summarize”某个 case，调用 `list_cases(case_id=<id>, limit=1)`。默认已包含讨论记录。
+2. 如果用户要查找、浏览或对比 case，使用 `list_cases`。不需要讨论时传 `include_discussions=False`。
+3. 如果用户要修改 status、verdict、severity 或 AI 字段，使用 `update_case`。
 5. 如果用户要更新 case 但没提供 case ID，询问 case ID。
 6. 如果用户给出了多个过滤条件，只应用 ASP 直接支持的部分，并明确说明不支持的过滤条件。
 7. 如果用户要把 enrichment 或结构化分析附加到 case，使用 `asp-enrichment-zh` skill。
@@ -52,12 +50,11 @@ Case。
 ### 审查单个 Case
 
 1. 如果用户要求审查、分析或查看 case 详情，调用 `list_cases(case_id=<id>, limit=1, lazy_load=false)`
-   获取完整关联数据（alerts、enrichments、tickets）。
-2. 如果只需要快速查看 case 基本信息，调用 `list_cases(case_id=<id>, limit=1)` 即可。
+   获取完整关联数据（alerts、enrichments、tickets）。默认已包含讨论记录。
+2. 如果只需要快速查看 case 基本信息，调用 `list_cases(case_id=<id>, limit=1, include_discussions=false)` 即可。
 3. 如果结果为空，直接说明找不到该 case。
-4. 如果用户想看分析上下文，调用 `get_case_discussions(case_id)`。
-5. 只展示与用户请求最相关的部分。
-6. 只有在确实影响用户目标时，才强调缺失字段或可疑字段。
+4. 只展示与用户请求最相关的部分。
+5. 只有在确实影响用户目标时，才强调缺失字段或可疑字段。
 
 首选回复结构：
 
@@ -106,9 +103,9 @@ Case。
 - `verdict`
 - `severity_ai`
 - `confidence_ai`
-- `attack_stage_ai`
-- `comment_ai`
-- `summary_ai`
+- `verdict_ai`
+- `comment`
+- `summary`
 
 首选回复结构：
 

@@ -21,7 +21,6 @@ Case is the core investigation object in ASP. One case can have one or more aler
 
 - The user gives a case ID and wants to review, triage, or quickly summarize it.
 - The user wants to find cases by status, severity, confidence, verdict, correlation UID, title, or tags.
-- The user wants case discussion context.
 - The user wants to update case workflow fields or AI analysis fields.
 - The user wants to attach enrichment or structured analysis to a case.
 - The user wants to attach an external ticket record to a case.
@@ -38,10 +37,9 @@ Case is the core investigation object in ASP. One case can have one or more aler
 
 ## Decision Flow
 
-1. If the user provides a specific case ID or says "open", "show", "review", or "summarize" a case, call `list_cases(case_id=<id>, limit=1)`.
-2. If the user wants discussion history or analyst context, call `get_case_discussions` after retrieving the case.
-3. If the user wants to browse or compare cases, use `list_cases`.
-4. If the user wants to change status, verdict, severity, or AI fields, use `update_case`.
+1. If the user provides a specific case ID or says "open", "show", "review", or "summarize" a case, call `list_cases(case_id=<id>, limit=1)`. Discussions are included by default.
+2. If the user wants to browse or compare cases, use `list_cases`. Pass `include_discussions=False` if discussions are not needed.
+3. If the user wants to change status, verdict, severity, or AI fields, use `update_case`.
 5. If the user wants to update a case but did not provide a case ID, ask for the case ID.
 6. If the user gives multiple filters, apply only the ones ASP supports directly and state any unsupported filters explicitly.
 7. If the user wants to attach enrichment or structured analysis to the case, use the `asp-enrichment-en` skill.
@@ -51,12 +49,11 @@ Case is the core investigation object in ASP. One case can have one or more aler
 
 ### Review One Case
 
-1. If the user wants to review, analyze, or inspect case details, call `list_cases(case_id=<id>, limit=1, lazy_load=false)` to fetch the full related data, including alerts, enrichments, and tickets.
-2. If the user only needs the basic case information, call `list_cases(case_id=<id>, limit=1)`.
+1. If the user wants to review, analyze, or inspect case details, call `list_cases(case_id=<id>, limit=1, lazy_load=false)` to fetch the full related data, including alerts, enrichments, and tickets. Discussions are included by default.
+2. If the user only needs the basic case information, call `list_cases(case_id=<id>, limit=1, include_discussions=false)`.
 3. If the result is empty, state that the case was not found.
-4. If the user wants analyst context, call `get_case_discussions(case_id)`.
-5. Present only the parts most relevant to the user's request.
-6. Only emphasize missing or suspicious fields when they matter to the user's goal.
+4. Present only the parts most relevant to the user's request.
+5. Only emphasize missing or suspicious fields when they matter to the user's goal.
 
 Preferred response structure:
 
@@ -105,9 +102,9 @@ Common update targets:
 - `verdict`
 - `severity_ai`
 - `confidence_ai`
-- `attack_stage_ai`
-- `comment_ai`
-- `summary_ai`
+- `verdict_ai`
+- `comment`
+- `summary`
 
 Preferred response structure:
 

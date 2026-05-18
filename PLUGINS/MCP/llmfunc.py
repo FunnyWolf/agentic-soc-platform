@@ -12,9 +12,10 @@ from PLUGINS.SIEM.tools import SIEMToolKit
 from PLUGINS.SIRP.nocolymodel import Group, Condition, Operator
 from PLUGINS.SIRP.sirpapi import Alert, Artifact, Case, Enrichment, Knowledge, Playbook, Ticket
 from PLUGINS.SIRP.sirpbasemodel import AI_PROFILE_MCP
-from PLUGINS.SIRP.sirpcoremodel import TicketStatus, TicketType, ArtifactName, ArtifactType, ArtifactRole, ArtifactReputationScore, Severity, AttackStage, Confidence, \
-    AlertStatus, CaseStatus, CaseVerdict, EnrichmentModel, EnrichmentType, EnrichmentProvider, TicketModel, ArtifactModel
-from PLUGINS.SIRP.sirpextramodel import PlaybookType, KnowledgeSource, PlaybookJobStatus
+from PLUGINS.SIRP.sirpcoremodel import TicketStatus, TicketType, ArtifactType, ArtifactRole, Severity, AttackStage, \
+    Confidence, \
+    AlertStatus, CaseStatus, CaseVerdict, EnrichmentModel, EnrichmentType, EnrichmentProvider, TicketModel
+from PLUGINS.SIRP.sirpextramodel import PlaybookType, PlaybookJobStatus
 
 
 def _dump_models_for_ai(models, limit: int) -> list[dict]:
@@ -58,6 +59,7 @@ def list_cases(
         title: Annotated[Optional[str], Field(description="Fuzzy case title filter (Case 标题模糊过滤)")] = None,
         tags: Annotated[Optional[list[str]], Field(description="Case tag filter (Case 标签过滤)")] = None,
         lazy_load: Annotated[bool, Field(description="True means do not load attached related data (True 表示不加载关联数据)")] = True,
+        include_discussions: Annotated[bool, Field(description="Include case discussions in the result (返回结果中包含讨论记录)")] = True,
         limit: Annotated[int, Field(description="Max cases to return (最多返回条数)")] = 10
 ) -> Annotated[list[dict], Field(description="Matching cases as AI-friendly JSON list (匹配的 Case 列表)")]:
     """List cases with optional filters. (列出 Case,支持多条件过滤)"""
@@ -83,38 +85,34 @@ def list_cases(
 
     filter_model = Group(logic="AND", children=conditions or [])
     models = Case.list(filter_model, lazy_load=lazy_load)
-    return _dump_models_for_ai(models, limit)
+    results = _dump_models_for_ai(models, limit)
 
+    if include_discussions:
+        for item in results:
+            row_id_val = item.get("row_id")
+            if row_id_val:
+                discussions = Case.get_discussions_by_row_id(row_id_val) or []
+                item["discussions"] = discussions
 
-def get_case_discussions(
-        case_id: Annotated[str, Field(description="Case ID, e.g. case_000005 (Case ID)")]
-) -> Annotated[Optional[list[str]], Field(
-    description="Case discussions as JSON string list, or None if case not found (Case 讨论记录 JSON 字符串列表,Case 不存在时返回 None)")]:
-    """Get case discussions by case ID. (通过 Case ID 获取讨论记录)"""
-    discussions = Case.get_discussions_by_id(case_id)
-    if discussions is None:
-        return None
-    return [json.dumps(item, ensure_ascii=False) for item in discussions]
+    return results
 
 
 def update_case(
         case_id: Annotated[str, Field(description="Case ID to update (待更新的 Case ID)")],
         severity_ai: Annotated[Optional[Severity], Field(description="Updated AI-assessed severity (更新 AI 评估严重程度)")] = None,
         confidence_ai: Annotated[Optional[Confidence], Field(description="Updated AI-assessed confidence (更新 AI 评估置信度)")] = None,
-        attack_stage_ai: Annotated[Optional[AttackStage], Field(description="Updated AI-assessed attack stage (更新 AI 评估攻击阶段)")] = None,
-        comment_ai: Annotated[Optional[str], Field(description="Updated AI comment, Markdown supported (更新 AI 注释,支持 Markdown)")] = None,
         verdict_ai: Annotated[Optional[CaseVerdict], Field(description="Updated AI-assessed verdict (更新 AI 评估判定结果)")] = None,
-        summary_ai: Annotated[Optional[str], Field(description="Updated AI closure summary, Markdown supported (更新 AI 结案摘要,支持 Markdown)")] = None
+        comment: Annotated[Optional[str], Field(description="Analyst comment, Markdown supported (分析师注释,支持 Markdown)")] = None,
+        summary: Annotated[Optional[str], Field(description="Closure summary, Markdown supported (结案摘要,支持 Markdown)")] = None,
 ) -> Annotated[Optional[str], Field(description="Updated case row ID, or None if not found (更新后的 Case 行 ID,不存在时返回 None)")]:
-    """Update AI-assessed fields on a case. (更新 Case 的 AI 评估字段)"""
+    """Update case fields including AI-assessed fields, analyst comment, and closure summary. (更新 Case 字段,包括 AI 评估字段、分析师注释和结案摘要)"""
     return Case.update_by_id(
         case_id=case_id,
         severity_ai=severity_ai,
         confidence_ai=confidence_ai,
-        attack_stage_ai=attack_stage_ai,
-        comment_ai=comment_ai,
         verdict_ai=verdict_ai,
-        summary_ai=summary_ai
+        comment=comment,
+        summary=summary,
     )
 
 
@@ -150,40 +148,6 @@ def list_alerts(
     return _dump_models_for_ai(models, limit)
 
 
-def get_alert_discussions(
-        alert_id: Annotated[str, Field(description="Alert ID, e.g. alert_000001 (Alert ID)")]
-) -> Annotated[Optional[list[str]], Field(
-    description="Alert discussions as JSON string list, or None if alert not found (Alert 讨论记录 JSON 字符串列表,Alert 不存在时返回 None)")]:
-    """Get alert discussions by alert ID. (通过 Alert ID 获取讨论记录)"""
-    discussions = Alert.get_discussions(alert_id)
-    if discussions is None:
-        return None
-    return [json.dumps(item, ensure_ascii=False) for item in discussions]
-
-
-# Artifact
-# Do not open to mcp , because we think artifact is add only by automation, not human
-def create_artifact(
-        name: Annotated[ArtifactName, Field(description="Artifact name (实体名称)")] = ArtifactName.UNKNOWN,
-        type: Annotated[Optional[ArtifactType], Field(description="Artifact type (实体类型)")] = None,
-        role: Annotated[Optional[ArtifactRole], Field(description="Artifact role in event (实体在事件中的角色)")] = None,
-        owner: Annotated[str, Field(description="Owning system or user (所属系统或用户)")] = "",
-        value: Annotated[str, Field(description="Artifact value (实体值)")] = "",
-        reputation_provider: Annotated[str, Field(description="Threat intel provider (威胁情报提供商)")] = "",
-        reputation_score: Annotated[Optional[ArtifactReputationScore], Field(description="Artifact reputation score (实体信誉评分)")] = None
-) -> Annotated[str, Field(description="Created artifact record row ID (创建的 Artifact 行 ID)")]:
-    """Create one artifact record. (创建一条 Artifact 记录)"""
-    model = ArtifactModel()
-    model.name = name
-    model.type = type
-    model.role = role
-    model.owner = owner
-    model.value = value
-    model.reputation_provider = reputation_provider
-    model.reputation_score = reputation_score
-    return Artifact.create(model)
-
-
 # Do not open to mcp , because we think artifact is add only by automation, not human
 def attach_artifact_to_alert(
         alert_id: Annotated[str, Field(description="Target alert ID to receive the existing artifact (接收 Artifact 的目标 Alert ID)")],
@@ -202,7 +166,6 @@ def list_artifacts(
         artifact_id: Annotated[Optional[str], Field(description="Artifact ID filter, e.g. artifact_000001 (Artifact ID 过滤)")] = None,
         type: Annotated[Optional[list[ArtifactType]], Field(description="Artifact type filter (实体类型过滤)")] = None,
         role: Annotated[Optional[list[ArtifactRole]], Field(description="Artifact role filter (实体角色过滤)")] = None,
-        reputation_score: Annotated[Optional[list[ArtifactReputationScore]], Field(description="Artifact reputation filter (实体信誉过滤)")] = None,
         owner: Annotated[Optional[str], Field(description="Artifact owner filter, exact match (实体所有者过滤,精确匹配)")] = None,
         value: Annotated[Optional[str], Field(description="Artifact value filter, exact match (实体值过滤,精确匹配)")] = None,
         lazy_load: Annotated[bool, Field(description="True means do not load attached related data (True 表示不加载关联数据)")] = True,
@@ -218,8 +181,6 @@ def list_artifacts(
         conditions.append(Condition(field="type", operator=Operator.IN, value=type))
     if role:
         conditions.append(Condition(field="role", operator=Operator.IN, value=role))
-    if reputation_score:
-        conditions.append(Condition(field="reputation_score", operator=Operator.IN, value=reputation_score))
     if owner:
         conditions.append(Condition(field="owner", operator=Operator.EQ, value=owner))
     if value:
@@ -285,31 +246,23 @@ def attach_enrichment_to_target(
 
 # Ticket
 def create_ticket(
+        case_id: Annotated[str, Field(description="Target case ID to attach the ticket to (挂载 Ticket 的目标 Case ID)")],
         uid: Annotated[str, Field(description="External ticket ID to sync into SIRP (同步到 SIRP 的外部工单 ID)")],
         title: Annotated[str, Field(description="Ticket title (工单标题)")] = "",
         status: Annotated[Optional[TicketStatus], Field(description="External ticket status (外部工单状态)")] = None,
         type: Annotated[Optional[TicketType], Field(description="External ticket type (外部工单类型)")] = None,
         src_url: Annotated[str, Field(description="External ticket URL (外部工单 URL)")] = ""
 ) -> Annotated[str, Field(description="Created ticket record row ID (创建的 Ticket 行 ID)")]:
-    """Create one synced external ticket record in SIRP. (在 SIRP 中创建一条同步的外部工单记录)"""
+    """Create one synced external ticket record in SIRP and attach it to a case. (在 SIRP 中创建一条同步的外部工单记录并挂载到 Case)"""
     model = TicketModel()
     model.uid = uid
     model.title = title
     model.status = status
     model.type = type
     model.src_url = src_url
-    return Ticket.create(model)
-
-
-def attach_ticket_to_case(
-        case_id: Annotated[str, Field(description="Target case ID to receive the existing ticket (接收 Ticket 的目标 Case ID)")],
-        ticket_row_id: Annotated[str, Field(description="Ticket record row ID returned by create_ticket (由 create_ticket 返回的 Ticket 行 ID)")]
-) -> Annotated[Optional[str], Field(description="Attached ticket record row ID, or None if case not found (挂载后的 Ticket 行 ID,Case 不存在时返回 None)")]:
-    """Attach one existing ticket record to an existing case. (将已有 Ticket 挂载到已有 Case)"""
-    return Case.attach_ticket(
-        case_id=case_id,
-        ticket_row_id=ticket_row_id
-    )
+    ticket_row_id = Ticket.create(model)
+    Case.attach_ticket(case_id=case_id, ticket_row_id=ticket_row_id)
+    return ticket_row_id
 
 
 def list_tickets(
@@ -411,38 +364,12 @@ def execute_playbook(
     return result.model_dump_json_for_ai(profile=AI_PROFILE_MCP)
 
 
-def list_knowledge(
-        row_id: Annotated[Optional[str], Field(description="Knowledge row ID filter, e.g. 03c26478-b213-44c8-b651-3cc88abaac01 (知识条目行 ID 过滤)")] = None,
-        source: Annotated[Optional[list[KnowledgeSource]], Field(description="Knowledge source filter (知识来源过滤)")] = None,
-        title: Annotated[Optional[str], Field(description="Fuzzy knowledge title filter (知识标题模糊过滤)")] = None,
-        body: Annotated[Optional[str], Field(description="Fuzzy knowledge body filter (知识内容模糊过滤)")] = None,
-        tags: Annotated[Optional[list[str]], Field(description="Knowledge tag filter (知识标签过滤)")] = None,
-        limit: Annotated[int, Field(description="Max knowledge records to return (最多返回条数)")] = 10
-) -> Annotated[list[dict], Field(description="Matching knowledge records as AI-friendly JSON list (匹配的知识条目列表)")]:
-    """List knowledge records with optional filters. (列出知识条目,支持多条件过滤)"""
-    conditions = []
-
-    if row_id:
-        conditions.append(Condition(field="rowId", operator=Operator.EQ, value=row_id))
-    if source:
-        conditions.append(Condition(field="source", operator=Operator.IN, value=source))
-    if title:
-        conditions.append(Condition(field="title", operator=Operator.CONTAINS, value=title))
-    if body:
-        conditions.append(Condition(field="body", operator=Operator.CONTAINS, value=body))
-    if tags:
-        conditions.append(Condition(field="tags", operator=Operator.CONTAINS, value=tags))
-
-    filter_model = Group(logic="AND", children=conditions or [])
-    models = Knowledge.list(filter_model, lazy_load=True)
-    return _dump_models_for_ai(models, limit)
-
-
 def update_knowledge(
         knowledge_id: Annotated[str, Field(description="Knowledge ID to update (待更新的知识条目 ID)")],
         title: Annotated[Optional[str], Field(description="Updated knowledge title (更新知识标题)")] = None,
         body: Annotated[Optional[str], Field(description="Updated knowledge body (更新知识内容)")] = None,
-        expires_at: Annotated[Optional[str], Field(description="Updated expiration time; omit or keep empty for permanently valid knowledge (更新过期时间，不填写表示永久有效)")] = None,
+        expires_at: Annotated[Optional[str], Field(
+            description="Updated expiration time; omit or keep empty for permanently valid knowledge (更新过期时间，不填写表示永久有效)")] = None,
         tags: Annotated[Optional[list[str]], Field(description="Updated knowledge tags; pass [] to clear (更新知识标签,传 [] 可清空)")] = None
 ) -> Annotated[Optional[str], Field(description="Updated knowledge row ID, or None if not found (更新后的知识条目行 ID,不存在时返回 None)")]:
     """Update one knowledge record in SIRP. (更新 SIRP 中一条知识条目)"""
@@ -456,9 +383,11 @@ def update_knowledge(
 
 
 def search_knowledge(
-        keyword: Annotated[Union[str, list[str]], Field(description="Search keyword or keyword list; when a list is provided, records matching at least one item are returned (搜索关键词或关键词列表；传入列表时返回匹配至少一个列表项的记录)")],
+        keyword: Annotated[Union[str, list[str]], Field(
+            description="Search keyword or keyword list; when a list is provided, records matching at least one item are returned (搜索关键词或关键词列表；传入列表时返回匹配至少一个列表项的记录)")],
         limit: Annotated[int, Field(description="Maximum number of knowledge records to return (最多返回的知识记录数量)")] = 10
-) -> Annotated[str, Field(description="Relevant knowledge entries, policies, and special handling instructions as a JSON list string (JSON 列表字符串形式的相关知识条目、策略及特殊处理说明)")]:
+) -> Annotated[str, Field(
+    description="Relevant knowledge entries, policies, and special handling instructions as a JSON list string (JSON 列表字符串形式的相关知识条目、策略及特殊处理说明)")]:
     """Search the internal knowledge base by keyword. (按关键词搜索内部知识库)"""
     results = Knowledge.search(keyword, limit=limit)
     return results
@@ -536,12 +465,10 @@ REGISTERED_MCP_TOOLS = [
 
     # case
     list_cases,
-    get_case_discussions,
     update_case,
 
     # alert
     list_alerts,
-    get_alert_discussions,
 
     # artifact
     list_artifacts,
@@ -556,7 +483,6 @@ REGISTERED_MCP_TOOLS = [
     list_playbook_runs,
 
     # knowledge
-    list_knowledge,
     update_knowledge,
     search_knowledge,
 
@@ -564,7 +490,6 @@ REGISTERED_MCP_TOOLS = [
     list_tickets,
     create_ticket,
     update_ticket,
-    attach_ticket_to_case,
 
     # SIEM
     get_current_time,
