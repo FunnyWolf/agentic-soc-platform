@@ -339,21 +339,6 @@ class ArtifactRole(StrEnum):
     OTHER = 'Other'
 
 
-class ArtifactReputationScore(StrEnum):
-    UNKNOWN = 'Unknown'
-    VERY_SAFE = 'Very Safe'
-    SAFE = 'Safe'
-    PROBABLY_SAFE = 'Probably Safe'
-    LEANS_SAFE = 'Leans Safe'
-    MAY_NOT_BE_SAFE = 'May not be Safe'
-    EXERCISE_CAUTION = 'Exercise Caution'
-    SUSPICIOUS_RISKY = 'Suspicious/Risky'
-    POSSIBLY_MALICIOUS = 'Possibly Malicious'
-    PROBABLY_MALICIOUS = 'Probably Malicious'
-    MALICIOUS = 'Malicious'
-    OTHER = 'Other'
-
-
 class Severity(StrEnum):
     UNKNOWN = "Unknown"
     INFORMATIONAL = "Informational"
@@ -756,7 +741,7 @@ class ArtifactModel(BaseSystemModel):
     # 创建记录填写字段
     name: Optional[ArtifactName] = Field(default=ArtifactName.UNKNOWN,
                                          description="Artifact name (实体名称)",
-                                         json_schema_extra={"ai": [AI_PROFILE_INVESTIGATION, AI_PROFILE_MCP]})
+                                         json_schema_extra={"type": 2, "ai": [AI_PROFILE_INVESTIGATION, AI_PROFILE_MCP]})
     type: Optional[ArtifactType] = Field(default=None,
                                          description="Artifact type (实体类型)",
                                          json_schema_extra={"ai": [AI_PROFILE_INVESTIGATION, AI_PROFILE_MCP]})
@@ -770,12 +755,8 @@ class ArtifactModel(BaseSystemModel):
     owner: Optional[str] = Field(default="",
                                  description="Owning system or user (所属系统或用户)",
                                  json_schema_extra={"ai": [AI_PROFILE_INVESTIGATION, AI_PROFILE_MCP]})
-    reputation_provider: Optional[str] = Field(default="",
-                                               description="Threat intel provider (威胁情报提供商)",
-                                               json_schema_extra={"type": 2, "ai": [AI_PROFILE_INVESTIGATION, AI_PROFILE_MCP]})
-    reputation_score: Optional[ArtifactReputationScore] = Field(default=None,
-                                                                description="Artifact reputation (实体信誉)",
-                                                                json_schema_extra={"ai": [AI_PROFILE_INVESTIGATION, AI_PROFILE_MCP]})
+
+
 
     # 反向关联,无需手动处理
     alerts: Optional[List[Union[AlertModel, str]]] = Field(default=None, init=False, description="Linked alert row_ids (关联告警行 IDs)")

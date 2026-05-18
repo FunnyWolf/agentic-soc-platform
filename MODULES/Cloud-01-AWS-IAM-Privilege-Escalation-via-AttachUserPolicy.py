@@ -139,7 +139,8 @@ class Module(BaseModule):
         # 4. 组装 Alert (Alert Assembly)
         alert_enrichments: List[EnrichmentModel] = []
         if aws_region:
-            enrichment_location = EnrichmentModel(name="AWS Region", type=EnrichmentType.GEO_LOCATION, provider=EnrichmentProvider.AWS, value=aws_region,
+            enrichment_location = EnrichmentModel(name="AWS Region", type=EnrichmentType.GEO_LOCATION, provider=EnrichmentProvider.AWS_CLOUDTRAIL,
+                                                  value=aws_region,
                                                   desc="Alert region from raw alert", data=json.dumps({"awsRegion": aws_region}))
             alert_enrichments.append(enrichment_location)
 

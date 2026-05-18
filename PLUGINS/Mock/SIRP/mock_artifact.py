@@ -6,8 +6,7 @@ artifact_evil_email = ArtifactModel(
     type=ArtifactType.EMAIL_ADDRESS,
     role=ArtifactRole.ACTOR,
     value="no-reply@evil-domain.com",
-    reputation_provider="Internal Blocklist",
-    reputation_score=ArtifactReputationScore.MALICIOUS,
+
     enrichments=[enrichment_otx_evil_domain]
 )
 artifact_fake_url = ArtifactModel(
@@ -15,7 +14,7 @@ artifact_fake_url = ArtifactModel(
     type=ArtifactType.URL_STRING,
     role=ArtifactRole.RELATED,
     value="http://fake-payroll-login.com",
-    reputation_score=ArtifactReputationScore.SUSPICIOUS_RISKY
+
 )
 artifact_malware_file = ArtifactModel(
     name=ArtifactName.ATTACHMENT_FILE,
@@ -28,8 +27,7 @@ artifact_malware_hash = ArtifactModel(
     type=ArtifactType.HASH,
     role=ArtifactRole.RELATED,
     value="a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
-    reputation_provider="VirusTotal",
-    reputation_score=ArtifactReputationScore.MALICIOUS,
+
     enrichments=[enrichment_virustotal]
 )
 artifact_psexesvc = ArtifactModel(
@@ -70,7 +68,7 @@ artifact_c2_domain = ArtifactModel(
     type=ArtifactType.HOSTNAME,
     role=ArtifactRole.RELATED,
     value="c2.bad-actor-infra.net",
-    reputation_score=ArtifactReputationScore.SUSPICIOUS_RISKY
+
 )
 artifact_dns_port = ArtifactModel(
     name=ArtifactName.DESTINATION_PORT,
@@ -90,8 +88,7 @@ artifact_ransomware_ip = ArtifactModel(
     type=ArtifactType.IP_ADDRESS,
     role=ArtifactRole.ACTOR,
     value="103.95.196.78",
-    reputation_provider="AbuseIPDB",
-    reputation_score=ArtifactReputationScore.MALICIOUS,
+
     enrichments=[enrichment_abuseipdb_ransomware, enrichment_geoip_russia]
 )
 artifact_ransom_note = ArtifactModel(
@@ -111,8 +108,7 @@ artifact_ransomware_hash = ArtifactModel(
     type=ArtifactType.HASH,
     role=ArtifactRole.ACTOR,
     value="5f4dcc3b5aa765d61d8327deb882cf99b4c2d6e6e6b4e6f6e6e6e6e6e6e6e6e6",
-    reputation_provider="VirusTotal",
-    reputation_score=ArtifactReputationScore.MALICIOUS,
+
     enrichments=[enrichment_virustotal]
 )
 artifact_cryptominer_binary = ArtifactModel(
@@ -127,8 +123,7 @@ artifact_cryptominer_hash = ArtifactModel(
     type=ArtifactType.HASH,
     role=ArtifactRole.ACTOR,
     value="e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    reputation_provider="VirusTotal",
-    reputation_score=ArtifactReputationScore.MALICIOUS,
+
     enrichments=[enrichment_virustotal_cryptominer]
 )
 artifact_mining_pool = ArtifactModel(
@@ -136,7 +131,7 @@ artifact_mining_pool = ArtifactModel(
     type=ArtifactType.HOSTNAME,
     role=ArtifactRole.RELATED,
     value="cryptominer-pool.xyz",
-    reputation_score=ArtifactReputationScore.MALICIOUS,
+
     enrichments=[enrichment_whois_domain]
 )
 artifact_insider_user = ArtifactModel(
@@ -159,8 +154,7 @@ artifact_exfil_destination = ArtifactModel(
     type=ArtifactType.IP_ADDRESS,
     role=ArtifactRole.RELATED,
     value="185.220.101.45",
-    reputation_provider="GreyNoise",
-    reputation_score=ArtifactReputationScore.MALICIOUS,
+
     enrichments=[enrichment_greynoise_scanner, enrichment_geoip_russia]
 )
 artifact_log4j_vuln = ArtifactModel(
@@ -175,7 +169,7 @@ artifact_exploit_url = ArtifactModel(
     type=ArtifactType.URL_STRING,
     role=ArtifactRole.RELATED,
     value="http://malicious-payload-server.ru/payload.exe",
-    reputation_score=ArtifactReputationScore.MALICIOUS,
+
     enrichments=[enrichment_urlhaus_malware]
 )
 artifact_vulnerable_server = ArtifactModel(
@@ -203,8 +197,7 @@ artifact_ransomware_ip_2 = ArtifactModel(
     type=ArtifactType.IP_ADDRESS,
     role=ArtifactRole.ACTOR,
     value="177.19.44.123",
-    reputation_provider="AbuseIPDB",
-    reputation_score=ArtifactReputationScore.MALICIOUS
+
 )
 artifact_powershell_script = ArtifactModel(
     name=ArtifactName.FILE_PATH,
@@ -262,8 +255,7 @@ artifact_brute_force_ip = ArtifactModel(
     type=ArtifactType.IP_ADDRESS,
     role=ArtifactRole.ACTOR,
     value="45.95.11.22",
-    reputation_provider="AbuseIPDB",
-    reputation_score=ArtifactReputationScore.MALICIOUS,
+
     enrichments=[enrichment_greynoise_scanner, enrichment_geoip_russia]
 )
 artifact_target_user_brute = ArtifactModel(
@@ -285,7 +277,6 @@ artifact_malicious_url_sqli = ArtifactModel(
     type=ArtifactType.URL_STRING,
     role=ArtifactRole.RELATED,
     value="https://web-3.example.com/api/user?id=1' OR '1'='1",
-    reputation_score=ArtifactReputationScore.MALICIOUS
 )
 artifact_sqlmap_tool = ArtifactModel(
     name=ArtifactName.HTTP_USER_AGENT,
@@ -311,8 +302,6 @@ artifact_decryptor_malware = ArtifactModel(
     type=ArtifactType.FILE_NAME,
     role=ArtifactRole.ACTOR,
     value="decryptor.exe",
-    reputation_provider="VirusTotal",
-    reputation_score=ArtifactReputationScore.MALICIOUS
 )
 artifact_ransom_note_file = ArtifactModel(
     name=ArtifactName.FILE_NAME,
