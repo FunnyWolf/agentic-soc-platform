@@ -31,7 +31,8 @@ class Playbook(BasePlaybook):
         case_json = case.model_dump_json_for_ai(profile=AI_PROFILE_INVESTIGATION)
         knowledge_keywords = extract_knowledge_keywords(case_json)
         knowledge_records = search_knowledge_records(knowledge_keywords)
-        analysis_input_json = build_analysis_input_json(case_json, knowledge_keywords, knowledge_records)
+        discussions = Case.get_discussions_by_row_id(case_row_id) or []
+        analysis_input_json = build_analysis_input_json(case_json, knowledge_keywords, knowledge_records, discussions)
         report = generate_investigation_report(analysis_input_json)
         analysis_record = build_analysis_record(
             trigger=trigger,

@@ -156,7 +156,7 @@ def search_knowledge_records(keywords: List[str]) -> List[dict[str, Any]]:
         return []
 
 
-def build_analysis_input_json(case_json: str, knowledge_keywords: List[str], knowledge_records: List[dict[str, Any]]) -> str:
+def build_analysis_input_json(case_json: str, knowledge_keywords: List[str], knowledge_records: List[dict[str, Any]], discussions: List[dict[str, Any]] | None = None) -> str:
     try:
         case_data = json.loads(case_json)
     except json.JSONDecodeError:
@@ -168,6 +168,7 @@ def build_analysis_input_json(case_json: str, knowledge_keywords: List[str], kno
             "keywords": knowledge_keywords,
         },
         "case": case_data,
+        "discussions": discussions or [],
     }
     analysis_input_json = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
     return analysis_input_json
@@ -276,7 +277,8 @@ def run_case_analysis(case_row_id: str, trigger: str, queue_message_id: str | No
         case_json = case.model_dump_json_for_ai(profile=AI_PROFILE_INVESTIGATION)
         knowledge_keywords = extract_knowledge_keywords(case_json)
         knowledge_records = search_knowledge_records(knowledge_keywords)
-        analysis_input_json = build_analysis_input_json(case_json, knowledge_keywords, knowledge_records)
+        discussions = Case.get_discussions_by_row_id(case_row_id) or []
+        analysis_input_json = build_analysis_input_json(case_json, knowledge_keywords, knowledge_records, discussions)
         report = generate_investigation_report(analysis_input_json)
         analysis_record = build_analysis_record(
             trigger=trigger,

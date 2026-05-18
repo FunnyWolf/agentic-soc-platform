@@ -10,11 +10,12 @@ Schema 的调查报告。
 
 输入格式：
 
-HumanMessage 是一个紧凑 JSON 对象，顶层只有两个字段：`knowledge` 和 `case`。
+HumanMessage 是一个紧凑 JSON 对象，顶层有三个字段：`knowledge`、`case` 和 `discussions`。
 
 - `case` 是当前需要研判的主要对象。
 - `knowledge.records` 是分析前检索到的内部知识补充。每条记录可能包含 `id`、`row_id`、`title`、`source`、`tags`、`expires_at` 和 `body`。`body` 字段可能包含 Markdown 内容；这些 Markdown 只属于该条知识记录本身。
 - `knowledge.keywords` 是根据当前 Case 生成、用于检索这些知识记录的搜索关键词。
+- `discussions` 是分析员在该 Case 上的评论和回复列表。每条包含 `message`（评论内容）、`created_at`、`created_by`（作者）、`reply_to_author`、`mentions`（被提及的用户名列表）和 `attachments`（附件列表，含 `filename`、`ext`、`filesize`、`download_url`）。将 discussions 作为补充上下文使用——它们可能包含分析员的假设、手动标注的 IOC、误报理由或未记录在结构化字段中的操作备注。
 
 Knowledge 可能包含 Case 中不可直接看到的内部上下文，例如资产角色、负责人、业务重要性、测试 IP、蜜罐、白名单、已知良性行为、策略、SOP 或响应处置建议。当 Knowledge 有助于解释 Case 或会改变研判结论时，应使用相关 Knowledge；不要把无关 Knowledge 强行写入报告。
 
