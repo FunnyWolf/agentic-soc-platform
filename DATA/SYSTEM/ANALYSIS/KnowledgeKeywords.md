@@ -13,3 +13,4 @@
 
 只返回 schema 要求的结构化输出。
 
+期望输出格式：一个 JSON 对象，包含一个 key 为 "keywords"，value 为字符串数组，例如 {"keywords": ["hostname.example.com", "192.168.1.1", "Suspicious Login"]}。不要返回裸数组。

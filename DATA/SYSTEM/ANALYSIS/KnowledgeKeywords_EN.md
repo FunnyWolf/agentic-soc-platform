@@ -13,3 +13,5 @@ Keyword selection rules:
 
 Return only the structured output required by the schema.
 
+Expected output format: a JSON object with a single key "keywords" whose value is an array of strings, e.g. {"keywords": ["hostname.example.com", "192.168.1.1", "Suspicious Login"]}. Do not return a bare array.
+
