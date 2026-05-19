@@ -4,7 +4,6 @@ import requests
 
 from PLUGINS.AlienVaultOTX.CONFIG import API_KEY, HTTP_PROXY
 
-
 MAX_PULSE_SUMMARIES = 5
 MAX_LIST_ITEMS = 12
 
@@ -314,9 +313,3 @@ class AlienVaultOTX(object):
                     score -= 8  # 每个威胁标签 -8分
 
         return -score
-
-
-if __name__ == "__main__":
-    target_ip = "66.240.205.34"
-    result = AlienVaultOTX.query_ip(target_ip)
-    print(result)

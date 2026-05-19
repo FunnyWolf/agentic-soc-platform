@@ -24,7 +24,7 @@ Use this skill when the user wants to create or update a SIEM index configuratio
 
 ## Rules
 
-- Config files are stored at `DATA/Plugin_SIEM_Indexes/<index_name>.yaml`.
+- Config files are stored at `DATA/PLUGINS/SIEM/<index_name>.yaml`.
 - Must call `siem_discover_index_fields` to fetch live fields from the backend — never skip this and write fields manually.
 - `name`, `type`, and `sample_values` are taken directly from discovery results. `sample_values` must preserve native types — do not cast everything to strings.
 - `description` and `is_key_field` are inferred by the model based on field semantics and sample_values, marked as pending confirmation.
@@ -48,7 +48,7 @@ Ask the user for:
 
 ### Step 2 — Check Existing Config
 
-Check whether `DATA/Plugin_SIEM_Indexes/<index_name>.yaml` already exists.
+Check whether `DATA/PLUGINS/SIEM/<index_name>.yaml` already exists.
 - If it exists, read it as a baseline and show diffs later.
 - If not, mark as new creation.
 
@@ -96,7 +96,7 @@ Preferred reply structure:
 
 ### Step 6 — Write File
 
-After user confirmation, write the full YAML to `DATA/Plugin_SIEM_Indexes/<index_name>.yaml`.
+After user confirmation, write the full YAML to `DATA/PLUGINS/SIEM/<index_name>.yaml`.
 
 Top-level YAML structure:
 

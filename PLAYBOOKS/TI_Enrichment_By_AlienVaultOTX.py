@@ -1,36 +1,13 @@
 import json
 
-from Lib.api import is_ipaddress
 from Lib.baseplaybook import BasePlaybook
-from PLUGINS.AlienVaultOTX.alienvaultotx import AlienVaultOTX
 from PLUGINS.SIRP.sirpapi import Artifact, Case
-from PLUGINS.SIRP.sirpcoremodel import EnrichmentModel, ArtifactModel, ArtifactType, EnrichmentType, EnrichmentProvider
+from PLUGINS.SIRP.sirpcoremodel import EnrichmentModel, ArtifactModel, EnrichmentType, EnrichmentProvider
 from PLUGINS.SIRP.sirpextramodel import PlaybookJobStatus, PlaybookModel
+from PLUGINS.TI.tools import TIToolKit
 
 TI_ENRICHMENT_TYPE = EnrichmentType.THREAT_INTELLIGENCE
 TI_PROVIDER = EnrichmentProvider.ALIENVAULT_OTX
-
-
-def _query_ip(value: str) -> dict:
-    if not is_ipaddress(value):
-        return {"error": "Invalid IP address format."}
-    return AlienVaultOTX.query_ip(value)
-
-
-def _query_hash(value: str) -> dict:
-    return AlienVaultOTX.query_file(value)
-
-
-def _query_url(value: str) -> dict:
-    return AlienVaultOTX.query_url(value)
-
-
-OTX_QUERY_HANDLERS = {
-    ArtifactType.IP_ADDRESS: _query_ip,
-    ArtifactType.HASH: _query_hash,
-    ArtifactType.URL_STRING: _query_url,
-    ArtifactType.UNIFORM_RESOURCE_LOCATOR: _query_url,
-}
 
 
 class Playbook(BasePlaybook):
@@ -40,25 +17,11 @@ class Playbook(BasePlaybook):
     def __init__(self):
         super().__init__()  # do not delete this code
 
-    @staticmethod
-    def _normalize_artifact_type(artifact_type):
-        if isinstance(artifact_type, ArtifactType):
-            return artifact_type
-        try:
-            return ArtifactType(artifact_type)
-        except ValueError:
-            return artifact_type
-
     def _query_ti(self, artifact) -> dict:
-        artifact_type = self._normalize_artifact_type(artifact.type)
-        handler = OTX_QUERY_HANDLERS.get(artifact_type)
-        if not handler:
-            return {
-                "error": "Unsupported type.",
-                "artifact_type": str(artifact.type),
-                "supported_types": [artifact_type.value for artifact_type in OTX_QUERY_HANDLERS],
-            }
-        return handler(artifact.value or "")
+        output = TIToolKit.query(artifact.value or "", provider=TI_PROVIDER)
+        if output.results:
+            return output.results[0].raw
+        return {"error": "No result from provider.", "indicator": artifact.value}
 
     @staticmethod
     def _update_artifact_enrichment(artifact, ti_result: dict):

@@ -109,7 +109,7 @@ metadata:
 
 ### Step 6 — 写入文件
 
-用户确认后，将完整 YAML 写入 `DATA/Plugin_SIEM_Indexes/<index_name>.yaml`。
+用户确认后，将完整 YAML 写入 `DATA/PLUGINS/SIEM/<index_name>.yaml`。
 
 YAML 顶层结构：
 

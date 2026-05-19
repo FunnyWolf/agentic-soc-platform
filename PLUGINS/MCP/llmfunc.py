@@ -9,6 +9,8 @@ from PLUGINS.Redis.redis_stream_api import RedisStreamAPI
 from PLUGINS.SIEM.models import AdaptiveQueryInput, KeywordSearchInput, SchemaExplorerInput, KeywordSearchOutput, IndexInfo, SchemaIndexSummary, \
     DiscoverIndexFieldsInput, DiscoverIndexFieldsOutput
 from PLUGINS.SIEM.tools import SIEMToolKit
+from PLUGINS.TI.models import TIQueryOutput
+from PLUGINS.TI.tools import TIToolKit
 from PLUGINS.SIRP.nocolymodel import Group, Condition, Operator
 from PLUGINS.SIRP.sirpapi import Alert, Artifact, Case, Enrichment, Knowledge, Playbook, Ticket
 from PLUGINS.SIRP.sirpbasemodel import AI_PROFILE_MCP
@@ -439,6 +441,18 @@ def get_current_time() -> Annotated[str, Field(description="Current local time s
     return datetime.now(timezone.utc).isoformat(timespec='seconds').replace('+00:00', 'Z')
 
 
+# TI
+def ti_query(
+        indicator: Annotated[str, Field(
+            description="Indicator to look up: IP address, file hash, URL, or domain (待查询的指标: IP地址、文件哈希、URL 或域名)")],
+        provider: Annotated[Optional[str], Field(
+            description="Specific TI provider name, e.g. 'AlienVault OTX'; None queries all providers (指定 TI 提供商名称,None 表示查询所有提供商)")] = None,
+) -> Annotated[TIQueryOutput, Field(
+    description="Aggregated threat intelligence results from one or more providers (来自一个或多个提供商的聚合威胁情报结果)")]:
+    """Query threat intelligence providers for an indicator and return aggregated results. (查询指标的威胁情报,返回聚合结果)"""
+    return TIToolKit.query(indicator=indicator, provider=provider)
+
+
 REGISTERED_MCP_TOOLS = [
 
     # case
@@ -474,6 +488,9 @@ REGISTERED_MCP_TOOLS = [
     siem_adaptive_query,
     siem_keyword_search,
     siem_discover_index_fields,
+
+    # TI
+    ti_query,
 
     # redis stream
     read_stream_head,
