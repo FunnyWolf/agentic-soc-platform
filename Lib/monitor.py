@@ -64,9 +64,9 @@ class MainMonitor(object):
         )
 
     MainScheduler: BackgroundScheduler
-    _background_threads = {}
 
     def __init__(self):
+        self._background_threads: Dict[str, list] = {}
         self.engine = ModuleEngine()
         self.redis_stream_api = RedisStreamAPI()
         self.MainScheduler = BackgroundScheduler(timezone='Asia/Shanghai')
@@ -96,25 +96,33 @@ class MainMonitor(object):
                 logger.exception(e)
                 time.sleep(retry_interval)
 
-    def start_background_task(self, task_func: Callable, task_name: str, retry_interval: int = 5, exec_interval: int = None):
+    def start_background_task(self, task_func: Callable, task_name: str, retry_interval: int = 5,
+                              exec_interval: int = None, thread_count: int = 1):
         """
-        Start a background task in a separate thread
+        Start a background task in one or more separate threads
 
         Args:
             task_func: The function to run
             task_name: Name of the task for logging
             retry_interval: Seconds to wait between retries on error
             exec_interval: Seconds to wait between executions (defaults to retry_interval if None)
+            thread_count: Number of threads to spawn for this task
         """
-        thread = threading.Thread(
-            target=self.run_task_in_loop,
-            args=(task_func, task_name, retry_interval, exec_interval),
-            daemon=True,
-            name=task_name
-        )
-        self._background_threads[task_name] = thread
-        thread.start()
-        logger.info(f"Started background task: {task_name}")
+        if task_name not in self._background_threads:
+            self._background_threads[task_name] = []
+
+        for i in range(thread_count):
+            suffix = f"#{i}" if thread_count > 1 else ""
+            thread_name = f"{task_name}{suffix}"
+            thread = threading.Thread(
+                target=self.run_task_in_loop,
+                args=(task_func, thread_name, retry_interval, exec_interval),
+                daemon=True,
+                name=thread_name,
+            )
+            self._background_threads[task_name].append(thread)
+            thread.start()
+            logger.info(f"Started background task: {thread_name}")
 
     def start(self):
         logger.info("Starting background services...")
@@ -126,7 +134,7 @@ class MainMonitor(object):
         # Start background tasks
         self.start_background_task(self.subscribe_pending_playbook, "subscribe_pending_playbook", delay_time)
         self.start_background_task(self.subscribe_case_analysis_scheduler, "subscribe_case_analysis_scheduler", delay_time)
-        self.start_background_task(self.subscribe_case_analysis_queue, "subscribe_case_analysis_queue", delay_time)
+        self.start_background_task(self.subscribe_case_analysis_queue, "subscribe_case_analysis_queue", delay_time, thread_count=3)
 
         # engine
         self.engine.start()

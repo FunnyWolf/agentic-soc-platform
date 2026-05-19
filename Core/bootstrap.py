@@ -47,7 +47,7 @@ def get_or_start_background_services():
             )
             return _background_monitor_instance
 
-        from Lib.montior import MainMonitor
+        from Lib.monitor import MainMonitor
 
         _background_services_status = "starting"
         _background_services_source = source
