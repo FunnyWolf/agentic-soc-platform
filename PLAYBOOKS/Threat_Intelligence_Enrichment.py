@@ -2,83 +2,26 @@ import json
 
 from Lib.baseplaybook import BasePlaybook
 from PLUGINS.SIRP.sirpapi import Artifact, Case
-from PLUGINS.SIRP.sirpcoremodel import EnrichmentModel, ArtifactModel, ArtifactType, EnrichmentType, EnrichmentProvider
+from PLUGINS.SIRP.sirpcoremodel import EnrichmentModel, ArtifactModel, EnrichmentType, EnrichmentProvider
 from PLUGINS.SIRP.sirpextramodel import PlaybookJobStatus, PlaybookModel
+from PLUGINS.ThreatIntelligence.tools import TIToolKit
 
 TI_ENRICHMENT_TYPE = EnrichmentType.THREAT_INTELLIGENCE
-TI_PROVIDER = EnrichmentProvider.MOCK_TI_PROVIDER
-
-
-def _mock_ip_result(value: str) -> dict:
-    return {
-        "malicious": True,
-        "score": 85,
-        "indicator_type": "ip",
-        "indicator": value,
-        "description": "This IP is associated with known malicious activities.",
-        "source": "MockTIProvider",
-        "last_seen": "2024-10-01T12:34:56Z",
-    }
-
-
-def _mock_hash_result(value: str) -> dict:
-    return {
-        "malicious": True,
-        "score": 90,
-        "indicator_type": "file",
-        "indicator": value,
-        "description": "This file hash is associated with known malware samples.",
-        "source": "MockTIProvider",
-        "last_seen": "2024-10-01T12:34:56Z",
-    }
-
-
-def _mock_url_result(value: str) -> dict:
-    return {
-        "malicious": True,
-        "score": 80,
-        "indicator_type": "url",
-        "indicator": value,
-        "description": "This URL is associated with suspicious or malicious activity.",
-        "source": "MockTIProvider",
-        "last_seen": "2024-10-01T12:34:56Z",
-    }
-
-
-MOCK_QUERY_HANDLERS = {
-    ArtifactType.IP_ADDRESS: _mock_ip_result,
-    ArtifactType.HASH: _mock_hash_result,
-    ArtifactType.URL_STRING: _mock_url_result,
-    ArtifactType.UNIFORM_RESOURCE_LOCATOR: _mock_url_result,
-}
+TI_PROVIDER = EnrichmentProvider.ALIENVAULT_OTX
 
 
 class Playbook(BasePlaybook):
-    NAME = "TI Enrichment (Mock)"
-    DESC = "Simulate threat intelligence enrichment. This playbook is for testing and demonstration purposes only. It does not perform real threat intelligence queries."
+    NAME = "Threat Intelligence Enrichment"
+    DESC = "Threat Intelligence Enrichment"
 
     def __init__(self):
         super().__init__()  # do not delete this code
 
-    @staticmethod
-    def _normalize_artifact_type(artifact_type):
-        if isinstance(artifact_type, ArtifactType):
-            return artifact_type
-        try:
-            return ArtifactType(artifact_type)
-        except ValueError:
-            return artifact_type
-
     def _query_ti(self, artifact) -> dict:
-        artifact_type = self._normalize_artifact_type(artifact.type)
-        handler = MOCK_QUERY_HANDLERS.get(artifact_type)
-        if not handler:
-            return {
-                "error": "Unsupported type.",
-                "artifact_type": str(artifact.type),
-                "supported_types": [artifact_type.value for artifact_type in MOCK_QUERY_HANDLERS],
-            }
-        return handler(artifact.value or "")
+        output = TIToolKit.query(artifact.value or "", provider=TI_PROVIDER)
+        if output.results:
+            return output.results[0].raw
+        return {"error": "No result from provider.", "indicator": artifact.value}
 
     @staticmethod
     def _update_artifact_enrichment(artifact, ti_result: dict):
@@ -89,7 +32,7 @@ class Playbook(BasePlaybook):
                 break
         else:
             enrichment = EnrichmentModel(
-                name="Mock TI Enrichment",
+                name="Threat Intelligence",
                 type=TI_ENRICHMENT_TYPE,
                 provider=TI_PROVIDER,
                 value=artifact.value,
@@ -127,33 +70,37 @@ class Playbook(BasePlaybook):
                 "unique": len(artifacts),
                 "enriched": 0,
                 "unsupported": 0,
+                "invalid": 0,
                 "errors": 0,
             }
 
             for artifact in artifacts.values():
                 try:
-                    self.logger.info(f"Mock threat intelligence enrichment for artifact: {artifact}")
+                    self.logger.info(f"Querying threat intelligence for artifact: {artifact}")
                     ti_result = self._query_ti(artifact)
                     if ti_result.get("error") == "Unsupported type.":
                         stats["unsupported"] += 1
+                    elif ti_result.get("error") == "Invalid IP address format.":
+                        stats["invalid"] += 1
                     self._update_artifact_enrichment(artifact, ti_result)
                     stats["enriched"] += 1
                 except Exception as e:
                     stats["errors"] += 1
                     self.logger.exception(
-                        f"Error during mock TI enrichment for artifact row_id={artifact.row_id}, "
+                        f"Error during TI enrichment for artifact row_id={artifact.row_id}, "
                         f"type={artifact.type}, value={artifact.value}: {e}"
                     )
 
             message = (
-                "Mock threat intelligence enrichment completed. "
+                "Threat intelligence enrichment completed. "
                 f"alerts={stats['alerts']}, artifacts={stats['artifacts']}, unique={stats['unique']}, "
-                f"enriched={stats['enriched']}, unsupported={stats['unsupported']}, errors={stats['errors']}"
+                f"enriched={stats['enriched']}, unsupported={stats['unsupported']}, "
+                f"invalid={stats['invalid']}, errors={stats['errors']}"
             )
             self.update_playbook_status(PlaybookJobStatus.SUCCESS, message)
         except Exception as e:
             self.logger.exception(e)
-            self.update_playbook_status(PlaybookJobStatus.FAILED, f"Error during mock TI enrichment: {e}")
+            self.update_playbook_status(PlaybookJobStatus.FAILED, f"Error during TI enrichment: {e}")
         return
 
 
@@ -163,7 +110,8 @@ if __name__ == "__main__":
 
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ASP.settings")
     django.setup()
-    model = PlaybookModel(source_row_id='44958bcb-31ab-4fdf-85e7-60e02f9677f2')
+    model = PlaybookModel(source_row_id='3a22cbbf-5b33-4727-aa99-0ab8f763c196')
     module = Playbook()
     module._playbook_model = model
+
     module.run()

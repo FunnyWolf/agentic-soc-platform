@@ -1,6 +1,6 @@
 ---
-name: asp-ti-en
-description: 'Query threat intelligence for IOCs (IP, hash, URL, domain). Use when users want to check an indicator against TI providers, assess risk level, or gather threat context.'
+name: asp-threat-intelligence-en
+description: 'Query threat intelligence for IOCs (IP, hash, URL, domain). Use when users want to check an indicator against ThreatIntelligence providers, assess risk level, or gather threat context.'
 argument-hint: 'query ti <indicator> | query ti <indicator> from <provider>'
 compatibility: connect to asp mcp server
 metadata:

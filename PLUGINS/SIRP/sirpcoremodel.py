@@ -430,7 +430,7 @@ class ProductCategory(StrEnum):
     OT = "OT"
     PROXY = "Proxy"
     UEBA = "UEBA"
-    TI = "TI"
+    TI = "ThreatIntelligence"
     IAM = "IAM"
     EDR = "EDR"
     NDR = "NDR"

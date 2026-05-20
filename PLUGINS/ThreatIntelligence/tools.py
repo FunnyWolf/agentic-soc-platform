@@ -73,7 +73,7 @@ class TIToolKit:
 
     @staticmethod
     def list_providers() -> List[str]:
-        """Return names of all registered TI providers."""
+        """Return names of all registered ThreatIntelligence providers."""
         return list(PROVIDERS.keys())
 
     @staticmethod

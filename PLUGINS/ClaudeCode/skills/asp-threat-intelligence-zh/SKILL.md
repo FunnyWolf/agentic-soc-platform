@@ -1,5 +1,5 @@
 ---
-name: asp-ti-zh
+name: asp-threat-intelligence-zh
 description: '查询 IOC（IP、哈希、URL、域名）的威胁情报。当用户要检查某个指标是否恶意、评估风险等级或收集威胁上下文时使用。'
 argument-hint: 'query ti <indicator> | query ti <indicator> from <provider>'
 compatibility: connect to asp mcp server
