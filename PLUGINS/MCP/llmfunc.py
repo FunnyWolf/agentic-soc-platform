@@ -12,11 +12,11 @@ from PLUGINS.SIEM.tools import SIEMToolKit
 from PLUGINS.TI.models import TIQueryOutput
 from PLUGINS.TI.tools import TIToolKit
 from PLUGINS.SIRP.nocolymodel import Group, Condition, Operator
-from PLUGINS.SIRP.sirpapi import Alert, Artifact, Case, Enrichment, Knowledge, Playbook, Ticket
+from PLUGINS.SIRP.sirpapi import Alert, Artifact, Case, Enrichment, Knowledge, Playbook
 from PLUGINS.SIRP.sirpbasemodel import AI_PROFILE_MCP
-from PLUGINS.SIRP.sirpcoremodel import TicketStatus, TicketType, ArtifactType, ArtifactRole, Severity, AttackStage, \
+from PLUGINS.SIRP.sirpcoremodel import ArtifactType, ArtifactRole, Severity, AttackStage, \
     Confidence, \
-    AlertStatus, CaseStatus, CaseVerdict, EnrichmentModel, EnrichmentType, EnrichmentProvider, TicketModel
+    AlertStatus, CaseStatus, CaseVerdict, EnrichmentModel, EnrichmentType, EnrichmentProvider
 from PLUGINS.SIRP.sirpextramodel import PlaybookJobStatus
 
 
@@ -229,70 +229,6 @@ def create_enrichment(
     return enrichment_row_id
 
 
-# Ticket
-def create_ticket(
-        case_id: Annotated[str, Field(description="Target case ID to attach the ticket to (挂载 Ticket 的目标 Case ID)")],
-        uid: Annotated[str, Field(description="External ticket ID to sync into SIRP (同步到 SIRP 的外部工单 ID)")],
-        title: Annotated[str, Field(description="Ticket title (工单标题)")] = "",
-        status: Annotated[Optional[TicketStatus], Field(description="External ticket status (外部工单状态)")] = None,
-        type: Annotated[Optional[TicketType], Field(description="External ticket type (外部工单类型)")] = None,
-        src_url: Annotated[str, Field(description="External ticket URL (外部工单 URL)")] = ""
-) -> Annotated[str, Field(description="Created ticket record row ID (创建的 Ticket 行 ID)")]:
-    """Create one synced external ticket record in SIRP and attach it to a case. (在 SIRP 中创建一条同步的外部工单记录并挂载到 Case)"""
-    model = TicketModel()
-    model.uid = uid
-    model.title = title
-    model.status = status
-    model.type = type
-    model.src_url = src_url
-    ticket_row_id = Ticket.create(model)
-    Case.attach_ticket(case_id=case_id, ticket_row_id=ticket_row_id)
-    return ticket_row_id
-
-
-def list_tickets(
-        row_id: Annotated[Optional[str], Field(description="Ticket row ID filter, e.g. 03c26478-b213-44c8-b651-3cc88abaac01 (Ticket 行 ID 过滤)")] = None,
-        status: Annotated[Optional[list[TicketStatus]], Field(description="Ticket status filter (工单状态过滤)")] = None,
-        type: Annotated[Optional[list[TicketType]], Field(description="Ticket type filter (工单类型过滤)")] = None,
-        uid: Annotated[Optional[str], Field(description="External ticket ID filter, exact match (外部工单 ID 过滤,精确匹配)")] = None,
-        limit: Annotated[int, Field(description="Max tickets to return (最多返回条数)")] = 10
-) -> Annotated[list[dict], Field(description="Matching tickets as AI-friendly JSON list (匹配的 Ticket 列表)")]:
-    """List synced external tickets with optional filters. (列出同步的外部工单,支持多条件过滤)"""
-    conditions = []
-
-    if row_id:
-        conditions.append(Condition(field="rowId", operator=Operator.EQ, value=row_id))
-    if status:
-        conditions.append(Condition(field="status", operator=Operator.IN, value=status))
-    if type:
-        conditions.append(Condition(field="type", operator=Operator.IN, value=type))
-    if uid:
-        conditions.append(Condition(field="uid", operator=Operator.EQ, value=uid))
-
-    filter_model = Group(logic="AND", children=conditions or [])
-    models = Ticket.list(filter_model, lazy_load=True)
-    return _dump_models_for_ai(models, limit)
-
-
-def update_ticket(
-        ticket_id: Annotated[str, Field(description="Ticket ID to update (待更新的 Ticket ID)")],
-        uid: Annotated[Optional[str], Field(description="Updated external ticket ID (更新外部工单 ID)")] = None,
-        title: Annotated[Optional[str], Field(description="Updated ticket title (更新工单标题)")] = None,
-        status: Annotated[Optional[TicketStatus], Field(description="Updated external ticket status (更新外部工单状态)")] = None,
-        type: Annotated[Optional[TicketType], Field(description="Updated external ticket type (更新外部工单类型)")] = None,
-        src_url: Annotated[Optional[str], Field(description="Updated external ticket URL (更新外部工单 URL)")] = None
-) -> Annotated[Optional[str], Field(description="Updated ticket row ID, or None if not found (更新后的 Ticket 行 ID,不存在时返回 None)")]:
-    """Update one synced external ticket record in SIRP. (更新 SIRP 中一条同步的外部工单记录)"""
-    return Ticket.update_by_id(
-        ticket_id=ticket_id,
-        uid=uid,
-        title=title,
-        status=status,
-        type=type,
-        src_url=src_url
-    )
-
-
 # Playbook
 def list_playbook_definitions(
 ) -> Annotated[str, Field(
@@ -476,11 +412,6 @@ REGISTERED_MCP_TOOLS = [
     # knowledge
     update_knowledge,
     search_knowledge,
-
-    # ticket
-    list_tickets,
-    create_ticket,
-    update_ticket,
 
     # SIEM
     get_current_time,

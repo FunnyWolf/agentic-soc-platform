@@ -1,7 +1,34 @@
+import json
+
 from PLUGINS.Mock.SIRP.mock_alert import *
 from PLUGINS.Mock.SIRP.mock_enrichment import *
-from PLUGINS.Mock.SIRP.mock_ticket import *
-from PLUGINS.SIRP.sirpcoremodel import Severity, Impact, Confidence, ProductCategory, CasePriority, CaseStatus, CaseVerdict, CaseModel
+from PLUGINS.SIRP.sirpcoremodel import Severity, Impact, Confidence, ProductCategory, CasePriority, CaseStatus, CaseVerdict, CaseModel, EnrichmentType, EnrichmentProvider, EnrichmentModel
+
+# === Mock External Ticket Enrichments ===
+enrichment_ticket_jira = EnrichmentModel(
+    uid="ticket:SEC-1234",
+    name="[Security] Investigate Phishing Campaign SEC-1234",
+    type=EnrichmentType.EXTERNAL_TICKET,
+    provider=EnrichmentProvider.JIRA,
+    value="SEC-1234",
+    data=json.dumps({"status": "In Progress", "src_url": "", "uid": "SEC-1234"}),
+)
+enrichment_ticket_servicenow = EnrichmentModel(
+    uid="ticket:INC001002",
+    name="CRITICAL: Active Lateral Movement Detected",
+    type=EnrichmentType.EXTERNAL_TICKET,
+    provider=EnrichmentProvider.SERVICENOW,
+    value="INC001002",
+    data=json.dumps({"status": "Resolved", "src_url": "", "uid": "INC001002"}),
+)
+enrichment_ticket_pagerduty = EnrichmentModel(
+    uid="ticket:PD-INC-789456",
+    name="P1: Ransomware Encryption Activity Detected",
+    type=EnrichmentType.EXTERNAL_TICKET,
+    provider=EnrichmentProvider.PAGERDUTY,
+    value="PD-INC-789456",
+    data=json.dumps({"status": "Notified", "src_url": "", "uid": "PD-INC-789456"}),
+)
 
 # === Case 1: Phishing Email Attack (100% Coverage) ===
 case1_phishing = CaseModel(
@@ -22,8 +49,7 @@ case1_phishing = CaseModel(
     correlation_uid="CORR-PHISH-XYZ-123",
     severity_ai=Severity.HIGH,
     confidence_ai=Confidence.HIGH,
-    tickets=[ticket_jira],
-    enrichments=[enrichment_business],
+    enrichments=[enrichment_business, enrichment_ticket_jira],
     alerts=[alert_user_reported_phishing, alert_malware_blocked]
 )
 
@@ -48,7 +74,7 @@ case2_lateral_movement = CaseModel(
     severity_ai=Severity.CRITICAL,
     confidence_ai=Confidence.HIGH,
 
-    tickets=[ticket_servicenow],
+    enrichments=[enrichment_ticket_servicenow],
     alerts=[alert_psexec_lateral, alert_credential_dumping]
 )
 
@@ -71,7 +97,6 @@ case3_dns_tunnel = CaseModel(
     correlation_uid="CORR-DNS-TUN-789",
     severity_ai=Severity.MEDIUM,
     confidence_ai=Confidence.MEDIUM,
-    tickets=[],
     enrichments=[],
     alerts=[alert_dns_tunnel_volume, alert_dns_long_query]
 )
@@ -95,7 +120,7 @@ case4_brute_force = CaseModel(
     correlation_uid="CORR-BRUTE-001",
     severity_ai=Severity.HIGH,
     confidence_ai=Confidence.HIGH,
-    tickets=[ticket_jira],
+    enrichments=[enrichment_ticket_jira],
     alerts=[alert_brute_force_ssh]
 )
 
@@ -118,7 +143,7 @@ case5_ransomware = CaseModel(
     correlation_uid="CORR-RANSOMWARE-001",
     severity_ai=Severity.CRITICAL,
     confidence_ai=Confidence.HIGH,
-    tickets=[ticket_pagerduty],
+    enrichments=[enrichment_ticket_pagerduty],
     alerts=[alert_malware_execution]
 )
 
@@ -141,7 +166,7 @@ case6_unauthorized_access = CaseModel(
     correlation_uid="CORR-UNAUTH-002",
     severity_ai=Severity.MEDIUM,
     confidence_ai=Confidence.MEDIUM,
-    tickets=[],
+    enrichments=[],
     alerts=[alert_unauthorized_access]
 )
 
@@ -164,7 +189,7 @@ case7_data_exfil = CaseModel(
     correlation_uid="CORR-EXFIL-003",
     severity_ai=Severity.CRITICAL,
     confidence_ai=Confidence.HIGH,
-    tickets=[ticket_servicenow],
+    enrichments=[enrichment_ticket_servicenow],
     alerts=[alert_data_exfiltration]
 )
 
@@ -189,7 +214,7 @@ case8_email_campaign = CaseModel(
     severity_ai=Severity.HIGH,
     confidence_ai=Confidence.HIGH,
 
-    tickets=[ticket_jira],
+    enrichments=[enrichment_ticket_jira],
     alerts=[alert_malicious_email_attachment]
 )
 
@@ -214,7 +239,7 @@ case9_priv_esc = CaseModel(
     severity_ai=Severity.CRITICAL,
     confidence_ai=Confidence.HIGH,
 
-    tickets=[ticket_pagerduty],
+    enrichments=[enrichment_ticket_pagerduty],
     alerts=[alert_privilege_escalation]
 )
 
@@ -239,7 +264,7 @@ case10_cloud_misconfig = CaseModel(
     severity_ai=Severity.CRITICAL,
     confidence_ai=Confidence.HIGH,
 
-    tickets=[ticket_servicenow],
+    enrichments=[enrichment_ticket_servicenow],
     alerts=[alert_cloud_config_change]
 )
 
@@ -263,8 +288,7 @@ case11_brute_force = CaseModel(
 
     severity_ai=Severity.CRITICAL,
     confidence_ai=Confidence.HIGH,
-    tickets=[ticket_pagerduty],
-    enrichments=[enrichment_business],
+    enrichments=[enrichment_business, enrichment_ticket_pagerduty],
     alerts=[alert_brute_force_siem]
 )
 
@@ -289,8 +313,7 @@ case12_sql_injection = CaseModel(
     severity_ai=Severity.HIGH,
     confidence_ai=Confidence.HIGH,
 
-    tickets=[ticket_jira],
-    enrichments=[enrichment_urlhaus_malware],
+    enrichments=[enrichment_urlhaus_malware, enrichment_ticket_jira],
     alerts=[alert_sql_injection_siem]
 )
 
@@ -314,7 +337,6 @@ case13_ransomware = CaseModel(
 
     severity_ai=Severity.CRITICAL,
     confidence_ai=Confidence.HIGH,
-    tickets=[ticket_servicenow, ticket_pagerduty],
-    enrichments=[enrichment_carbonblack_execution],
+    enrichments=[enrichment_carbonblack_execution, enrichment_ticket_servicenow, enrichment_ticket_pagerduty],
     alerts=[alert_ransomware_siem]
 )

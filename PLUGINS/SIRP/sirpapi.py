@@ -11,7 +11,7 @@ from PLUGINS.SIRP.CONFIG import SIRP_NOTICE_WEBHOOK
 from PLUGINS.SIRP.nocolyapi import HTTP_SESSION, WorksheetRow
 from PLUGINS.SIRP.nocolymodel import Condition, Group, Operator
 from PLUGINS.SIRP.sirpbasemodel import AutoAccount, BaseSystemModel, AI_PROFILE_MCP
-from PLUGINS.SIRP.sirpcoremodel import Severity, Confidence, EnrichmentModel, TicketModel, ArtifactModel, AlertModel, CaseModel, ArtifactType
+from PLUGINS.SIRP.sirpcoremodel import Severity, Confidence, EnrichmentModel, ArtifactModel, AlertModel, CaseModel, ArtifactType
 from PLUGINS.SIRP.sirpextramodel import PlaybookJobStatus, PlaybookModel, KnowledgeModel
 
 
@@ -406,59 +406,6 @@ class Enrichment(BaseWorksheetEntity[EnrichmentModel]):
         return cls.update(model)
 
 
-class Ticket(BaseWorksheetEntity[TicketModel]):
-    """Ticket 实体类"""
-    WORKSHEET_ID = "ticket"
-    MODEL_CLASS = TicketModel
-
-    @classmethod
-    def get_by_id(cls, ticket_id, lazy_load=False) -> Union[TicketModel, None]:
-        filter_model = Group(
-            logic="AND",
-            children=[
-                Condition(
-                    field="id",
-                    operator=Operator.EQ,
-                    value=ticket_id
-                )
-            ]
-        )
-        result = cls.list(filter_model, lazy_load=lazy_load)
-        if result:
-            return result[0]
-        else:
-            return None
-
-    @classmethod
-    def update_by_id(
-            cls,
-            ticket_id: str,
-            uid: Union[str, None] = None,
-            title: Union[str, None] = None,
-            status=None,
-            type=None,
-            src_url: Union[str, None] = None
-    ) -> Union[str, None]:
-        ticket_old = cls.get_by_id(ticket_id, lazy_load=True)
-        if not ticket_old:
-            return None
-
-        ticket_new = TicketModel()
-        ticket_new.row_id = ticket_old.row_id
-        if uid is not None:
-            ticket_new.uid = uid
-        if title is not None:
-            ticket_new.title = title
-        if status is not None:
-            ticket_new.status = status
-        if type is not None:
-            ticket_new.type = type
-        if src_url is not None:
-            ticket_new.src_url = src_url
-
-        return cls.update(ticket_new)
-
-
 class Artifact(BaseWorksheetEntity[ArtifactModel]):
     """Artifact 实体类 - 关联 Enrichment"""
     WORKSHEET_ID = "artifact"
@@ -707,7 +654,7 @@ class Alert(BaseWorksheetEntity[AlertModel]):
 
 
 class Case(BaseWorksheetEntity[CaseModel]):
-    """Case 实体类 - 关联 Alert、Enrichment 和 Ticket"""
+    """Case 实体类 - 关联 Alert 和 Enrichment"""
     WORKSHEET_ID = "case"
     MODEL_CLASS = CaseModel
     ANALYSIS_STREAM_NAME = "CASE_ANALYSIS_QUEUE"
@@ -726,11 +673,6 @@ class Case(BaseWorksheetEntity[CaseModel]):
             include_system_fields=include_system_fields,
             lazy_load=False
         )
-        model.tickets = Ticket.list_by_row_ids(
-            model.tickets,
-            include_system_fields=include_system_fields,
-            lazy_load=False
-        )
         return model
 
     @classmethod
@@ -742,8 +684,6 @@ class Case(BaseWorksheetEntity[CaseModel]):
         if model.enrichments is not None:
             model.enrichments = Enrichment.batch_update_or_create(model.enrichments)
 
-        if model.tickets is not None:
-            model.tickets = Ticket.batch_update_or_create(model.tickets)
         return model
 
     @classmethod
@@ -862,33 +802,6 @@ class Case(BaseWorksheetEntity[CaseModel]):
         cls.update(case_new)
 
         return enrichment_row_id
-
-    @classmethod
-    def attach_ticket(
-            cls,
-            case_id: str,
-            ticket_row_id: str
-    ) -> Union[str, None]:
-        case_old = cls.get_by_id(case_id, lazy_load=True)
-        if not case_old:
-            return None
-
-        existing_tickets = []
-        for ticket in case_old.tickets or []:
-            if isinstance(ticket, str):
-                existing_tickets.append(ticket)
-            elif ticket.row_id:
-                existing_tickets.append(ticket.row_id)
-
-        if ticket_row_id in existing_tickets:
-            return ticket_row_id
-
-        case_new = CaseModel()
-        case_new.row_id = case_old.row_id
-        case_new.tickets = [*existing_tickets, ticket_row_id]
-        cls.update(case_new)
-
-        return ticket_row_id
 
     @classmethod
     def mark_analysis_requested(

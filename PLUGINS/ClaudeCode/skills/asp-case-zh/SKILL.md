@@ -1,6 +1,6 @@
 ---
 name: asp-case-zh
-description: '管理 ASP 安全 case。适用于审查 case、列出 case、查看 case 讨论、检查 case 相关告警，或更新 case 工作流和 AI 分析字段,附加外部 ticket 到 case。'
+description: '管理 ASP 安全 case。适用于审查 case、列出 case、查看 case 讨论、检查 case 相关告警，或更新 case 工作流和 AI 分析字段。'
 argument-hint: 'review case <case_id> | list cases [filters] | update case <case_id> <fields>'
 compatibility: connect to asp mcp server
 metadata:
@@ -24,7 +24,6 @@ Case。
 - 用户希望按状态、严重级别、置信度、verdict、correlation UID、标题或标签查找 case。
 - 用户想更新 case 工作流字段或 AI 分析字段。
 - 用户想把 enrichment 或结构化分析附加到 case。
-- 用户想把外部 ticket 记录附加到 case。
 
 ## 运行规则
 
@@ -43,14 +42,13 @@ Case。
 5. 如果用户要更新 case 但没提供 case ID，询问 case ID。
 6. 如果用户给出了多个过滤条件，只应用 ASP 直接支持的部分，并明确说明不支持的过滤条件。
 7. 如果用户要把 enrichment 或结构化分析附加到 case，使用 `asp-enrichment-zh` skill。
-8. 如果用户要把外部 ticket 附加到 case，使用 `asp-ticket-zh` skill。
 
 ## SOP
 
 ### 审查单个 Case
 
 1. 如果用户要求审查、分析或查看 case 详情，调用 `list_cases(case_id=<id>, limit=1, lazy_load=false)`
-   获取完整关联数据（alerts、enrichments、tickets）。默认已包含讨论记录。
+   获取完整关联数据（alerts、enrichments）。默认已包含讨论记录。
 2. 如果只需要快速查看 case 基本信息，调用 `list_cases(case_id=<id>, limit=1, include_discussions=false)` 即可。
 3. 如果结果为空，直接说明找不到该 case。
 4. 只展示与用户请求最相关的部分。

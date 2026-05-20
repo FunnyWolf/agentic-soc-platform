@@ -14,27 +14,6 @@ from PLUGINS.SIRP.sirpbasemodel import (
 )
 
 
-class TicketStatus(StrEnum):
-    UNKNOWN = 'Unknown'
-    NEW = 'New'
-    IN_PROGRESS = 'In Progress'
-    NOTIFIED = 'Notified'
-    ON_HOLD = 'On Hold'
-    RESOLVED = 'Resolved'
-    CLOSED = 'Closed'
-    CANCELED = 'Canceled'
-    REOPENED = 'Reopened'
-    OTHER = 'Other'
-
-
-class TicketType(StrEnum):
-    OTHER = 'Other'
-    JIRA = 'Jira'
-    SERVICENOW = 'ServiceNow'
-    PAGERDUTY = 'PagerDuty'
-    SLACK = 'Slack'
-
-
 class ArtifactType(StrEnum):
     UNKNOWN = 'Unknown'
     HOSTNAME = 'Hostname'
@@ -546,11 +525,17 @@ class EnrichmentType(StrEnum):
     HISTORY = "History"
     REMEDIATION = "Remediation"
     OBSERVATION = "Observation"
+    EXTERNAL_TICKET = "External Ticket"
 
 
 class EnrichmentProvider(StrEnum):
     UNKNOWN = "Unknown"
     OTHER = "Other"
+
+    JIRA = "Jira"
+    SERVICENOW = "ServiceNow"
+    PAGERDUTY = "PagerDuty"
+    SLACK = "Slack"
     ASP = "ASP"
     INTERNAL = "Internal"
     INTERNAL_CMDB = "Internal CMDB"
@@ -708,32 +693,6 @@ class EnrichmentModel(BaseSystemModel):
     #   查找方式: Enrichment.get_by_uid(uid)
     uid: Optional[str] = Field(default="",
                                 description="Externally computed stable identifier for deduplication (外部计算的稳定唯一标识,用于去重)")
-
-
-class TicketModel(BaseSystemModel):
-    """关联到Case的外部工单信息"""
-    id: Optional[str] = Field(default=None,
-                              init=False,
-                              description="Record ID e.g. ticket_000001 (记录 ID e.g. ticket_000001)",
-                              json_schema_extra={"ai": [AI_PROFILE_MCP]})
-    status: Optional[TicketStatus] = Field(default=None,
-                                           description="External ticket status (外部工单状态)",
-                                           json_schema_extra={"ai": [AI_PROFILE_INVESTIGATION, AI_PROFILE_MCP]})
-    type: Optional[TicketType] = Field(default=None,
-                                       description="External ticket type (外部工单类型)",
-                                       json_schema_extra={"type": 2, "ai": [AI_PROFILE_INVESTIGATION, AI_PROFILE_MCP]})
-    title: Optional[str] = Field(default="",
-                                 description="Ticket title (工单标题)",
-                                 json_schema_extra={"ai": [AI_PROFILE_INVESTIGATION, AI_PROFILE_MCP]})
-    uid: Optional[str] = Field(default="",
-                               description="External ticket ID (外部工单 ID)",
-                               json_schema_extra={"ai": [AI_PROFILE_MCP]})
-    src_url: Optional[str] = Field(default="",
-                                   description="External ticket URL (外部工单 URL)",
-                                   json_schema_extra={"ai": [AI_PROFILE_MCP]})
-
-    # 反向关联,无需手动处理
-    case: Optional[List[Union[CaseModel, str]]] = Field(default=None, init=False, description="Linked case row_id (关联案件行 ID)")
 
 
 class ArtifactModel(BaseSystemModel):
@@ -999,8 +958,6 @@ class CaseModel(BaseSystemModel):
     respond_time_calc: Optional[Any] = Field(default=None, description="Calculated response time (计算的响应时间)")
 
     # 关联表
-    tickets: Optional[List[Union[TicketModel, str]]] = Field(default=None, description="Linked external tickets (关联外部工单)",
-                                                             json_schema_extra={"ai": [AI_PROFILE_INVESTIGATION, AI_PROFILE_MCP]})
     enrichments: Optional[List[Union[EnrichmentModel, str]]] = Field(default=None, description="Case enrichments (案件富化)",
                                                                      json_schema_extra={"ai": [AI_PROFILE_INVESTIGATION, AI_PROFILE_MCP]})
     alerts: Optional[List[Union[AlertModel, str]]] = Field(default=None, description="Linked alerts (关联的告警)",

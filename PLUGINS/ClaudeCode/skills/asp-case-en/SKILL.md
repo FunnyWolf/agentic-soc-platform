@@ -1,6 +1,6 @@
 ---
 name: asp-case-en
-description: 'Manage ASP security cases, review discussions, update workflow or AI analysis fields, attach enrichment, or attach external tickets.'
+description: 'Manage ASP security cases, review discussions, update workflow or AI analysis fields, or attach enrichment.'
 argument-hint: 'review case <case_id> | list cases [filters] | update case <case_id> <fields>'
 compatibility: connect to asp mcp server
 metadata:
@@ -23,7 +23,6 @@ Case is the core investigation object in ASP. One case can have one or more aler
 - The user wants to find cases by status, severity, confidence, verdict, correlation UID, title, or tags.
 - The user wants to update case workflow fields or AI analysis fields.
 - The user wants to attach enrichment or structured analysis to a case.
-- The user wants to attach an external ticket record to a case.
 
 ## Operating Rules
 
@@ -43,13 +42,12 @@ Case is the core investigation object in ASP. One case can have one or more aler
 5. If the user wants to update a case but did not provide a case ID, ask for the case ID.
 6. If the user gives multiple filters, apply only the ones ASP supports directly and state any unsupported filters explicitly.
 7. If the user wants to attach enrichment or structured analysis to the case, use the `asp-enrichment-en` skill.
-8. If the user wants to attach an external ticket to the case, use the `asp-ticket-en` skill.
 
 ## SOP
 
 ### Review One Case
 
-1. If the user wants to review, analyze, or inspect case details, call `list_cases(case_id=<id>, limit=1, lazy_load=false)` to fetch the full related data, including alerts, enrichments, and tickets. Discussions are included by default.
+1. If the user wants to review, analyze, or inspect case details, call `list_cases(case_id=<id>, limit=1, lazy_load=false)` to fetch the full related data, including alerts and enrichments. Discussions are included by default.
 2. If the user only needs the basic case information, call `list_cases(case_id=<id>, limit=1, include_discussions=false)`.
 3. If the result is empty, state that the case was not found.
 4. Present only the parts most relevant to the user's request.
