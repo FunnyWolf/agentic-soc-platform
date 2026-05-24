@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Literal, Optional, Union
 
-import dateparser
+from dateutil import parser as dateutil_parser
 from pydantic import BaseModel, Field, model_validator, field_validator
 
 SUMMARY_THRESHOLD = 1000
@@ -17,16 +17,10 @@ def _normalize_time_input(value: Any, relative_base: datetime) -> str:
     if isinstance(value, datetime):
         parsed = value
     else:
-        parsed = dateparser.parse(
-            str(value),
-            settings={
-                "RELATIVE_BASE": relative_base,
-                "RETURN_AS_TIMEZONE_AWARE": True,
-            },
-        )
-
-    if parsed is None:
-        raise ValueError(f"Unable to parse time value: {value}")
+        try:
+            parsed = dateutil_parser.parse(str(value), default=relative_base)
+        except (ValueError, OverflowError):
+            raise ValueError(f"Unable to parse time value: {value}")
 
     if parsed.tzinfo is None:
         parsed = parsed.replace(tzinfo=system_timezone)
