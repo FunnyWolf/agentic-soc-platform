@@ -1,6 +1,6 @@
 from elasticsearch import Elasticsearch
 
-from PLUGINS.ELK.CONFIG import ELK_HOST, ELK_USER, ELK_PASS
+from PLUGINS.ELK.CONFIG import ELK_HOST, ELK_KEY
 
 
 class ELKClient:
@@ -11,7 +11,7 @@ class ELKClient:
         if cls._instance is None:
             cls._instance = Elasticsearch(
                 ELK_HOST,
-                basic_auth=(ELK_USER, ELK_PASS),
+                api_key=ELK_KEY,
                 verify_certs=False,
                 request_timeout=30
             )
