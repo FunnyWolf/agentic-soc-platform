@@ -226,34 +226,40 @@ Field mapping principles:
 - Use Enrichment only for supplementary information that is useful for investigation but does not fit core Alert/Case/Artifact fields. Do not convert every unmapped field into an Enrichment; keep it in `unmapped` by default and create Enrichment only when structured display or automation consumption is needed.
 - For threat intelligence or Owner attribution on an entity, prefer storing directly in the corresponding `ArtifactModel` fields (`owner`, `reputation_score`, `reputation_provider`); create an EnrichmentModel and attach it to ArtifactModel only when richer structured content is needed.
 
-### Step 6 — Add the Debug Entry Point
+### Step 6 — Create a Test Script
 
-Append to the end of the file:
+Create an independent test script at `TEST/test_module_<slug>.py` (use a readable slug derived from the rule name, e.g. `test_module_cloud_01.py`). Do **not** add `if __name__ == "__main__":` blocks to the module file itself — keep test code separate so the module stays clean.
+
+Use the standard test script template:
 
 ```python
+import os, sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ASP.settings")
+import django; django.setup()
+
+import importlib.util
+_mod = importlib.util.module_from_spec(
+    importlib.util.spec_from_file_location("m", Path(__file__).resolve().parents[1] / "MODULES" / "<rule-name>.py")
+)
+_mod.__spec__.loader.exec_module(_mod)
+Module = _mod.Module
+
 if __name__ == "__main__":
-    import os
-    import django
-
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ASP.settings")
-    django.setup()
     module = Module()
-    module.debug_message_id = "<replace with a real stream message ID>"
-    module.run()
+    # module.debug_message_id = "<message_id>"
+    # module.run()
+
+    for mid in module.read_stream_head_ids(20):
+        module.debug_message_id = mid
+        module.run()
 ```
 
-Remind the user to replace `debug_message_id` with a real message ID from the Redis Stream to enable direct script execution for debugging.
-
-If batch validation is useful, add this note as well for testing the earliest alerts in order:
-
-```python
-# Batch test the earliest 100 alerts
-module = Module()
-message_ids = module.read_stream_head_ids(100)
-for message_id in message_ids:
-    module.debug_message_id = message_id
-    module.run()
-```
+Two modes:
+- Comment out the batch loop, uncomment the single-message lines to debug one alert.
+- Default: batch-process the oldest N messages from the stream.
 
 ## Clarification Rules
 

@@ -3,8 +3,8 @@
 # Agentic SOC Platform
 
 <p align="center">
-  <a href="https://asp.viperrtp.com/zh/asf/Development/environment_setup/">Getting-started</a> ·
-  <a href="https://asp.viperrtp.com/zh/asf/Introduction/what_is_asf/">Documentation</a>
+  <a href="https://asp.viperrtp.com/zh/asp/Development/environment_setup/">Getting-started</a> ·
+  <a href="https://asp.viperrtp.com/zh/asp/Introduction/what_is_asp/">Documentation</a>
 </p>
 
 <p align="center">
@@ -30,7 +30,8 @@
 
 - 🧠 **AI 驱动智能**：利用内置的 Langgraph 和 Dify 等 AI Agent 模板，支持本地 LLM，增强告警分析和自动化响应能力。
 - 📊 **内置 SIRP 平台**：内置安全事件响应平台（SIRP），可快速定制开发用户界面、数据模型、报告和工作流。
-- ⚙️ **强大的自动化流程**：通过 Webhook + Redis Stream 实现高效的告警处理流程，原生支持 Splunk 和 Kibana（ELK）等主流 SIEM 平台。
+- ⚙️ **强大的自动化流程**：通过 Webhook + Redis Stream 实现高效的告警处理流程，原生支持 Splunk 和 Kibana（ELK）等主流 SIEM
+  平台。
 - 🛠️ **高度可扩展性**：提供丰富的模块和插件库。整个框架用 Python 编写，便于二次开发以及与各类安全设备和 API 集成。
 - 🛡️ **本地部署与数据控制**：支持完全本地化部署。所有数据、模型和操作都可以在您自己的环境中托管，确保企业数据安全和隐私。
 - ⚡ **流式与批量处理**：提供用于实时告警分析的流式处理（模块）和用于用户触发任务（剧本）的事件驱动自动化。

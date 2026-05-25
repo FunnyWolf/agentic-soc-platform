@@ -3,7 +3,7 @@ import json
 from Lib.baseplaybook import BasePlaybook
 from PLUGINS.SIRP.sirpapi import Artifact, Case
 from PLUGINS.SIRP.sirpcoremodel import EnrichmentModel, ArtifactModel, EnrichmentType, EnrichmentProvider
-from PLUGINS.SIRP.sirpextramodel import PlaybookJobStatus, PlaybookModel
+from PLUGINS.SIRP.sirpextramodel import PlaybookJobStatus
 from PLUGINS.ThreatIntelligence.tools import TIToolKit
 
 TI_ENRICHMENT_TYPE = EnrichmentType.THREAT_INTELLIGENCE
@@ -102,16 +102,3 @@ class Playbook(BasePlaybook):
             self.logger.exception(e)
             self.update_playbook_status(PlaybookJobStatus.FAILED, f"Error during TI enrichment: {e}")
         return
-
-
-if __name__ == "__main__":
-    import os
-    import django
-
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ASP.settings")
-    django.setup()
-    model = PlaybookModel(source_row_id='3a22cbbf-5b33-4727-aa99-0ab8f763c196')
-    module = Playbook()
-    module._playbook_model = model
-
-    module.run()

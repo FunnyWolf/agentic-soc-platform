@@ -246,34 +246,40 @@ class Module(BaseModule):
 - 针对实体的威胁情报信息或 Owner 归属，优先直接存储到 `ArtifactModel` 的对应字段（如 `owner`、`reputation_score`、
   `reputation_provider`）；若需要更丰富的结构化内容，再创建 EnrichmentModel 挂载到 ArtifactModel。
 
-### Step 6 — 添加调试入口
+### Step 6 — 创建测试脚本
 
-在文件末尾追加：
+在 `TEST/test_module_<slug>.py` 创建独立测试脚本（使用可读的 slug，如 `test_module_cloud_01.py`）。**不要**在模块文件本身添加 `if __name__ == "__main__":` 块——测试代码与模块代码分离，保持模块文件干净。
+
+使用标准测试脚本模板：
 
 ```python
+import os, sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ASP.settings")
+import django; django.setup()
+
+import importlib.util
+_mod = importlib.util.module_from_spec(
+    importlib.util.spec_from_file_location("m", Path(__file__).resolve().parents[1] / "MODULES" / "<rule-name>.py")
+)
+_mod.__spec__.loader.exec_module(_mod)
+Module = _mod.Module
+
 if __name__ == "__main__":
-    import os
-    import django
-
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ASP.settings")
-    django.setup()
     module = Module()
-    module.debug_message_id = "<填入一个真实的 stream message ID>"
-    module.run()
+    # module.debug_message_id = "<message_id>"
+    # module.run()
+
+    for mid in module.read_stream_head_ids(20):
+        module.debug_message_id = mid
+        module.run()
 ```
 
-提示用户将 `debug_message_id` 替换为 Redis Stream 中的真实消息 ID，便于直接运行脚本进行调试。
-
-如果需要批量验证，可补充说明下面这种方式，用于顺序测试最早的若干条告警：
-
-```python
-# 批量测试最早的100条告警
-module = Module()
-message_ids = module.read_stream_head_ids(100)
-for message_id in message_ids:
-    module.debug_message_id = message_id
-    module.run()
-```
+两种模式：
+- 注释掉批量循环，取消注释单条消息行，调试单条告警。
+- 默认：批量处理 stream 中最早的 N 条消息。
 
 ## 澄清规则
 

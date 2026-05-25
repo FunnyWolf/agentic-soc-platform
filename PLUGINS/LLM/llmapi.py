@@ -4,7 +4,6 @@ import httpx
 import urllib3
 from langchain_core.messages import AIMessage
 from langchain_core.output_parsers import StrOutputParser
-from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
 
 from Lib.log import logger
@@ -33,7 +32,7 @@ class LLMAPI(object):
         self.temperature = temperature
         self.alive = False
 
-    def get_model(self, tag: str | list[str] | None = None, **kwargs) -> ChatOpenAI | ChatOllama:
+    def get_model(self, tag: str | list[str] | None = None, **kwargs) -> ChatOpenAI:
         """
         Gets and returns the corresponding LangChain ChatModel instance based on the tag.
 
@@ -49,7 +48,7 @@ class LLMAPI(object):
             ValueError: If the client_type in the configuration is not supported.
 
         Returns:
-            ChatOpenAI | ChatOllama: LangChain's chat model instance.
+            ChatOpenAI : LangChain's chat model instance.
         """
         selected_config = None
 

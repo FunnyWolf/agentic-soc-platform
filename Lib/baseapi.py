@@ -49,7 +49,7 @@ class BaseAPI(ABC):
         Get the file path based on the workbook name.
         """
 
-        if os.path.isfile(filename):  # "/root/asf/ES-Rule-21-Phishing_user_report_mail/senior_phishing_expert.md"
+        if os.path.isfile(filename):  # "/root/asp/ES-Rule-21-Phishing_user_report_mail/senior_phishing_expert.md"
             template_path = filename
         else:
             if filename.endswith('.md'):  # "senior_phishing_expert.md"
@@ -76,7 +76,7 @@ class BaseAPI(ABC):
         Get the file path based on the workbook name.
         """
 
-        if os.path.isfile(filename):  # "/root/asf/ES-Rule-21-Phishing_user_report_mail/senior_phishing_expert.md"
+        if os.path.isfile(filename):  # "/root/asp/ES-Rule-21-Phishing_user_report_mail/senior_phishing_expert.md"
             return filename
         else:
             if os.path.join(DATA_DIR, self.module_name, filename):  # "ES-Rule-21-Phishing_user_report_mail/senior_phishing_expert.md"

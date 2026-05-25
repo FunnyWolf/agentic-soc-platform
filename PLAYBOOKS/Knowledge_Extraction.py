@@ -2,7 +2,7 @@ from Lib.baseplaybook import BasePlaybook
 from PLUGINS.SIRP.analysis import extract_knowledge_from_case
 from PLUGINS.SIRP.sirpapi import Case, Knowledge
 from PLUGINS.SIRP.sirpbasemodel import AI_PROFILE_INVESTIGATION
-from PLUGINS.SIRP.sirpextramodel import KnowledgeModel, KnowledgeSource, PlaybookJobStatus, PlaybookModel
+from PLUGINS.SIRP.sirpextramodel import KnowledgeModel, KnowledgeSource, PlaybookJobStatus
 
 
 class Playbook(BasePlaybook):
@@ -58,16 +58,3 @@ class Playbook(BasePlaybook):
         message = f"Knowledge created: {extraction.title}. Reason: {extraction.reason}"
         self.logger.info(message)
         self.update_playbook_status(PlaybookJobStatus.SUCCESS, message)
-
-
-if __name__ == "__main__":
-    import os
-    import django
-
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ASP.settings")
-    django.setup()
-    model = PlaybookModel(source_row_id='e726966e-d192-476d-9858-f128779d8f87')
-    module = Playbook()
-    module._playbook_model = model
-
-    module.run()

@@ -1,5 +1,7 @@
 import datetime
 
+from django.utils import timezone
+
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.serializers import AuthTokenSerializer
 from rest_framework.generics import UpdateAPIView, DestroyAPIView
@@ -33,8 +35,8 @@ class BaseAuthView(ModelViewSet, UpdateAPIView, DestroyAPIView):
             serializer = AuthTokenSerializer(data={"username": username, "password": password})
             if serializer.is_valid():
                 token, created = Token.objects.get_or_create(user=serializer.validated_data['user'])
-                time_now = datetime.datetime.now()
-                if created or token.created < time_now - datetime.timedelta(minutes=EXPIRE_MINUTES):
+                time_now = timezone.now()
+                if created or token.created < time_now - datetime.timedelta(minutes=EXPIRE_MINUTES):  # type: ignore[operator]
                     # Update creation time to keep token valid
                     token.delete()
                     token = Token.objects.create(user=serializer.validated_data['user'])

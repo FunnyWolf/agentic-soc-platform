@@ -241,23 +241,3 @@ class Module(BaseModule):
             created_case_row_id = Case.create(new_case)
             Case.mark_analysis_requested(row_id=created_case_row_id, cooldown_minutes=3)
         return True
-
-
-if __name__ == "__main__":
-    import os
-    import django
-
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ASP.settings")
-    django.setup()
-
-    # 单独测试某条告警
-    # module = Module()
-    # module.debug_message_id = "1776753170359-0"
-    # module.run()
-
-    # 批量测试最早的100条告警
-    module = Module()
-    message_ids = module.read_stream_head_ids(20)
-    for message_id in message_ids:
-        module.debug_message_id = message_id
-        module.run()

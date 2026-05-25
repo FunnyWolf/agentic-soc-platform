@@ -1,5 +1,5 @@
-# 插件文档地址: https://asp.viperrtp.com/zh/asf/PLUGINS/AlienVaultOTX/
-# Doc: https://asp.viperrtp.com/asf/PLUGINS/AlienVaultOTX/
+# 插件文档地址: https://asp.viperrtp.com/zh/asp/PLUGINS/AlienVaultOTX/
+# Doc: https://asp.viperrtp.com/asp/PLUGINS/AlienVaultOTX/
 
 # 代理设置,如可直接访问AlienVaultOTX则设置为None
 # 支持代理格式

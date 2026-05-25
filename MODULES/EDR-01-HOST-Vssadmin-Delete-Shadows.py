@@ -175,22 +175,3 @@ class Module(BaseModule):
             self.logger.error(f"Case operation failed: {str(e)}")
 
         return True
-
-
-if __name__ == "__main__":
-    import os
-    import django
-
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ASP.settings")
-    django.setup()
-
-    module = Module()
-
-    message_ids = module.read_stream_head_ids(30)
-    for message_id in message_ids:
-        module.debug_message_id = message_id
-        module.run()
-
-    module = Module()
-    module.debug_message_id = "1776753170359-0"
-    module.run()
