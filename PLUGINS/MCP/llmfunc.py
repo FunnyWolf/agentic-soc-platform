@@ -9,15 +9,14 @@ from PLUGINS.Redis.redis_stream_api import RedisStreamAPI
 from PLUGINS.SIEM.models import AdaptiveQueryInput, KeywordSearchInput, SchemaExplorerInput, KeywordSearchOutput, IndexInfo, SchemaIndexSummary, \
     DiscoverIndexFieldsInput, DiscoverIndexFieldsOutput
 from PLUGINS.SIEM.tools import SIEMToolKit
-from PLUGINS.ThreatIntelligence.models import TIQueryOutput
-from PLUGINS.ThreatIntelligence.tools import TIToolKit
 from PLUGINS.SIRP.nocolymodel import Group, Condition, Operator
 from PLUGINS.SIRP.sirpapi import Alert, Artifact, Case, Enrichment, Knowledge, Playbook
 from PLUGINS.SIRP.sirpbasemodel import AI_PROFILE_MCP
-from PLUGINS.SIRP.sirpcoremodel import ArtifactType, ArtifactRole, Severity, AttackStage, \
-    Confidence, \
+from PLUGINS.SIRP.sirpcoremodel import ArtifactType, ArtifactRole, Severity, Confidence, \
     AlertStatus, CaseStatus, CaseVerdict, EnrichmentModel, EnrichmentType, EnrichmentProvider
 from PLUGINS.SIRP.sirpextramodel import PlaybookJobStatus
+from PLUGINS.ThreatIntelligence.models import TIQueryOutput
+from PLUGINS.ThreatIntelligence.tools import TIToolKit
 
 
 def _dump_models_for_ai(models, limit: int) -> list[dict]:
@@ -199,9 +198,8 @@ def create_enrichment(
             description="Target object ID to attach the enrichment to; must start with case_, alert_, or artifact_ (挂载富化的目标对象 ID,须以 case_、alert_ 或 artifact_ 开头)")],
         name: Annotated[str, Field(description="Enrichment name (富化名称)")] = "",
         type: Annotated[EnrichmentType, Field(description="Enrichment type (富化类型)")] = EnrichmentType.OTHER,
-        provider: Annotated[EnrichmentProvider, Field(description="Enrichment provider (富化提供商)")] = EnrichmentProvider.OTHER,
         value: Annotated[str, Field(description="Enrichment value (富化值)")] = "",
-        src_url: Annotated[str, Field(description="Enrichment source URL (富化来源 URL)")] = "",
+        uid: Annotated[str, Field(description="Externally computed stable identifier for deduplication (外部计算的稳定唯一标识,用于去重)")] = "",
         desc: Annotated[str, Field(description="Enrichment summary (富化摘要)")] = "",
         data: Annotated[str, Field(description="Detailed enrichment JSON string (详细富化 JSON 字符串)")] = ""
 ) -> Annotated[str, Field(description="Created enrichment record row ID (创建的 Enrichment 行 ID)")]:
@@ -209,9 +207,9 @@ def create_enrichment(
     model = EnrichmentModel()
     model.name = name
     model.type = type
-    model.provider = provider
+    model.provider = EnrichmentProvider.MCP
     model.value = value
-    model.src_url = src_url
+    model.uid = uid
     model.desc = desc
     model.data = data
     enrichment_row_id = Enrichment.create(model)
