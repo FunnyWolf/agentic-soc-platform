@@ -265,7 +265,6 @@ class Module(BaseModule):
                         role=ArtifactRole.RELATED,
                         value=filename,
                         name=ArtifactName.ATTACHMENT_FILE,
-                        owner=filepath or content_type or "",
                     )
                 )
 

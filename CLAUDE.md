@@ -1,0 +1,1 @@
+- python 可以使用 .venv/Script/python.exe

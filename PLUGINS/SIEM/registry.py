@@ -15,12 +15,12 @@ from PLUGINS.SIEM.models import SchemaFieldInfo, IndexInfo
 def _load_yaml_configs() -> Dict[str, IndexInfo]:
     registry: Dict[str, IndexInfo] = {}
 
-    INDEX_DIR = Path(DATA_DIR) / "PLUGINS" / "SIEM"
+    index_dir = Path(DATA_DIR) / "PLUGINS" / "SIEM"
 
-    if not INDEX_DIR.exists():
+    if not index_dir.exists():
         return registry
 
-    for yaml_file in INDEX_DIR.glob("*.yaml"):
+    for yaml_file in index_dir.glob("*.yaml"):
         try:
             with open(yaml_file, "r", encoding="utf-8") as file:
                 data = yaml.safe_load(file) or {}

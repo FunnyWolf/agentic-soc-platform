@@ -1,5 +1,5 @@
 from PLUGINS.Mock.SIRP.mock_enrichment import *
-from PLUGINS.SIRP.sirpcoremodel import ArtifactName, ArtifactType, ArtifactRole, ArtifactReputationScore, ArtifactModel
+from PLUGINS.SIRP.sirpcoremodel import ArtifactName, ArtifactType, ArtifactRole, ArtifactModel
 
 artifact_evil_email = ArtifactModel(
     name=ArtifactName.SENDER_EMAIL,
@@ -35,7 +35,7 @@ artifact_psexesvc = ArtifactModel(
     type=ArtifactType.PROCESS_NAME,
     role=ArtifactRole.RELATED,
     value="PSEXESVC.exe",
-    owner="System"
+
 )
 artifact_dc01 = ArtifactModel(
     name=ArtifactName.SOURCE_HOST,
@@ -48,7 +48,7 @@ artifact_lsass = ArtifactModel(
     type=ArtifactType.PROCESS_NAME,
     role=ArtifactRole.TARGET,
     value="lsass.exe",
-    owner="System"
+
 )
 artifact_mimikatz = ArtifactModel(
     name=ArtifactName.ACTING_PROCESS,
@@ -61,7 +61,7 @@ artifact_internal_ip = ArtifactModel(
     type=ArtifactType.IP_ADDRESS,
     role=ArtifactRole.ACTOR,
     value="10.1.1.5",
-    owner="Workstation-Pool-DHCP"
+
 )
 artifact_c2_domain = ArtifactModel(
     name=ArtifactName.DOMAIN,
@@ -139,7 +139,7 @@ artifact_insider_user = ArtifactModel(
     type=ArtifactType.EMAIL_ADDRESS,
     role=ArtifactRole.ACTOR,
     value="bob.contractor@example.com",
-    owner="IT Department",
+
     enrichments=[enrichment_okta_user]
 )
 artifact_s3_bucket = ArtifactModel(
@@ -183,14 +183,14 @@ artifact_sql_server = ArtifactModel(
     type=ArtifactType.HOSTNAME,
     role=ArtifactRole.TARGET,
     value="SQL-SERVER-PROD-01",
-    owner="Database Team"
+
 )
 artifact_user_account = ArtifactModel(
     name=ArtifactName.USER_EMAIL,
     type=ArtifactType.EMAIL_ADDRESS,
     role=ArtifactRole.ACTOR,
     value="sarah.johnson@example.com",
-    owner="Sales Department"
+
 )
 artifact_ransomware_ip_2 = ArtifactModel(
     name=ArtifactName.SOURCE_IP,
@@ -216,14 +216,12 @@ artifact_suspicious_domain_2 = ArtifactModel(
     type=ArtifactType.HOSTNAME,
     role=ArtifactRole.RELATED,
     value="update-check.badguy.net",
-    reputation_score=ArtifactReputationScore.MALICIOUS
 )
 artifact_suspicious_domain_3 = ArtifactModel(
     name=ArtifactName.DOMAIN,
     type=ArtifactType.HOSTNAME,
     role=ArtifactRole.RELATED,
     value="check-version.exfil.xyz",
-    reputation_score=ArtifactReputationScore.SUSPICIOUS_RISKY
 )
 artifact_aws_role = ArtifactModel(
     name=ArtifactName.IAM_ROLE,
@@ -242,7 +240,7 @@ artifact_user_account_2 = ArtifactModel(
     type=ArtifactType.EMAIL_ADDRESS,
     role=ArtifactRole.ACTOR,
     value="admin.user@example.com",
-    owner="IT Administration"
+
 )
 artifact_slack_channel = ArtifactModel(
     name=ArtifactName.URL,
@@ -263,14 +261,14 @@ artifact_target_user_brute = ArtifactModel(
     type=ArtifactType.EMAIL_ADDRESS,
     role=ArtifactRole.TARGET,
     value="admin@example.com",
-    owner="System"
+
 )
 artifact_target_host_brute = ArtifactModel(
     name=ArtifactName.TARGET_HOST,
     type=ArtifactType.HOSTNAME,
     role=ArtifactRole.TARGET,
     value="srv-web-prod-01",
-    owner="Operations"
+
 )
 artifact_malicious_url_sqli = ArtifactModel(
     name=ArtifactName.REQUEST_URL,
@@ -289,7 +287,7 @@ artifact_waf_server = ArtifactModel(
     type=ArtifactType.HOSTNAME,
     role=ArtifactRole.TARGET,
     value="web-3.example.com",
-    owner="Web Operations"
+
 )
 artifact_vssadmin_process = ArtifactModel(
     name=ArtifactName.PROCESS_COMMAND_LINE,
@@ -320,12 +318,10 @@ artifact_ransomware_host = ArtifactModel(
     type=ArtifactType.HOSTNAME,
     role=ArtifactRole.TARGET,
     value="srv-db-master",
-    owner="Database Team"
 )
 artifact_ransomware_user = ArtifactModel(
     name=ArtifactName.TARGET_USER,
     type=ArtifactType.EMAIL_ADDRESS,
     role=ArtifactRole.TARGET,
     value="dbadmin@example.com",
-    owner="Database Team"
 )

@@ -666,6 +666,7 @@ class EnrichmentProvider(StrEnum):
     MANUAL = "MANUAL"
     MCP = "MCP"
 
+
 class EnrichmentModel(BaseSystemModel):
     """结构化的内联增强数据,通过添加更多相关细节或上下文来增强或补充与 Artifact/Alert/Case 关联的信息。"""
     id: Optional[str] = Field(default=None,
@@ -686,7 +687,7 @@ class EnrichmentModel(BaseSystemModel):
     #   去重逻辑: Enrichment.create() 优先按 uid 去重,未赋值时回退到 type+provider+value.
     #   查找方式: Enrichment.get_by_uid(uid)
     uid: Optional[str] = Field(default="",
-                                description="Externally computed stable identifier for deduplication (外部计算的稳定唯一标识,用于去重)")
+                               description="Externally computed stable identifier for deduplication (外部计算的稳定唯一标识,用于去重)")
 
     value: Optional[str] = Field(default="",
                                  description="Enrichment value (富化值)",
@@ -719,12 +720,6 @@ class ArtifactModel(BaseSystemModel):
     value: Optional[str] = Field(default="",
                                  description="Artifact value (实体值)",
                                  json_schema_extra={"ai": [AI_PROFILE_INVESTIGATION, AI_PROFILE_MCP]})
-
-    owner: Optional[str] = Field(default="",
-                                 description="Owning system or user (所属系统或用户)",
-                                 json_schema_extra={"ai": [AI_PROFILE_INVESTIGATION, AI_PROFILE_MCP]})
-
-
 
     # 反向关联,无需手动处理
     alerts: Optional[List[Union[AlertModel, str]]] = Field(default=None, init=False, description="Linked alert row_ids (关联告警行 IDs)")

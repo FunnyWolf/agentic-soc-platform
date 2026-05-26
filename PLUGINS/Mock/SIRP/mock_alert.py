@@ -19,7 +19,6 @@ alert_user_reported_phishing = AlertModel(
     rule_id="USER-REPORT-01",
     rule_name="User Reported Phishing",
     correlation_uid="CORR-PHISH-XYZ-123",
-    count=1,
     src_url="https://exchange.example.com/messages/msg-id-12345",
     source_uid="MSG-ID-12345",
     data_sources=["MS Exchange", "Outlook Plugin"],
@@ -44,8 +43,6 @@ alert_user_reported_phishing = AlertModel(
     remediation="Based on the analysis, it is recommended to block the sender's domain 'evil-domain.com' and IP address at the email gateway and firewall. Purge the phishing email from all recipient mailboxes. Force password reset for the user who reported the email and any other potential recipients.",
     unmapped=json.dumps({"x-original-ip": "123.123.123.123"}),
     raw_data=json.dumps({"subject": "Urgent Payroll Update", "from": "no-reply@evil-domain.com", "to": "john.doe@example.com"}),
-    comment_ai="A user reported a suspicious email with urgent language regarding payroll.",
-    case=None,
     enrichments=[],
     artifacts=[artifact_evil_email, artifact_fake_url]
 )
@@ -63,7 +60,6 @@ alert_malware_blocked = AlertModel(
     rule_id="MAL-ATTACH-101",
     rule_name="BlockKnownMalwareAttachment.VirusTotal",
     correlation_uid="CORR-PHISH-XYZ-123",
-    count=5,
     src_url="https://gateway.example.com/logs/log-id-abcdef",
     source_uid="log-id-abcdef",
     data_sources=["Email Gateway", "VirusTotal API"],
@@ -90,8 +86,6 @@ alert_malware_blocked = AlertModel(
 
     unmapped="",
     raw_data=json.dumps({"attachment_hash": "a1b2c3d4e5f6...", "recipient_count": 5}),
-    comment_ai="The email gateway blocked a malicious attachment identified by its hash.",
-    case=None,
     enrichments=[enrichment_virustotal],
     artifacts=[artifact_malware_file, artifact_malware_hash]
 )
@@ -110,7 +104,6 @@ alert_psexec_lateral = AlertModel(
     rule_id="EDR-RULE-LM-001",
     rule_name="PsExec Service Execution",
     correlation_uid="CORR-LAT-MOV-456",
-    count=1,
     src_url="https://edr.example.com/alerts/ALERT-EDR-101",
     source_uid="be7a2f3a-8b1d-4a8a-9b1a-5d1e3e0f1e1a",
     data_sources=["EDR", "Windows Security Events"],
@@ -137,8 +130,6 @@ alert_psexec_lateral = AlertModel(
 
     unmapped="",
     raw_data=json.dumps({"event_id": 4697, "service_name": "PSEXESVC", "source_host": "DC01"}),
-    comment_ai="PsExec was used to move from DC01 to a finance workstation.",
-    case=None,
     enrichments=[],
     artifacts=[artifact_psexesvc, artifact_dc01]
 )
@@ -157,7 +148,6 @@ alert_credential_dumping = AlertModel(
     rule_id="EDR-RULE-CD-005",
     rule_name="LSASS Memory Access by Untrusted Process",
     correlation_uid="CORR-LAT-MOV-456",
-    count=1,
     src_url="https://edr.example.com/alerts/ALERT-EDR-100",
     source_uid="aa1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d",
     data_sources=["EDR"],
@@ -184,8 +174,6 @@ alert_credential_dumping = AlertModel(
 
     unmapped="",
     raw_data=json.dumps({"source_process": "mimikatz.exe", "target_process": "lsass.exe"}),
-    comment_ai="Credential dumping tool Mimikatz was detected on the domain controller.",
-    case=None,
     enrichments=[],
     artifacts=[artifact_lsass, artifact_mimikatz]
 )
@@ -204,7 +192,6 @@ alert_dns_tunnel_volume = AlertModel(
     rule_id="NDR-DNS-007",
     rule_name="High Volume of DNS TXT Queries to Single Domain",
     correlation_uid="CORR-DNS-TUN-789",
-    count=245,
     src_url="https://ndr.example.com/alerts/ALERT-NDR-301",
     source_uid="ndr-flow-98765",
     data_sources=["NDR", "DNS Logs"],
@@ -231,8 +218,6 @@ alert_dns_tunnel_volume = AlertModel(
 
     unmapped="",
     raw_data=json.dumps({"query_count": 245, "domain": "c2.bad-actor-infra.net"}),
-    comment_ai="High volume of DNS TXT queries suggests a DNS tunnel.",
-    case=None,
     enrichments=[enrichment_otx_evil_domain],
     artifacts=[artifact_internal_ip, artifact_c2_domain]
 )
@@ -251,7 +236,6 @@ alert_dns_long_query = AlertModel(
     rule_id="FW-DNS-002",
     rule_name="Long DNS Label Detected",
     correlation_uid="CORR-DNS-TUN-789",
-    count=1,
     src_url="https://fw.example.com/logs/log-id-54321",
     source_uid="log-id-54321",
     data_sources=["Firewall"],
@@ -278,8 +262,6 @@ alert_dns_long_query = AlertModel(
 
     unmapped=json.dumps({"dns_flags": "RD"}),
     raw_data=json.dumps({"qname": "verylonglabelthatmightbeencodeddata.c2.bad-actor-infra.net"}),
-    comment_ai="An unusually long DNS query was detected by the firewall.",
-    case=None,
     enrichments=[enrichment_otx_evil_domain, enrichment_virustotal],
     artifacts=[artifact_dns_port, artifact_google_dns]
 )
@@ -298,7 +280,6 @@ alert_brute_force_ssh = AlertModel(
     rule_id="IDS-SSH-001",
     rule_name="SSH Brute Force Detection",
     correlation_uid="CORR-BRUTE-001",
-    count=245,
     src_url="https://ids.example.com/alerts/ALERT-IDS-501",
     source_uid="ids-ssh-245",
     data_sources=["IDS", "SSH Logs"],
@@ -325,8 +306,6 @@ alert_brute_force_ssh = AlertModel(
 
     unmapped="",
     raw_data=json.dumps({"attempts": 245, "time_window": "15min", "source_ip": "177.19.44.123"}),
-    comment_ai="SSH brute force attack from external IP was detected and blocked.",
-    case=None,
     enrichments=[enrichment_greynoise_scanner],
     artifacts=[artifact_sql_server, artifact_ransomware_ip_2]
 )
@@ -345,7 +324,6 @@ alert_malware_execution = AlertModel(
     rule_id="EDR-RULE-MAL-015",
     rule_name="Ransomware Behavioral Pattern Detection",
     correlation_uid="CORR-RANSOMWARE-001",
-    count=1,
     src_url="https://edr.example.com/alerts/ALERT-EDR-204",
     source_uid="edr-malware-204",
     data_sources=["EDR", "Process Monitoring"],
@@ -372,8 +350,6 @@ alert_malware_execution = AlertModel(
 
     unmapped="",
     raw_data=json.dumps({"script_hash": "5f4dcc3b5aa7", "behaviors": ["file_encryption", "network_scan"]}),
-    comment_ai="Ransomware malware was detected attempting to encrypt files.",
-    case=None,
     enrichments=[enrichment_carbonblack_execution],
     artifacts=[artifact_powershell_script, artifact_malware_registry]
 )
@@ -392,7 +368,6 @@ alert_unauthorized_access = AlertModel(
     rule_id="SIEM-ACCESS-008",
     rule_name="Off-Hours Restricted Share Access",
     correlation_uid="CORR-UNAUTH-002",
-    count=3,
     src_url="https://siem.example.com/alerts/ALERT-SIEM-301",
     source_uid="siem-access-301",
     data_sources=["File Share Logs", "SIEM"],
@@ -419,8 +394,6 @@ alert_unauthorized_access = AlertModel(
 
     unmapped="",
     raw_data=json.dumps({"user": "sarah.johnson", "share": "Z:\\CONFIDENTIAL", "time": "02:30 AM"}),
-    comment_ai="User attempted unauthorized access to restricted files outside business hours.",
-    case=None,
     enrichments=[enrichment_splunk_anomaly],
     artifacts=[artifact_user_account]
 )
@@ -439,7 +412,6 @@ alert_data_exfiltration = AlertModel(
     rule_id="DLP-EXF-005",
     rule_name="High-Volume Data Transfer to External Domain",
     correlation_uid="CORR-EXFIL-003",
-    count=1,
     src_url="https://dlp.example.com/alerts/ALERT-DLP-401",
     source_uid="dlp-exfil-401",
     data_sources=["DLP", "Network Monitoring"],
@@ -465,8 +437,6 @@ alert_data_exfiltration = AlertModel(
     remediation="Block the destination domain at the firewall. Perform forensic analysis on the source server. Review for other suspicious connections to similar domains.",
     unmapped="",
     raw_data=json.dumps({"destination": "check-version.exfil.xyz", "volume_gb": 2.3, "files_transferred": 847}),
-    comment_ai="Large volume of data was being transferred to an external suspicious domain.",
-    case=None,
     enrichments=[enrichment_darktrace_ai],
     artifacts=[artifact_suspicious_domain_3]
 )
@@ -485,7 +455,6 @@ alert_malicious_email_attachment = AlertModel(
     rule_id="EMAIL-MACRO-003",
     rule_name="Malicious Office Macro Detection",
     correlation_uid="CORR-MACRO-004",
-    count=1,
     src_url="https://email.example.com/quarantine/MSG-5501",
     source_uid="MSG-5501",
     data_sources=["Email Gateway", "Sandbox"],
@@ -512,8 +481,6 @@ alert_malicious_email_attachment = AlertModel(
 
     unmapped="",
     raw_data=json.dumps({"macro_language": "VBA", "powershell_command": "IEX (New-Object Net.WebClient)", "recipients": 12}),
-    comment_ai="Email with malicious macro was detected and quarantined before users could open it.",
-    case=None,
     enrichments=[enrichment_proofpoint_sandbox],
     artifacts=[artifact_powershell_script]
 )
@@ -532,7 +499,6 @@ alert_privilege_escalation = AlertModel(
     rule_id="EDR-RULE-PE-012",
     rule_name="UAC Bypass Privilege Escalation Detection",
     correlation_uid="CORR-PE-005",
-    count=1,
     src_url="https://edr.example.com/alerts/ALERT-EDR-601",
     source_uid="edr-pe-601",
     data_sources=["EDR", "Process Monitoring"],
@@ -559,8 +525,6 @@ alert_privilege_escalation = AlertModel(
 
     unmapped="",
     raw_data=json.dumps({"bypass_method": "CMSTP", "target_privilege": "SYSTEM", "cve": "CVE-2019-1315"}),
-    comment_ai="Attacker attempted to escalate privileges using a known Windows UAC bypass.",
-    case=None,
     enrichments=[enrichment_sentinel_threat],
     artifacts=[artifact_powershell_script]
 )
@@ -579,7 +543,6 @@ alert_cloud_config_change = AlertModel(
     rule_id="CSPM-AWS-S3-001",
     rule_name="S3 Public Access Policy Change Detection",
     correlation_uid="CORR-CLOUD-006",
-    count=1,
     src_url="https://cspm.example.com/alerts/ALERT-CSPM-701",
     source_uid="cloudtrail-s3-701",
     data_sources=["AWS CloudTrail", "CSPM"],
@@ -607,8 +570,6 @@ alert_cloud_config_change = AlertModel(
     unmapped="",
     raw_data=json.dumps(
         {"bucket": "prod-customer-data", "action": "PutBucketPolicy", "principal": "lambda-execution", "effect": "Allow", "principal_service": "*"}),
-    comment_ai="AWS S3 bucket configuration was changed to expose customer data publicly.",
-    case=None,
     enrichments=[enrichment_aws_s3_public],
     artifacts=[artifact_aws_role, artifact_cloudtrail_event]
 )
@@ -626,7 +587,6 @@ alert_brute_force_siem = AlertModel(
     rule_id="AUTH-RULE-BF-001",
     rule_name="Brute Force Attack Detection",
     correlation_uid="CORR-BRUTE-FORCE-001",
-    count=6,
     src_url="https://siem.example.com/alerts/ALERT-BRUTE-FORCE-001",
     source_uid="siem-bf-001",
     data_sources=["SSH Logs", "Syslog", "SIEM"],
@@ -655,8 +615,6 @@ alert_brute_force_siem = AlertModel(
     raw_data=json.dumps(
         {"failed_attempts": 7, "source_ip": "45.95.11.22", "source_country": "CN", "target_user": "admin", "target_host": "srv-web-prod-01", "protocol": "ssh",
          "port": 22}),
-    comment_ai="Brute force attack successfully compromised admin account on production web server. Attacker origin: China. Immediate containment action required.",
-    case=None,
     enrichments=[enrichment_greynoise_scanner, enrichment_geoip_russia],
     artifacts=[artifact_brute_force_ip, artifact_target_user_brute, artifact_target_host_brute]
 )
@@ -675,7 +633,6 @@ alert_sql_injection_siem = AlertModel(
     rule_id="WAF-RULE-SQLI-001",
     rule_name="SQL Injection Detection Rule",
     correlation_uid="CORR-SQL-INJ-001",
-    count=1,
     src_url="https://waf.example.com/alerts/ALERT-SQL-INJ-001",
     source_uid="waf-sqli-001",
     data_sources=["WAF", "HTTP Traffic Analysis"],
@@ -702,8 +659,6 @@ alert_sql_injection_siem = AlertModel(
 
     unmapped="",
     raw_data=json.dumps({"payload": "id=1' OR '1'='1", "waf_rule_id": "WAF-12345", "blocked_count": 1, "http_status": 403, "user_agent": "sqlmap/1.5.2"}),
-    comment_ai="SQL injection attack from Russia was detected and blocked by WAF. Attacker used automated sqlmap tool. No database compromise detected.",
-    case=None,
     enrichments=[enrichment_urlhaus_malware],
     artifacts=[artifact_malicious_url_sqli, artifact_sqlmap_tool, artifact_waf_server]
 )
@@ -721,7 +676,6 @@ alert_ransomware_siem = AlertModel(
     rule_id="EDR-RULE-RANSOMWARE-001",
     rule_name="Ransomware Multi-Indicator Detection",
     correlation_uid="CORR-RANSOMWARE-ACTIVE-001",
-    count=22,
     src_url="https://edr.example.com/alerts/ALERT-RANSOMWARE-001",
     source_uid="edr-ransomware-001",
     data_sources=["EDR", "Process Monitoring", "File System Monitoring"],
@@ -748,8 +702,6 @@ alert_ransomware_siem = AlertModel(
     raw_data=json.dumps(
         {"shadow_copy_deleted": True, "encrypted_file_count": 20, "ransom_note_created": True, "process_execution": "vssadmin.exe delete shadows /all /quiet",
          "malware_hash": "5d41402abc4b2a76b9719d911017c592", "host": "srv-db-master", "user": "dbadmin", "time_elapsed": "120 seconds"}),
-    comment_ai="CRITICAL: Active ransomware execution detected on production database server. All three indicators of ransomware present: shadow copy deletion, bulk file encryption, ransom note. Estimated 20 files already encrypted. Immediate isolation and recovery activation required.",
-    case=None,
     enrichments=[enrichment_carbonblack_execution],
     artifacts=[artifact_vssadmin_process, artifact_decryptor_malware, artifact_ransom_note_file, artifact_encrypted_files, artifact_ransomware_host,
                artifact_ransomware_user]
