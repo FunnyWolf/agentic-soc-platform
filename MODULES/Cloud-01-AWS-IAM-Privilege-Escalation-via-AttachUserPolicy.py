@@ -1,310 +1,243 @@
 import json
-from datetime import datetime
-from typing import Optional, Union, Dict, Any, List
+from typing import List
 
-from langchain_core.messages import HumanMessage
-from langgraph.graph import StateGraph, END
-from langgraph.graph.state import CompiledStateGraph
-from langgraph.types import Command
-from pydantic import BaseModel, Field
+from dateutil import parser
 
-from Lib.api import get_current_time_str
-from Lib.basemodule import LanggraphModule
-from Lib.llmapi import BaseAgentState
-from PLUGINS.LLM.llmapi import LLMAPI
-from PLUGINS.SIRP.grouprule import GroupRule, CorrelationConfig
+from Lib.basemodule import BaseModule
+from PLUGINS.CMDB.tools import lookup_cmdb_context_tool
+from PLUGINS.SIRP.correlation import Correlation
 from PLUGINS.SIRP.sirpapi import Alert, Case
-from PLUGINS.SIRP.sirpmodel import AlertModel, ArtifactModel, ArtifactType, ArtifactRole, Severity, AlertStatus, AlertAnalyticType, ProductCategory, Confidence, \
-    ImpactLevel, AlertRiskLevel, Disposition, AlertAction, AlertPolicyType, CaseModel, CaseStatus, CasePriority
+from PLUGINS.SIRP.sirpcoremodel import ArtifactName, ArtifactType, ArtifactRole, Severity, Impact, Disposition, AlertAction, Confidence, AlertAnalyticType, \
+    ProductCategory, \
+    AlertPolicyType, AlertRiskLevel, AlertStatus, CasePriority, ArtifactModel, AlertModel, CaseModel, EnrichmentModel, EnrichmentType, EnrichmentProvider
 
 
-class AnalyzeResult(BaseModel):
-    """Structure for extracting C2 communication analysis result"""
-    original_severity: Severity = Field(description="Original alert severity", default=Severity.UNKNOWN)
-    new_severity: Severity = Field(description="Recommended new severity level", default=Severity.UNKNOWN)
-    confidence: Confidence = Field(description="Confidence level assessment", default=Confidence.UNKNOWN)
-    analysis_rationale: str = Field(description="Analysis process and reasons", default=None)
-    attack_stage: Optional[Union[str, Dict[str, Any]]] = Field(description="e.g., 'T1071 - Application Layer Protocol', 'Command and Control'", default=None)
-    recommended_actions: Optional[Union[str, Dict[str, Any]]] = Field(description="e.g., 'Isolate host 10.1.1.5'", default=None)
-
-
-class AgentState(BaseAgentState):
-    analyze_result: AnalyzeResult = None
-
-
-class Module(LanggraphModule):
-    THREAD_NUM = 2
-
+class Module(BaseModule):
     def __init__(self):
         super().__init__()
-        self.init()
 
-    def init(self):
-        def alert_preprocess_node(state: AgentState):
-            """
-            Read one alert from Redis Stream and preprocess into AlertModel.
-            Extract artifacts and create AlertModel with proper structure.
-            """
-            raw_message = self.read_message()
-            if raw_message is None:
-                return Command(update={}, goto=END)
+    def run(self):
+        # 获取原始告警JSON
+        raw_alert = self.read_stream_message()
 
-            alert_raw = raw_message
+        # 1. 尽可能解析所有字段 (Extraction)
+        event_time = raw_alert.get("eventTime", raw_alert.get("@timestamp", ""))
+        event_id = raw_alert.get("eventID", "")
+        aws_region = raw_alert.get("awsRegion", "")
+        source_ip = raw_alert.get("sourceIPAddress", "")
+        user_agent = raw_alert.get("userAgent", "")
 
-            event_name = alert_raw.get("eventName", "AttachUserPolicy")
-            event_time = alert_raw.get("eventTime", alert_raw.get("@timestamp", ""))
-            rule_name = "AWS IAM Privilege Escalation via AttachUserPolicy"
+        user_identity = raw_alert.get("userIdentity", {})
+        principal_type = user_identity.get("type", "")
+        principal_user = user_identity.get("userName", "")
+        principal_arn = user_identity.get("arn", "")
+        principal_id = user_identity.get("principalId", "")
+        access_key_id = user_identity.get("accessKeyId", "")
+        account_id = user_identity.get("accountId", raw_alert.get("recipientAccountId", raw_alert.get("cloud.account.id", "")))
 
-            user_identity = alert_raw.get("userIdentity", {})
-            principal_user = user_identity.get("userName", "unknown-user")
-            principal_arn = user_identity.get("arn", "unknown-arn")
-            principal_id = user_identity.get("principalId", "unknown-id")
-            access_key_id = user_identity.get("accessKeyId", "unknown-key")
+        request_params = raw_alert.get("requestParameters") or {}
+        target_user = request_params.get("userName", "")
+        policy_arn = request_params.get("policyArn", "")
+        policy_name = policy_arn.split('/')[-1] if policy_arn else "UnknownPolicy"
 
-            request_params = alert_raw.get("requestParameters", {})
-            target_user = request_params.get("userName", "unknown-target")
-            policy_arn = request_params.get("policyArn", "unknown-policy")
+        error_code = raw_alert.get("errorCode")
+        error_message = raw_alert.get("errorMessage")
+        outcome = raw_alert.get("event.outcome", "")
 
-            source_ip = alert_raw.get("sourceIPAddress", "unknown-ip")
-            aws_region = alert_raw.get("awsRegion", "unknown-region")
-            account_id = alert_raw.get("recipientAccountId", alert_raw.get("cloud.account.id", "unknown-account"))
-            user_agent = alert_raw.get("userAgent", "unknown-agent")
-            event_id = alert_raw.get("eventID", "")
+        # 严重程度映射 (定制化字段处理)
+        risk_score_raw = raw_alert.get("event.risk_score", 80)
+        try:
+            risk_score = float(risk_score_raw)
+        except (TypeError, ValueError):
+            risk_score = 80.0
+        log_level = raw_alert.get("log.level", "warning")
 
-            risk_score = alert_raw.get("event.risk_score", alert_raw.get("risk_score", 100))
-            log_level = alert_raw.get("log.level", "critical")
-            message = alert_raw.get("message", "")
+        if risk_score >= 90:
+            risk_level = AlertRiskLevel.CRITICAL
+        elif risk_score >= 70:
+            risk_level = AlertRiskLevel.HIGH
+        elif risk_score >= 40:
+            risk_level = AlertRiskLevel.MEDIUM
+        else:
+            risk_level = AlertRiskLevel.LOW
 
-            severity_map = {
-                "critical": Severity.CRITICAL,
-                "high": Severity.HIGH,
-                "medium": Severity.MEDIUM,
-                "low": Severity.LOW,
-                "informational": Severity.INFORMATIONAL,
-            }
-            severity = severity_map.get(log_level.lower(), Severity.CRITICAL)
+        severity_map = {
+            "critical": Severity.CRITICAL,
+            "error": Severity.HIGH,
+            "warning": Severity.HIGH,
+            "info": Severity.LOW,
+        }
+        severity = severity_map.get(log_level.lower(), Severity.HIGH)
 
-            event_time_formatted = event_time if event_time else get_current_time_str()
+        # 处置结果判定 (定制化字段处理)
+        if error_code == "UnauthorizedOperation":
+            disposition = Disposition.UNAUTHORIZED
+            action = AlertAction.DENIED
+        elif error_code:
+            disposition = Disposition.ERROR
+            action = AlertAction.OTHER
+        else:
+            disposition = Disposition.DETECTED
+            action = AlertAction.MODIFIED
 
-            artifacts: List[ArtifactModel] = [
-                ArtifactModel(
-                    type=ArtifactType.USER,
-                    role=ArtifactRole.ACTOR,
-                    value=principal_user,
-                    name="Principal User"
-                ), ArtifactModel(
-                    type=ArtifactType.OTHER,
-                    role=ArtifactRole.ACTOR,
-                    value=principal_arn,
-                    name="Principal ARN"
-                ), ArtifactModel(
-                    type=ArtifactType.USER,
-                    role=ArtifactRole.TARGET,
-                    value=target_user,
-                    name="Target User"
-                ), ArtifactModel(
-                    type=ArtifactType.IP_ADDRESS,
-                    role=ArtifactRole.ACTOR,
-                    value=source_ip,
-                    name="Source IP"
-                ), ArtifactModel(
-                    type=ArtifactType.OTHER,
-                    role=ArtifactRole.RELATED,
-                    value=policy_arn,
-                    name="Policy ARN"
-                ), ArtifactModel(
-                    type=ArtifactType.OTHER,
-                    role=ArtifactRole.RELATED,
-                    value=account_id,
-                    name="AWS Account ID"
+        # 状态计算 (定制化字段处理)
+        status_detail = f"Outcome: {outcome}"
+
+        event_time_formatted = parser.parse(event_time)
+
+        # 2. 提取符合标准的 Artifact (Artifact Extraction)
+        artifacts: List[ArtifactModel] = []
+
+        # 主体身份
+        if principal_user:
+            artifacts.append(ArtifactModel(type=ArtifactType.USER_NAME, role=ArtifactRole.ACTOR, value=principal_user, name=ArtifactName.PRINCIPAL_USER))
+        if principal_arn:
+            artifacts.append(ArtifactModel(type=ArtifactType.RESOURCE_UID, role=ArtifactRole.ACTOR, value=principal_arn, name=ArtifactName.CLOUD_RESOURCE_ARN))
+        if principal_id:
+            artifacts.append(ArtifactModel(type=ArtifactType.RESOURCE_UID, role=ArtifactRole.ACTOR, value=principal_id, name=ArtifactName.CLOUD_RESOURCE_ID))
+        if access_key_id:
+            artifacts.append(ArtifactModel(type=ArtifactType.USER_CREDENTIAL_ID, role=ArtifactRole.ACTOR, value=access_key_id, name=ArtifactName.ACCESS_KEY_ID))
+
+        # 目标与环境
+        if target_user:
+            artifacts.append(ArtifactModel(type=ArtifactType.USER_NAME, role=ArtifactRole.TARGET, value=target_user, name=ArtifactName.TARGET_USER))
+        if source_ip:
+            artifacts.append(ArtifactModel(type=ArtifactType.IP_ADDRESS, role=ArtifactRole.ACTOR, value=source_ip, name=ArtifactName.SOURCE_IP))
+        if user_agent:
+            artifacts.append(ArtifactModel(type=ArtifactType.HTTP_USER_AGENT, role=ArtifactRole.OTHER, value=user_agent, name=ArtifactName.HTTP_USER_AGENT))
+        if policy_arn:
+            artifacts.append(ArtifactModel(type=ArtifactType.RESOURCE_UID, role=ArtifactRole.RELATED, value=policy_arn, name=ArtifactName.IAM_POLICY_ARN))
+        if account_id:
+            artifacts.append(ArtifactModel(type=ArtifactType.ACCOUNT, role=ArtifactRole.AFFECTED, value=account_id, name=ArtifactName.AWS_ACCOUNT_ID))
+
+        # 2b. CMDB 富化: 为每个 artifact 附加 CMDB 上下文
+        for artifact in artifacts:
+            if not artifact.type or not artifact.value:
+                continue
+            cmdb_result = lookup_cmdb_context_tool(artifact.type, artifact.value)
+            if cmdb_result.get("supported"):
+                cmdb_enrichment = EnrichmentModel(
+                    name=f"CMDB: {artifact.name or artifact.type}",
+                    type=EnrichmentType.CMDB,
+                    provider=EnrichmentProvider.INTERNAL_CMDB,
+                    value=artifact.value,
+                    desc=f"CMDB context for {artifact.type} {artifact.value}",
+                    data=json.dumps(cmdb_result),
                 )
-            ]
+                artifact.enrichments = [cmdb_enrichment]
 
-            if access_key_id and access_key_id != "unknown-key":
-                artifacts.append(ArtifactModel(
-                    type=ArtifactType.OTHER,
-                    role=ArtifactRole.ACTOR,
-                    value=access_key_id,
-                    name="Access Key ID"
-                ))
+        # 3. 计算 correlation_uid (Correlation Logic)
+        # 选择 [账号, 操作者, 目标用户] 作为聚合键，聚合同一主体对同一 IAM 用户的高危策略绑定
 
-            correlation_config = CorrelationConfig(
-                rule_id=self.module_name,
-                time_window="24h",
-                keys=[principal_user, target_user, account_id]
-            )
-            group_rule = GroupRule(config=correlation_config)
-            correlation_uid = group_rule.generate_correlation_uid(timestamp=event_time_formatted)
+        correlation_uid = Correlation.generate_correlation_uid(
+            rule_id=self.module_name,
+            time_window="24h",
+            keys=[account_id, principal_user, target_user],
+            timestamp=event_time_formatted
+        )
 
-            alert_model = AlertModel(
-                title=f"AWS IAM Privilege Escalation: {principal_user} attached {policy_arn.split('/')[-1]} to {target_user}",
-                src_url=f"AWS CloudTrail - Event ID: {event_id}",
-                severity=severity,
-                status=AlertStatus.NEW,
-                status_detail="New alert received from AWS CloudTrail - awaiting analysis",
-                disposition=Disposition.DETECTED,
-                action=AlertAction.OBSERVED,
-                rule_id=self.module_name,
-                rule_name=rule_name,
-                source_uid=event_id,
-                correlation_uid=correlation_uid,
-                count=1,
-                analytic_type=AlertAnalyticType.BEHAVIORAL,
-                analytic_name="AWS IAM Behavioral Anomaly Detection",
-                analytic_desc="Detects suspicious IAM policy attachment operations that indicate privilege escalation attempts or backdoor account creation",
-                analytic_state=None,
-                product_category=ProductCategory.CLOUD,
-                product_name="AWS CloudTrail",
-                product_vendor="Amazon AWS",
-                product_feature="CloudTrail Logging",
-                first_seen_time=event_time_formatted,
-                last_seen_time=event_time_formatted,
-                desc=message or f"IAM user {principal_user} attached policy {policy_arn} to user {target_user} in account {account_id}",
-                data_sources=["AWS CloudTrail"],
-                labels=["iam-privilege-escalation", "aws-cloudtrail", f"account-{account_id}"],
-                raw_data=json.dumps(alert_raw),
-                unmapped=json.dumps({
-                    "userAgent": user_agent,
-                    "awsRegion": aws_region,
-                    "requestID": alert_raw.get("requestID", ""),
-                    "eventVersion": alert_raw.get("eventVersion", "")
-                }),
-                tactic="T1098.003 - AWS IAM Account Manipulation",
-                technique="Privilege Escalation",
-                sub_technique="Create IAM Access Keys",
-                mitigation="Enable IAM access analyzer, enforce MFA, use service control policies to restrict policy attachment",
-                policy_name="AWS IAM Access Policy",
-                policy_type=AlertPolicyType.IDENTITY_POLICY,
-                policy_desc="IAM identity-based policy that grants permissions to AWS services",
-                impact=ImpactLevel.CRITICAL if severity in [Severity.CRITICAL, Severity.HIGH] else ImpactLevel.HIGH,
-                confidence=Confidence.HIGH,
-                risk_level=AlertRiskLevel.CRITICAL if severity == Severity.CRITICAL else AlertRiskLevel.HIGH,
-                risk_details=f"Unauthorized administrator policy attached to {target_user} - potential backdoor account creation or privilege escalation attack"
-            )
+        # 4. 组装 Alert (Alert Assembly)
+        alert_enrichments: List[EnrichmentModel] = []
+        if aws_region:
+            enrichment_location = EnrichmentModel(name="AWS Region", type=EnrichmentType.GEO_LOCATION, provider=EnrichmentProvider.AWS_CLOUDTRAIL,
+                                                  value=aws_region,
+                                                  desc="Alert region from raw alert", data=json.dumps({"awsRegion": aws_region}))
+            alert_enrichments.append(enrichment_location)
 
+        alert_model = AlertModel(
+            title=f"AWS IAM PrivEsc: {principal_user} attached {policy_name} to {target_user}",
+            severity=severity,
+            status=AlertStatus.NEW,
+            status_detail=status_detail,
+            disposition=disposition,
+            action=action,
+            rule_id=self.module_name,
+            rule_name="AWS IAM Privilege Escalation via AttachUserPolicy",
+            source_uid=event_id,
+            correlation_uid=correlation_uid,
+            analytic_type=AlertAnalyticType.RULE,
+            analytic_name="CloudTrail IAM Security Rule",
+            analytic_desc="Detects AttachUserPolicy API calls which can be used for privilege escalation or maintaining persistence.",
+            product_category=ProductCategory.CLOUD,
+            product_name="AWS CloudTrail",
+            product_vendor="Amazon AWS",
+            product_feature="IAM Auditing",
+            first_seen_time=event_time_formatted,
+            last_seen_time=event_time_formatted,
+            desc=f"User {principal_user} ({principal_type}) initiated an AttachUserPolicy request for target user {target_user} in account {account_id}. "
+                 f"Policy: {policy_arn or 'N/A'}. Source IP: {source_ip}.",
+            data_sources=["aws.cloudtrail"],
+            labels=["aws", "iam", "privilege-escalation", f"account:{account_id}", outcome],
+            raw_data=json.dumps(raw_alert),
+            unmapped=json.dumps({
+                "errorCode": error_code,
+                "errorMessage": error_message,
+                "awsRegion": aws_region,
+                "principalId": principal_id,
+                "requestID": raw_alert.get("requestID")
+            }),
+            tactic="Privilege Escalation",
+            technique="T1098 - Account Manipulation",
+            sub_technique="T1098.003 - Additional Cloud Credentials",
+            mitigation="Implement Least Privilege, Use Permission Boundaries, Monitor for sensitive IAM API calls.",
+            policy_type=AlertPolicyType.IDENTITY_POLICY,
+            impact=Impact.CRITICAL if outcome == "success" else Impact.MEDIUM,
+            confidence=Confidence.HIGH,
+            risk_level=risk_level,
+        )
+
+        # 当关联表值是list[BaseModel]类型时,创建关联记录并关联.当值为None,则不做任何处理,当职位值为[],则清空关联
+        if artifacts:
             alert_model.artifacts = artifacts
+        else:
+            alert_model.artifacts = None
 
-            saved_alert_rowid = Alert.create(alert_model)
-            alert_model.rowid = saved_alert_rowid
+        if alert_enrichments:
+            alert_model.enrichments = alert_enrichments
+        else:
+            alert_model.enrichments = None
 
-            self.logger.debug(f"Alert created with Rowid: {saved_alert_rowid}")
+        case_impact = Impact.CRITICAL if outcome == "success" else Impact.MEDIUM
+        case_priority = CasePriority.HIGH if outcome == "success" else CasePriority.MEDIUM
 
-            try:
-                existing_cases = Case.list_by_correlation_uid(correlation_uid, lazy_load=True)
+        # 保存告警
+        saved_alert_row_id = Alert.create(alert_model)
 
-                if existing_cases and len(existing_cases) > 0:
-                    existing_case = existing_cases[0]
-                    self.logger.debug(f"Found existing case with correlation_uid: {correlation_uid}, Case ID: {existing_case.rowid}")
+        # 5. Case 处理 (Case Management)
 
-                    update_case = CaseModel(alerts=[*existing_case.alerts, saved_alert_rowid], rowid=existing_case.rowid)
-                    Case.update(update_case)
-
-                    self.logger.debug(f"Alert {saved_alert_rowid} added to existing case {existing_case.rowid}")
-
-                else:
-                    self.logger.debug(f"No existing case found for correlation_uid: {correlation_uid}, creating new case")
-
-                    new_case = CaseModel(
-                        title=f"AWS IAM Privilege Escalation: {principal_user} → {target_user}",
-                        severity=severity,
-                        impact=ImpactLevel.CRITICAL if severity in [Severity.CRITICAL, Severity.HIGH] else ImpactLevel.HIGH,
-                        priority=CasePriority.CRITICAL if severity == Severity.CRITICAL else CasePriority.HIGH,
-                        confidence=Confidence.HIGH,
-                        status=CaseStatus.NEW,
-                        description=f"AWS IAM privilege escalation detected: {principal_user} attached {policy_arn} to {target_user}",
-                        category=ProductCategory.CLOUD,
-                        tags=["iam-privilege-escalation", "aws-cloudtrail", f"account-{account_id}"],
-                        correlation_uid=correlation_uid,
-                        alerts=[saved_alert_rowid]
-                    )
-
-                    case_uid = Case.create(new_case)
-                    self.logger.debug(f"New case created with UID: {case_uid}, Alert: {saved_alert_rowid}")
-
-            except Exception as e:
-                self.logger.error(f"Error creating/updating case for correlation_uid {correlation_uid}: {str(e)}")
-            # return Command(update={}, goto=END)
-            return {"alert": alert_model}
-
-        def alert_analyze_node(state: AgentState):
-            """
-            Analyze the alert using AI (LLM) with structured few-shot examples for AWS IAM privilege escalation detection.
-            Leverages threat intelligence and cloud behavior patterns.
-            """
-            system_prompt_template = self.load_system_prompt_template("senior_cloud_security_expert")
-
-            current_date = datetime.now().strftime("%Y-%m-%d")
-            system_message = system_prompt_template.format(current_date=current_date)
-
-            few_shot_examples = [
-            ]
-
-            alert = state.alert
-            messages = [
-                system_message,
-                *few_shot_examples,
-                HumanMessage(content=alert.model_dump_json_for_ai()),
-            ]
-
-            llm_api = LLMAPI()
-            llm = llm_api.get_model(tag=["fast", "structured_output"])
-            llm_structured = llm.with_structured_output(AnalyzeResult)
-            response: AnalyzeResult = llm_structured.invoke(messages)
-
-            return {"analyze_result": response}
-
-        def alert_output_node(state: AgentState):
-            """
-            Save analysis result to AlertModel and persist using SIRP API.
-            Updates severity, confidence, and enriches with AI-generated insights.
-            """
-            alert_model: AlertModel = state.alert
-            analyze_result: AnalyzeResult = state.analyze_result
-
-            alert_model.severity = analyze_result.new_severity
-            alert_model.confidence = analyze_result.confidence
-            alert_model.summary_ai = str(analyze_result.analysis_rationale)
-
-            if analyze_result.recommended_actions:
-                alert_model.remediation = str(analyze_result.recommended_actions)
-
-            labels = list(alert_model.labels) if alert_model.labels else []
-            if analyze_result.attack_stage and analyze_result.confidence in [Confidence.HIGH, Confidence.MEDIUM]:
-                labels.append("confirmed-privilege-escalation")
-                if analyze_result.new_severity in [Severity.CRITICAL, Severity.HIGH]:
-                    labels.append("high-priority-incident")
-            alert_model.labels = labels
-
-            alert_model.uid = f"iam-priv-esc-{get_current_time_str()}"
-
-            update_alert_rowid = Alert.update(alert_model)
-
-            self.logger.info(
-                f"AWS IAM Privilege Escalation Alert saved with RowID: {update_alert_rowid}, Severity: {analyze_result.new_severity}, Confidence: {analyze_result.confidence}")
-
-            return {}
-
-        workflow = StateGraph(AgentState)
-
-        workflow.add_node("alert_preprocess_node", alert_preprocess_node)
-        workflow.add_node("alert_analyze_node", alert_analyze_node)
-        workflow.add_node("alert_output_node", alert_output_node)
-
-        workflow.set_entry_point("alert_preprocess_node")
-        workflow.add_edge("alert_preprocess_node", "alert_analyze_node")
-        workflow.add_edge("alert_analyze_node", "alert_output_node")
-        workflow.set_finish_point("alert_output_node")
-
-        self.graph: CompiledStateGraph = workflow.compile(checkpointer=self.get_checkpointer())
+        existing_case = Case.get_by_correlation_uid(correlation_uid, lazy_load=True)
+        if existing_case:
+            # 附加到已有 Case
+            existing_case_row_id = existing_case.row_id
+            assert existing_case_row_id is not None
+            existing_alerts = existing_case.alerts or []
+            updated_alerts = existing_alerts if saved_alert_row_id in existing_alerts else [*existing_alerts, saved_alert_row_id]
+            update_case = CaseModel(
+                alerts=updated_alerts,
+                row_id=existing_case_row_id
+            )
+            severity_order = {Severity.UNKNOWN: 0, Severity.LOW: 1, Severity.MEDIUM: 2, Severity.HIGH: 3, Severity.CRITICAL: 4}
+            if severity_order.get(severity or Severity.UNKNOWN, 0) > severity_order.get(existing_case.severity or Severity.UNKNOWN, 0):
+                update_case.severity = severity
+                update_case.impact = case_impact
+                update_case.priority = case_priority
+            Case.update(update_case)
+            Case.mark_analysis_requested(row_id=existing_case_row_id, cooldown_minutes=3)
+        else:
+            # 根据 Alert 计算 Case字段
+            new_case = CaseModel(
+                title=f"IAM Privilege Escalation: {principal_user} -> {target_user} in Account {account_id}",
+                severity=severity,
+                impact=case_impact,
+                priority=case_priority,
+                confidence=Confidence.HIGH,
+                description=f"Investigation required for high-risk AttachUserPolicy activity by {principal_user} "
+                            f"targeting {target_user} in account {account_id}.",
+                category=ProductCategory.CLOUD,
+                tags=["iam", "aws", "privesc"],
+                correlation_uid=correlation_uid,
+                alerts=[saved_alert_row_id]
+            )
+            created_case_row_id = Case.create(new_case)
+            Case.mark_analysis_requested(row_id=created_case_row_id, cooldown_minutes=3)
         return True
-
-
-if __name__ == "__main__":
-    import os
-    import django
-
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ASP.settings")
-    django.setup()
-    module = Module()
-    module.debug_message_id = "1772179651858-0"
-    module.run()

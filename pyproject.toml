@@ -1,48 +1,40 @@
 [project]
-name = "asf"
+name = "asp"
 version = "0.1.0"
-description = "Add your description here"
+description = "Agentic SOC Platform"
 readme = "README.md"
-requires-python = ">=3.12, <3.14"
+requires-python = ">=3.13"
 dependencies = [
-    "apscheduler>=3.11.0",
-    "channels>=4.3.1",
-    "cryptography>=46.0.3",
-    "django>=6.0.3",
+    "apscheduler>=3.11.2",
+    "channels>=4.3.2",
+    "cryptography>=46.0.7",
+    "django>=6.0.5",
     "django-redis>=6.0.0",
     "djangorestframework>=3.17.1",
-    "djangorestframework-stubs>=3.16.9",
+    "djangorestframework-stubs>=3.17.0",
     "dnslib>=0.9.26",
     "dnspython>=2.8.0",
-    "elasticsearch>=9.3.0",
-    "fastapi>=0.135.3",
-    "fastembed>=0.8.0",
-    "hf-xet>=1.4.3",
+    "elasticsearch>=9.4.0",
+    "fastapi>=0.136.3",
     "jinja2>=3.1.6",
-    "langchain>=1.2.14",
-    "langchain-community>=0.4.1",
-    "langchain-core>=1.2.25",
-    "langchain-ollama>=1.0.0",
-    "langchain-openai>=1.1.12",
-    "langchain-qdrant>=1.1.0",
-    "langgraph>=1.1.4",
-    "langgraph-checkpoint-redis>=0.4.0",
-    "lxml>=6.0.2",
+    "langchain-core>=1.4.0",
+    "langchain-openai>=1.2.2",
+    "langgraph>=1.2.1",
+    "langgraph-checkpoint-redis>=0.4.1",
+    "lxml>=6.1.0",
     "openpyxl>=3.1.5",
-    "optionset",
     "pycryptodome>=3.23.0",
-    "pydantic>=2.12.5",
+    "pydantic>=2.13.4",
     "redis>=7.4.0",
-    "requests>=2.32.5",
+    "requests>=2.33.0",
     "rsa>=4.9.1",
-    "sentence-transformers>=5.3.0",
-    "splunk-sdk>=2.1.1",
-    "tldextract>=5.3.0",
-    "torch>=2.11.0",
-    "transformers>=5.5.0",
-    "urllib3>=2.6.0",
-    "uvicorn>=0.42.0",
-    "fastmcp>=3.2.0",
+    "splunk-sdk>=3.0.0",
+    "tldextract>=5.3.1",
+    "urllib3>=2.7.0",
+    "uvicorn>=0.48.0",
+    "fastmcp>=3.3.1",
+    "python-dateutil>=2.9.0.post0",
+    "pyyaml>=6.0.3",
 ]
 [[tool.uv.index]]
 url = "https://mirrors.aliyun.com/pypi/simple/"

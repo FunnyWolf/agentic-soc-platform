@@ -1,0 +1,65 @@
+{
+  "@timestamp": "2026-04-30T10:03:44.113190Z",
+  "event.dataset": "host",
+  "event.module": "endpoint",
+  "event.category": "process",
+  "event.type": "process_started",
+  "event.action": "process_started",
+  "event.outcome": "success",
+  "host.name": "app-api-v2",
+  "host.id": "c6cc191e-282d-42b6-b0d9-fe7119e0e184",
+  "host.os.name": "Windows",
+  "user.name": "svc_jenkins",
+  "user.id": "S-1-5-21-691501131-260082300-241036085-1001",
+  "process.pid": 267,
+  "process.name": "vssadmin.exe",
+  "process.command_line": "vssadmin.exe delete shadows /all /quiet",
+  "process.executable": "C:\Windows\System32\vssadmin.exe",
+  "process.hash.md5": "01545ba729b644a6b88784fa6e0be460",
+  "process.hash.sha256": "e4fcb076c8dc48ab9ca2ae8bac9b020d",
+  "process.parent.name": "powershell.exe",
+  "process.parent.pid": 477,
+  "process.working_directory": "C:\Windows\System32",
+  "event.duration": 2361,
+  "log.level": "critical",
+  "risk_score": 100,
+  "message": "Shadow Copy deletion detected - ransomware indicator",
+  "event": {
+    "dataset": "host",
+    "module": "endpoint",
+    "category": "process",
+    "type": "process_started",
+    "action": "process_started",
+    "outcome": "success",
+    "duration": 2361
+  },
+  "host": {
+    "name": "app-api-v2",
+    "id": "c6cc191e-282d-42b6-b0d9-fe7119e0e184",
+    "os": {
+      "name": "Windows"
+    }
+  },
+  "user": {
+    "name": "svc_jenkins",
+    "id": "S-1-5-21-691501131-260082300-241036085-1001"
+  },
+  "process": {
+    "pid": 267,
+    "name": "vssadmin.exe",
+    "command_line": "vssadmin.exe delete shadows /all /quiet",
+    "executable": "C:\Windows\System32\vssadmin.exe",
+    "hash": {
+      "md5": "01545ba729b644a6b88784fa6e0be460",
+      "sha256": "e4fcb076c8dc48ab9ca2ae8bac9b020d"
+    },
+    "parent": {
+      "name": "powershell.exe",
+      "pid": 477
+    },
+    "working_directory": "C:\Windows\System32"
+  },
+  "log": {
+    "level": "critical"
+  }
+}

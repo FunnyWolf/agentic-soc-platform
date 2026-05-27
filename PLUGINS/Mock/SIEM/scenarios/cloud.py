@@ -10,7 +10,7 @@ class CloudPrivilegeEscalationScenario(object):
         self.attacker_user = random.choice(settings.IAM_USERS)
         self.target_account = random.choice(settings.AWS_ACCOUNTS)
         self.region = random.choice(settings.REGIONS)
-        self.malicious_new_user = f"service_account_{random.randint(1000, 1020)}"
+        self.malicious_new_user = f"service_account_{random.randint(1000, 1002)}"
         self.attacker_key = f"AKIA{uuid.uuid4().hex[:16].upper()}"
         self.malicious_key = f"AKIA{uuid.uuid4().hex[:16].upper()}"
         self.malicious_user_id = f"AIDAI{uuid.uuid4().hex[:16].upper()}"
@@ -239,7 +239,7 @@ class CloudPrivilegeEscalationScenario(object):
             "message": f"Access key created for user: {self.malicious_new_user}"
         })
 
-        # 6. 附加管理员策略 (提权)
+        # 6. 附加高危策略 (提权) - 同一目标生成两条高危告警，用于测试 Alert 聚合到同一个 Case
         logs.append({
             "@timestamp": (base_time + timedelta(seconds=35)).isoformat() + "Z",
             "event.dataset": "aws.cloudtrail",
@@ -279,6 +279,47 @@ class CloudPrivilegeEscalationScenario(object):
             "event.risk_score": 100,
             "log.level": "critical",
             "message": f"Administrator policy attached to user {self.malicious_new_user} - PRIVILEGE ESCALATION"
+        })
+
+        logs.append({
+            "@timestamp": (base_time + timedelta(seconds=38)).isoformat() + "Z",
+            "event.dataset": "aws.cloudtrail",
+            "event.module": "cloudtrail",
+            "eventName": "AttachUserPolicy",
+            "eventSource": "iam.amazonaws.com",
+            "eventVersion": "1.08",
+            "awsRegion": self.region,
+            "sourceIPAddress": attacker_ip,
+            "userAgent": "aws-cli/2.13.0 Python/3.11.0",
+            "eventID": str(uuid.uuid4()),
+            "eventTime": (base_time + timedelta(seconds=38)).isoformat() + "Z",
+            "requestID": str(uuid.uuid4()),
+            "eventType": "AwsApiCall",
+            "recipientAccountId": self.target_account,
+            "userIdentity": {
+                "type": "IAMUser",
+                "principalId": self.attacker_user_id,
+                "arn": f"arn:aws:iam::{self.target_account}:user/{self.attacker_user}",
+                "accountId": self.target_account,
+                "userName": self.attacker_user,
+                "accessKeyId": self.attacker_key,
+            },
+            "requestParameters": {
+                "userName": self.malicious_new_user,
+                "policyArn": "arn:aws:iam::aws:policy/IAMFullAccess"
+            },
+            "responseElements": None,
+            "errorCode": None,
+            "errorMessage": None,
+            "readOnly": False,
+            "cloud.account.id": self.target_account,
+            "cloud.provider": "aws",
+            "event.action": "AttachUserPolicy",
+            "event.category": "iam",
+            "event.outcome": "success",
+            "event.risk_score": 95,
+            "log.level": "critical",
+            "message": f"IAM full access policy attached to user {self.malicious_new_user} - PRIVILEGE ESCALATION"
         })
 
         # 7. AssumeRole 获取临时凭证 (使用新创建的用户)

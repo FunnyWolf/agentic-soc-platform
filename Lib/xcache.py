@@ -118,11 +118,11 @@ class Xcache(object):
             return None
 
     @staticmethod
-    def get_module_config_by_name_and_type(type, name):
+    def get_module_config_by_name(name):
         modules_config = cache.get(Xcache.XCACHE_MODULES_CONFIG)
         try:
             for config in modules_config:
-                if config.get("NAME") == name and config.get("TYPE") == type:
+                if config.get("NAME") == name:
                     return config
             return None
         except Exception as E:

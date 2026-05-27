@@ -15,18 +15,18 @@ class PlaybookLoader:
         return module_name not in cls.IGNORE_MODULE_NAMES
 
     @classmethod
-    def _load_playbook_class(cls, module_name, module_package):
+    def _load_playbook_class(cls, module_name):
         if not cls._is_valid_module_name(module_name):
             return None
         try:
-            return importlib.import_module(f'{module_package}.{module_name}').Playbook
+            return importlib.import_module(f'{cls.PLAYBOOKS_PACKAGE}.{module_name}').Playbook
         except Exception as exc:
             logger.exception(exc)
             return None
 
     @classmethod
-    def _build_playbook_config(cls, module_name, module_package, playbook_type):
-        playbook_class = cls._load_playbook_class(module_name, module_package)
+    def _build_playbook_config(cls, module_name):
+        playbook_class = cls._load_playbook_class(module_name)
         if playbook_class is None:
             return None
 
@@ -36,10 +36,9 @@ class PlaybookLoader:
             return None
 
         return {
-            "TYPE": playbook_type,
             "NAME": playbook_name,
             "DESC": playbook_desc,
-            "load_path": f'{module_package}.{module_name}',
+            "load_path": f'{cls.PLAYBOOKS_PACKAGE}.{module_name}',
         }
 
     @classmethod
@@ -48,19 +47,15 @@ class PlaybookLoader:
         if not playbooks_dir.exists():
             return
 
-        type_dirs = sorted(path for path in playbooks_dir.iterdir() if path.is_dir() and cls._is_valid_module_name(path.name))
-        for type_dir in type_dirs:
-            playbook_type = type_dir.name
-            module_package = f'{cls.PLAYBOOKS_PACKAGE}.{type_dir.name}'
-            for module_file in sorted(type_dir.glob('*.py')):
-                if cls._is_valid_module_name(module_file.stem):
-                    yield module_file.stem, module_package, playbook_type
+        for module_file in sorted(playbooks_dir.glob('*.py')):
+            if cls._is_valid_module_name(module_file.stem):
+                yield module_file.stem
 
     @classmethod
     def load_all_playbook_config(cls):
         all_modules_config = []
-        for module_name, module_package, playbook_type in cls._iter_playbook_modules():
-            module_config = cls._build_playbook_config(module_name, module_package, playbook_type)
+        for module_name in cls._iter_playbook_modules():
+            module_config = cls._build_playbook_config(module_name)
             if module_config is None:
                 continue
             all_modules_config.append(module_config)

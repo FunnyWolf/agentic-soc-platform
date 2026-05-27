@@ -13,16 +13,6 @@ class BaseAPI(ABC):
     def __init__(self):
         self.logger = logger
 
-    class _TemplateWrapper:
-        """ A template wrapper class hidden internally that does only one thing: provide .format()."""
-
-        def __init__(self, content: str):
-            self._content = content
-
-        def format(self, **kwargs) -> str:
-            """ Implement the .format() method you want. """
-            return self._content.format(**kwargs)
-
     @staticmethod
     def _get_main_script_name():
         """
@@ -59,7 +49,7 @@ class BaseAPI(ABC):
         Get the file path based on the workbook name.
         """
 
-        if os.path.isfile(filename):  # "/root/asf/ES-Rule-21-Phishing_user_report_mail/senior_phishing_expert.md"
+        if os.path.isfile(filename):  # "/root/asp/ES-Rule-21-Phishing_user_report_mail/senior_phishing_expert.md"
             template_path = filename
         else:
             if filename.endswith('.md'):  # "senior_phishing_expert.md"
@@ -72,6 +62,10 @@ class BaseAPI(ABC):
 
             if os.path.isfile(os.path.join(DATA_DIR, fname)):  # "ES-Rule-21-Phishing_user_report_mail/senior_phishing_expert.md"
                 template_path = os.path.join(DATA_DIR, fname)
+            elif os.path.isfile(os.path.join(DATA_DIR, "PLAYBOOKS", self.module_name, fname)):  # "ES-Rule-21-Phishing_user_report_mail/senior_phishing_expert.md"
+                template_path = os.path.join(DATA_DIR, "PLAYBOOKS", self.module_name, fname)
+            elif os.path.isfile(os.path.join(DATA_DIR, "MODULES",self.module_name, fname)):  # "ES-Rule-21-Phishing_user_report_mail/senior_phishing_expert.md"
+                 template_path = os.path.join(DATA_DIR, "MODULES", self.module_name, fname)
             else:
                 template_path = os.path.join(DATA_DIR, self.module_name, fname)
 
@@ -82,7 +76,7 @@ class BaseAPI(ABC):
         Get the file path based on the workbook name.
         """
 
-        if os.path.isfile(filename):  # "/root/asf/ES-Rule-21-Phishing_user_report_mail/senior_phishing_expert.md"
+        if os.path.isfile(filename):  # "/root/asp/ES-Rule-21-Phishing_user_report_mail/senior_phishing_expert.md"
             return filename
         else:
             if os.path.join(DATA_DIR, self.module_name, filename):  # "ES-Rule-21-Phishing_user_report_mail/senior_phishing_expert.md"
@@ -91,41 +85,32 @@ class BaseAPI(ABC):
             else:
                 raise Exception("File not exist")
 
-    def load_markdown_template(self, filename: str) -> _TemplateWrapper:
-        """
-        Read the content according to the workbook name and return an object that supports .format().
-        """
-
-        template_path = self._get_md_file_path(filename)
+    def _read_template_content(self, filename: str, lang=None) -> tuple[str, str]:
+        template_path = self._get_md_file_path(filename, lang=lang)
         try:
             with open(template_path, 'r', encoding='utf-8') as f:
-                content = f.read()
-                # Return an instance of an inner nested class
-                return self._TemplateWrapper(content)
-
+                return template_path, f.read()
         except Exception as e:
             logger.warning(f"Failed to load prompt template {template_path}: {str(e)}")
             raise e
 
     def load_system_prompt_template(self, filename, lang=None):
         """Load system prompt template"""
-        template_path = self._get_md_file_path(filename, lang=lang)
+        template_path, content = self._read_template_content(filename, lang=lang)
         try:
-            with open(template_path, 'r', encoding='utf-8') as f:
-                system_prompt_template: SystemMessagePromptTemplate = SystemMessagePromptTemplate.from_template(f.read())
-                logger.debug(f"Loaded system prompt template from: {template_path}")
-                return system_prompt_template
+            system_prompt_template: SystemMessagePromptTemplate = SystemMessagePromptTemplate.from_template(content)
+            logger.debug(f"Loaded system prompt template from: {template_path}")
+            return system_prompt_template
         except Exception as e:
             logger.warning(f"Failed to load prompt template {template_path}: {str(e)}")
             raise e
 
     def load_human_prompt_template(self, filename, lang=None):
-        template_path = self._get_md_file_path(filename, lang=lang)
+        template_path, content = self._read_template_content(filename, lang=lang)
         try:
-            with open(template_path, 'r', encoding='utf-8') as f:
-                human_prompt_template: HumanMessagePromptTemplate = HumanMessagePromptTemplate.from_template(f.read())
-                logger.debug(f"Loaded human prompt template from: {template_path}")
-                return human_prompt_template
+            human_prompt_template: HumanMessagePromptTemplate = HumanMessagePromptTemplate.from_template(content)
+            logger.debug(f"Loaded human prompt template from: {template_path}")
+            return human_prompt_template
         except Exception as e:
             logger.warning(f"Failed to load prompt template {template_path}: {str(e)}")
             raise e

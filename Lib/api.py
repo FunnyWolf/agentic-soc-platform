@@ -92,6 +92,9 @@ def get_current_time_str(format_str: str = "%Y-%m-%dT%H:%M:%SZ") -> str:
     else:
         return datetime.datetime.now().strftime(format_str)
 
+def get_current_time():
+    return datetime.datetime.now()
+
 
 def exec_system(cmd, **kwargs):
     cmd = " ".join(cmd)

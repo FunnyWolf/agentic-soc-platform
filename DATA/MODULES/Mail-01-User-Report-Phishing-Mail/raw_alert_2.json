@@ -1,0 +1,21 @@
+{
+  "headers": {
+    "From": "\"Secure Bank Alert\" <alert-no-reply@secure-finance-portal.xyz>",
+    "To": "\"Customer Account\" <user@example.com>",
+    "Subject": "URGENT Action Required: Your Transaction has been Blocked",
+    "Date": "Wed, 5 Nov 2025 16:22:15 +0800",
+    "Return-Path": "<bounce-scam@phish-delivery-2.net>",
+    "Authentication-Results": "mx.example.com; spf=fail smtp.mail=alert-no-reply@secure-finance-portal.xyz; dkim=fail header.d=secure-finance-portal.xyz; dmarc=fail (p=REJECT sp=REJECT) header.from=secure-finance-portal.xyz"
+  },
+  "body": {
+    "plain_text": "Dear Account Holder,\n\nOur system has detected a high-risk, unauthorized transaction attempt from an unknown location.\n\nTo prevent further fraud, we have temporarily frozen your funds and suspended all activity.\n\nClick the link below IMMEDIATELY to verify your identity and confirm the transaction details:\n\nhttp://verification-required-999.com/unlock-account?id=user@example.com\n\nFailure to comply within 3 hours will result in a permanent block of your account.\n\nSecurity Department",
+    "html": "<html><body><p>Dear Account Holder,</p><p>Our system has detected a <b>high-risk, unauthorized transaction</b> attempt from an unknown location.</p><p>To prevent further fraud, we have temporarily frozen your funds and suspended all activity.</p><p>Click the link below <b>IMMEDIATELY</b> to verify your identity and confirm the transaction details:</p><p><a href='http://verification-required-999.com/unlock-account?id=user@example.com'>Verify Account Now (Secure Link)</a></p><p>Failure to comply within 3 hours will result in a permanent block of your account.</p></body></html>"
+  },
+  "attachments": [
+    {
+      "filename": "Transaction_Details_Report.zip",
+      "filepath": "attachments/Transaction_Details_Report.zip",
+      "content_type": "application/zip"
+    }
+  ]
+}

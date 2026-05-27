@@ -2,17 +2,16 @@ from PLUGINS.Mock.SIRP.mock_api import past_10m, past_5m, now, past_1d_18h, past
     past_30m, past_2h
 from PLUGINS.Mock.SIRP.mock_artifact import *
 from PLUGINS.Mock.SIRP.mock_enrichment import *
-from PLUGINS.SIRP.sirpmodel import AlertModel, Severity, ImpactLevel, Disposition, AlertAction, Confidence, AlertAnalyticType, AlertAnalyticState, \
-    ProductCategory, AlertRiskLevel, AlertStatus, AlertPolicyType
+from PLUGINS.SIRP.sirpcoremodel import Severity, Impact, Disposition, AlertAction, Confidence, AlertAnalyticType, AlertAnalyticState, ProductCategory, \
+    AlertPolicyType, AlertRiskLevel, AlertStatus, AlertModel
 
 alert_user_reported_phishing = AlertModel(
     title="User Reported Phishing Email via Outlook Plugin",
     severity=Severity.MEDIUM,
-    impact=ImpactLevel.MEDIUM,
+    impact=Impact.MEDIUM,
     disposition=Disposition.ALLOWED,
     action=AlertAction.OBSERVED,
     confidence=Confidence.HIGH,
-    uid="ALERT-USER-001",
     labels=["user-reported", "phishing"],
     desc="User 'john.doe' reported a suspicious email with subject 'Urgent Payroll Update'.",
     first_seen_time=past_10m,
@@ -20,7 +19,6 @@ alert_user_reported_phishing = AlertModel(
     rule_id="USER-REPORT-01",
     rule_name="User Reported Phishing",
     correlation_uid="CORR-PHISH-XYZ-123",
-    count=1,
     src_url="https://exchange.example.com/messages/msg-id-12345",
     source_uid="MSG-ID-12345",
     data_sources=["MS Exchange", "Outlook Plugin"],
@@ -40,26 +38,21 @@ alert_user_reported_phishing = AlertModel(
     policy_type=None,
     policy_desc="",
     risk_level=AlertRiskLevel.MEDIUM,
-    risk_details="Potential for credential theft.",
     status=AlertStatus.NEW,
     status_detail="Awaiting analyst review.",
     remediation="Based on the analysis, it is recommended to block the sender's domain 'evil-domain.com' and IP address at the email gateway and firewall. Purge the phishing email from all recipient mailboxes. Force password reset for the user who reported the email and any other potential recipients.",
-    comment="Initial report from user.",
     unmapped=json.dumps({"x-original-ip": "123.123.123.123"}),
     raw_data=json.dumps({"subject": "Urgent Payroll Update", "from": "no-reply@evil-domain.com", "to": "john.doe@example.com"}),
-    comment_ai="A user reported a suspicious email with urgent language regarding payroll.",
-    case=None,
     enrichments=[],
     artifacts=[artifact_evil_email, artifact_fake_url]
 )
 alert_malware_blocked = AlertModel(
     title="Malicious Attachment Blocked by Email Gateway",
     severity=Severity.HIGH,
-    impact=ImpactLevel.MEDIUM,
+    impact=Impact.MEDIUM,
     disposition=Disposition.BLOCKED,
     action=AlertAction.DENIED,
     confidence=Confidence.HIGH,
-    uid="ALERT-GW-002",
     labels=["malware", "email-gateway", "trojan"],
     desc="Email Gateway blocked an attachment 'payroll_update.zip' containing known malware 'Trojan.Generic'.",
     first_seen_time=past_10m,
@@ -67,7 +60,6 @@ alert_malware_blocked = AlertModel(
     rule_id="MAL-ATTACH-101",
     rule_name="BlockKnownMalwareAttachment.VirusTotal",
     correlation_uid="CORR-PHISH-XYZ-123",
-    count=5,
     src_url="https://gateway.example.com/logs/log-id-abcdef",
     source_uid="log-id-abcdef",
     data_sources=["Email Gateway", "VirusTotal API"],
@@ -87,26 +79,24 @@ alert_malware_blocked = AlertModel(
     policy_type=None,
     policy_desc="Blocks all inbound attachments with a VT score > 50.",
     risk_level=AlertRiskLevel.HIGH,
-    risk_details="Malware could lead to endpoint compromise.",
+
     status=AlertStatus.RESOLVED,
     status_detail="File was quarantined by the email gateway's automated policy.",
     remediation="The malware was blocked and quarantined, no immediate action required for this specific alert. It is recommended to add the file hash to the endpoint detection and response (EDR) system's blocklist to prevent execution from other vectors. Also, conduct a threat hunt to ensure no other systems were compromised.",
-    comment="Blocked 5 attempts to deliver this file to different users.",
+
     unmapped="",
     raw_data=json.dumps({"attachment_hash": "a1b2c3d4e5f6...", "recipient_count": 5}),
-    comment_ai="The email gateway blocked a malicious attachment identified by its hash.",
-    case=None,
     enrichments=[enrichment_virustotal],
     artifacts=[artifact_malware_file, artifact_malware_hash]
 )
 alert_psexec_lateral = AlertModel(
     title="Suspicious Service Installation (PSEXESVC) on WS-FINANCE-05",
     severity=Severity.HIGH,
-    impact=ImpactLevel.HIGH,
+    impact=Impact.HIGH,
     disposition=Disposition.DETECTED,
     action=AlertAction.OBSERVED,
     confidence=Confidence.HIGH,
-    uid="ALERT-EDR-101",
+
     labels=["psexec", "lateral-movement"],
     desc="PsExec service (PSEXESVC.exe) was created and started on WS-FINANCE-05, originating from DC01.",
     first_seen_time=past_5m,
@@ -114,7 +104,6 @@ alert_psexec_lateral = AlertModel(
     rule_id="EDR-RULE-LM-001",
     rule_name="PsExec Service Execution",
     correlation_uid="CORR-LAT-MOV-456",
-    count=1,
     src_url="https://edr.example.com/alerts/ALERT-EDR-101",
     source_uid="be7a2f3a-8b1d-4a8a-9b1a-5d1e3e0f1e1a",
     data_sources=["EDR", "Windows Security Events"],
@@ -134,26 +123,24 @@ alert_psexec_lateral = AlertModel(
     policy_type=AlertPolicyType.IDENTITY_POLICY,
     policy_desc="Monitors for suspicious service installations.",
     risk_level=AlertRiskLevel.HIGH,
-    risk_details="Indicates an attacker is moving through the network.",
+
     status=AlertStatus.ARCHIVED,
     status_detail="Alert has been correlated into Case-2 for incident response.",
     remediation="The SOAR playbook has successfully isolated the source host DC01 and destination host WS-FINANCE-05. Immediate investigation into the initial compromise vector on DC01 is required. It is recommended to dump memory and disk images from both systems for forensic analysis.",
-    comment="Clear indicator of lateral movement.",
+
     unmapped="",
     raw_data=json.dumps({"event_id": 4697, "service_name": "PSEXESVC", "source_host": "DC01"}),
-    comment_ai="PsExec was used to move from DC01 to a finance workstation.",
-    case=None,
     enrichments=[],
     artifacts=[artifact_psexesvc, artifact_dc01]
 )
 alert_credential_dumping = AlertModel(
     title="Credential Dumping via LSASS Memory Access on DC01",
     severity=Severity.CRITICAL,
-    impact=ImpactLevel.CRITICAL,
+    impact=Impact.CRITICAL,
     disposition=Disposition.ALERT,
     action=AlertAction.OBSERVED,
     confidence=Confidence.HIGH,
-    uid="ALERT-EDR-100",
+
     labels=["credential-dumping", "mimikatz", "lsass"],
     desc="An untrusted process 'mimikatz.exe' accessed the memory of lsass.exe, indicating credential dumping.",
     first_seen_time=past_10m,
@@ -161,7 +148,6 @@ alert_credential_dumping = AlertModel(
     rule_id="EDR-RULE-CD-005",
     rule_name="LSASS Memory Access by Untrusted Process",
     correlation_uid="CORR-LAT-MOV-456",
-    count=1,
     src_url="https://edr.example.com/alerts/ALERT-EDR-100",
     source_uid="aa1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d",
     data_sources=["EDR"],
@@ -181,26 +167,24 @@ alert_credential_dumping = AlertModel(
     policy_type=None,
     policy_desc="",
     risk_level=AlertRiskLevel.CRITICAL,
-    risk_details="Domain credentials may be compromised.",
+
     status=AlertStatus.ARCHIVED,
     status_detail="Alert has been correlated into Case-2, serving as a precursor to the lateral movement alert.",
     remediation="Enable LSA Protection (RunAsPPL) on domain controllers. Deploy Credential Guard to protect LSASS from memory access. Monitor for and alert on processes accessing LSASS memory, especially from untrusted processes.",
-    comment="This was likely the initial point of credential theft enabling lateral movement.",
+
     unmapped="",
     raw_data=json.dumps({"source_process": "mimikatz.exe", "target_process": "lsass.exe"}),
-    comment_ai="Credential dumping tool Mimikatz was detected on the domain controller.",
-    case=None,
     enrichments=[],
     artifacts=[artifact_lsass, artifact_mimikatz]
 )
 alert_dns_tunnel_volume = AlertModel(
     title="Anomalous DNS Query Volume (TXT Records)",
     severity=Severity.MEDIUM,
-    impact=ImpactLevel.LOW,
+    impact=Impact.LOW,
     action=AlertAction.OBSERVED,
     disposition=Disposition.LOGGED,
     confidence=Confidence.MEDIUM,
-    uid="ALERT-NDR-301",
+
     labels=["dns-tunneling", "ndr"],
     desc="Endpoint 10.1.1.5 (WS-MARKETING-12) made an unusually high number of DNS TXT queries to a single domain, c2.bad-actor-infra.net.",
     first_seen_time=past_10m,
@@ -208,7 +192,6 @@ alert_dns_tunnel_volume = AlertModel(
     rule_id="NDR-DNS-007",
     rule_name="High Volume of DNS TXT Queries to Single Domain",
     correlation_uid="CORR-DNS-TUN-789",
-    count=245,
     src_url="https://ndr.example.com/alerts/ALERT-NDR-301",
     source_uid="ndr-flow-98765",
     data_sources=["NDR", "DNS Logs"],
@@ -228,26 +211,24 @@ alert_dns_tunnel_volume = AlertModel(
     policy_type=None,
     policy_desc="",
     risk_level=AlertRiskLevel.MEDIUM,
-    risk_details="Potential for covert C2 channel or data exfiltration.",
+
     status=AlertStatus.NEW,
     status_detail="The alert is currently under investigation. The affected host has been placed in a high-monitoring group to observe traffic without tipping off the potential attacker.",
     remediation="Configure DNS sinkholing for the suspicious domain 'c2.bad-actor-infra.net' to analyze C2 commands safely. Review and tighten egress DNS filtering rules. Perform packet capture on the affected host for deeper analysis of the DNS query contents.",
-    comment="",
+
     unmapped="",
     raw_data=json.dumps({"query_count": 245, "domain": "c2.bad-actor-infra.net"}),
-    comment_ai="High volume of DNS TXT queries suggests a DNS tunnel.",
-    case=None,
     enrichments=[enrichment_otx_evil_domain],
     artifacts=[artifact_internal_ip, artifact_c2_domain]
 )
 alert_dns_long_query = AlertModel(
     title="Firewall Detected Unusually Long DNS Query",
     severity=Severity.LOW,
-    impact=ImpactLevel.LOW,
+    impact=Impact.LOW,
     action=AlertAction.DENIED,
     disposition=Disposition.ALLOWED,
     confidence=Confidence.LOW,
-    uid="ALERT-FW-905",
+
     labels=["dns", "firewall"],
     desc="A DNS query with an unusually long label (>63 chars) was observed, which can be an indicator of tunneling.",
     first_seen_time=past_5m,
@@ -255,7 +236,6 @@ alert_dns_long_query = AlertModel(
     rule_id="FW-DNS-002",
     rule_name="Long DNS Label Detected",
     correlation_uid="CORR-DNS-TUN-789",
-    count=1,
     src_url="https://fw.example.com/logs/log-id-54321",
     source_uid="log-id-54321",
     data_sources=["Firewall"],
@@ -275,26 +255,24 @@ alert_dns_long_query = AlertModel(
     policy_type=AlertPolicyType.SERVICE_CONTROL_POLICY,
     policy_desc="Default policy allowing outbound DNS traffic.",
     risk_level=AlertRiskLevel.LOW,
-    risk_details="Suspicious but could be a false positive from non-standard software.",
+
     status=AlertStatus.NEW,
     status_detail="This alert corroborates the NDR alert for DNS tunneling. Awaiting further analysis from the primary alert.",
     remediation="Implement firewall policies to block or alert on DNS queries with label lengths exceeding RFC standards (63 characters). Ensure DNS traffic is logged comprehensively for threat hunting and historical analysis.",
-    comment="Correlates with the NDR alert, increasing confidence.",
+
     unmapped=json.dumps({"dns_flags": "RD"}),
     raw_data=json.dumps({"qname": "verylonglabelthatmightbeencodeddata.c2.bad-actor-infra.net"}),
-    comment_ai="An unusually long DNS query was detected by the firewall.",
-    case=None,
     enrichments=[enrichment_otx_evil_domain, enrichment_virustotal],
     artifacts=[artifact_dns_port, artifact_google_dns]
 )
 alert_brute_force_ssh = AlertModel(
     title="SSH Brute Force Attack Detected",
     severity=Severity.HIGH,
-    impact=ImpactLevel.MEDIUM,
+    impact=Impact.MEDIUM,
     action=AlertAction.DENIED,
     disposition=Disposition.BLOCKED,
     confidence=Confidence.HIGH,
-    uid="ALERT-IDS-501",
+
     labels=["brute-force", "ssh", "ids"],
     desc="Multiple failed SSH login attempts detected on SQL-SERVER-PROD-01 from IP 177.19.44.123.",
     first_seen_time=past_1d_18h,
@@ -302,7 +280,6 @@ alert_brute_force_ssh = AlertModel(
     rule_id="IDS-SSH-001",
     rule_name="SSH Brute Force Detection",
     correlation_uid="CORR-BRUTE-001",
-    count=245,
     src_url="https://ids.example.com/alerts/ALERT-IDS-501",
     source_uid="ids-ssh-245",
     data_sources=["IDS", "SSH Logs"],
@@ -322,26 +299,24 @@ alert_brute_force_ssh = AlertModel(
     policy_type=None,
     policy_desc="",
     risk_level=AlertRiskLevel.HIGH,
-    risk_details="Potential account compromise.",
+
     status=AlertStatus.NEW,
     status_detail="Automated blocking applied. Pending analyst review.",
     remediation="Block the source IP 177.19.44.123 at the firewall. Review SSH logs for successful authentications from this IP. If any successful logins are found, reset passwords immediately.",
-    comment="Blocked after 245 attempts.",
+
     unmapped="",
     raw_data=json.dumps({"attempts": 245, "time_window": "15min", "source_ip": "177.19.44.123"}),
-    comment_ai="SSH brute force attack from external IP was detected and blocked.",
-    case=None,
     enrichments=[enrichment_greynoise_scanner],
     artifacts=[artifact_sql_server, artifact_ransomware_ip_2]
 )
 alert_malware_execution = AlertModel(
     title="Malware Execution Detected via PowerShell",
     severity=Severity.CRITICAL,
-    impact=ImpactLevel.HIGH,
+    impact=Impact.HIGH,
     action=AlertAction.DENIED,
     disposition=Disposition.BLOCKED,
     confidence=Confidence.HIGH,
-    uid="ALERT-EDR-204",
+
     labels=["malware", "powershell", "edr", "ransomware"],
     desc="PowerShell script execution detected that matches ransomware behavior patterns.",
     first_seen_time=past_2d_6h,
@@ -349,7 +324,6 @@ alert_malware_execution = AlertModel(
     rule_id="EDR-RULE-MAL-015",
     rule_name="Ransomware Behavioral Pattern Detection",
     correlation_uid="CORR-RANSOMWARE-001",
-    count=1,
     src_url="https://edr.example.com/alerts/ALERT-EDR-204",
     source_uid="edr-malware-204",
     data_sources=["EDR", "Process Monitoring"],
@@ -369,26 +343,24 @@ alert_malware_execution = AlertModel(
     policy_type=AlertPolicyType.SERVICE_CONTROL_POLICY,
     policy_desc="Blocks ransomware execution patterns.",
     risk_level=AlertRiskLevel.CRITICAL,
-    risk_details="Ransomware can encrypt critical business files and demand ransom.",
+
     status=AlertStatus.IN_PROGRESS,
     status_detail="Endpoint isolated. Investigation in progress.",
     remediation="Isolate the affected endpoint immediately. Restore from clean backups. Scan all connected systems for the malware hash. Contact incident response team.",
-    comment="Host WS-FINANCE-02 isolated from network.",
+
     unmapped="",
     raw_data=json.dumps({"script_hash": "5f4dcc3b5aa7", "behaviors": ["file_encryption", "network_scan"]}),
-    comment_ai="Ransomware malware was detected attempting to encrypt files.",
-    case=None,
     enrichments=[enrichment_carbonblack_execution],
     artifacts=[artifact_powershell_script, artifact_malware_registry]
 )
 alert_unauthorized_access = AlertModel(
     title="Unauthorized Access Attempt to Restricted Share",
     severity=Severity.MEDIUM,
-    impact=ImpactLevel.MEDIUM,
+    impact=Impact.MEDIUM,
     action=AlertAction.DENIED,
     disposition=Disposition.BLOCKED,
     confidence=Confidence.HIGH,
-    uid="ALERT-SIEM-301",
+
     labels=["unauthorized-access", "file-share", "anomaly"],
     desc="User sarah.johnson attempted to access restricted executive share 'Z:\\CONFIDENTIAL' outside of business hours.",
     first_seen_time=past_3d_12h,
@@ -396,7 +368,6 @@ alert_unauthorized_access = AlertModel(
     rule_id="SIEM-ACCESS-008",
     rule_name="Off-Hours Restricted Share Access",
     correlation_uid="CORR-UNAUTH-002",
-    count=3,
     src_url="https://siem.example.com/alerts/ALERT-SIEM-301",
     source_uid="siem-access-301",
     data_sources=["File Share Logs", "SIEM"],
@@ -416,26 +387,24 @@ alert_unauthorized_access = AlertModel(
     policy_type=AlertPolicyType.SERVICE_CONTROL_POLICY,
     policy_desc="Restrict access to confidential shares.",
     risk_level=AlertRiskLevel.MEDIUM,
-    risk_details="Potential data theft or policy violation.",
+
     status=AlertStatus.NEW,
     status_detail="Awaiting user/manager clarification.",
     remediation="Contact the user to understand the business justification for off-hours access. If unauthorized, revoke access and review share permissions.",
-    comment="Access was denied by file share permissions.",
+
     unmapped="",
     raw_data=json.dumps({"user": "sarah.johnson", "share": "Z:\\CONFIDENTIAL", "time": "02:30 AM"}),
-    comment_ai="User attempted unauthorized access to restricted files outside business hours.",
-    case=None,
     enrichments=[enrichment_splunk_anomaly],
     artifacts=[artifact_user_account]
 )
 alert_data_exfiltration = AlertModel(
     title="Suspicious Data Exfiltration Activity Detected",
     severity=Severity.CRITICAL,
-    impact=ImpactLevel.HIGH,
+    impact=Impact.HIGH,
     action=AlertAction.OBSERVED,
     disposition=Disposition.ALERT,
     confidence=Confidence.HIGH,
-    uid="ALERT-DLP-401",
+
     labels=["data-exfiltration", "dlp", "suspicious", "c2"],
     desc="Large volume of data transfer detected from internal server to suspicious external domain check-version.exfil.xyz.",
     first_seen_time=past_4d_20h,
@@ -443,7 +412,6 @@ alert_data_exfiltration = AlertModel(
     rule_id="DLP-EXF-005",
     rule_name="High-Volume Data Transfer to External Domain",
     correlation_uid="CORR-EXFIL-003",
-    count=1,
     src_url="https://dlp.example.com/alerts/ALERT-DLP-401",
     source_uid="dlp-exfil-401",
     data_sources=["DLP", "Network Monitoring"],
@@ -463,26 +431,23 @@ alert_data_exfiltration = AlertModel(
     policy_type=AlertPolicyType.SERVICE_CONTROL_POLICY,
     policy_desc="Alerts on large transfers of classified data.",
     risk_level=AlertRiskLevel.CRITICAL,
-    risk_details="Sensitive company data may be stolen.",
+
     status=AlertStatus.NEW,
     status_detail="Incident response activated.",
     remediation="Block the destination domain at the firewall. Perform forensic analysis on the source server. Review for other suspicious connections to similar domains.",
-    comment="Data volume: 2.3 GB transferred in 45 minutes.",
     unmapped="",
     raw_data=json.dumps({"destination": "check-version.exfil.xyz", "volume_gb": 2.3, "files_transferred": 847}),
-    comment_ai="Large volume of data was being transferred to an external suspicious domain.",
-    case=None,
     enrichments=[enrichment_darktrace_ai],
     artifacts=[artifact_suspicious_domain_3]
 )
 alert_malicious_email_attachment = AlertModel(
     title="Email with Malicious Macro Detected and Quarantined",
     severity=Severity.HIGH,
-    impact=ImpactLevel.MEDIUM,
+    impact=Impact.MEDIUM,
     action=AlertAction.DENIED,
     disposition=Disposition.QUARANTINED,
     confidence=Confidence.HIGH,
-    uid="ALERT-EMAIL-501",
+
     labels=["malware", "macro", "email", "phishing"],
     desc="Email containing Word document with malicious VBA macro attempting to execute PowerShell commands.",
     first_seen_time=past_5d_8h,
@@ -490,7 +455,6 @@ alert_malicious_email_attachment = AlertModel(
     rule_id="EMAIL-MACRO-003",
     rule_name="Malicious Office Macro Detection",
     correlation_uid="CORR-MACRO-004",
-    count=1,
     src_url="https://email.example.com/quarantine/MSG-5501",
     source_uid="MSG-5501",
     data_sources=["Email Gateway", "Sandbox"],
@@ -510,26 +474,24 @@ alert_malicious_email_attachment = AlertModel(
     policy_type=AlertPolicyType.SERVICE_CONTROL_POLICY,
     policy_desc="Block emails with malicious macros.",
     risk_level=AlertRiskLevel.HIGH,
-    risk_details="Macro-based malware can compromise endpoints.",
+
     status=AlertStatus.RESOLVED,
     status_detail="Email was quarantined automatically by policy.",
     remediation="Block the sender domain. Review users who received similar emails. Deploy macro blocking policies across the organization.",
-    comment="Sender: unknown@badguy.net. Recipients: 12 users.",
+
     unmapped="",
     raw_data=json.dumps({"macro_language": "VBA", "powershell_command": "IEX (New-Object Net.WebClient)", "recipients": 12}),
-    comment_ai="Email with malicious macro was detected and quarantined before users could open it.",
-    case=None,
     enrichments=[enrichment_proofpoint_sandbox],
     artifacts=[artifact_powershell_script]
 )
 alert_privilege_escalation = AlertModel(
     title="Suspicious Privilege Escalation Attempt Detected",
     severity=Severity.CRITICAL,
-    impact=ImpactLevel.HIGH,
+    impact=Impact.HIGH,
     action=AlertAction.OBSERVED,
     disposition=Disposition.ALERT,
     confidence=Confidence.HIGH,
-    uid="ALERT-EDR-601",
+
     labels=["privilege-escalation", "edr", "suspicious", "exploit"],
     desc="Process 'explorer.exe' (user context) attempted to execute 'cmd.exe' with system privileges using a known UAC bypass technique.",
     first_seen_time=past_6d_15h,
@@ -537,7 +499,6 @@ alert_privilege_escalation = AlertModel(
     rule_id="EDR-RULE-PE-012",
     rule_name="UAC Bypass Privilege Escalation Detection",
     correlation_uid="CORR-PE-005",
-    count=1,
     src_url="https://edr.example.com/alerts/ALERT-EDR-601",
     source_uid="edr-pe-601",
     data_sources=["EDR", "Process Monitoring"],
@@ -557,26 +518,24 @@ alert_privilege_escalation = AlertModel(
     policy_type=AlertPolicyType.IDENTITY_POLICY,
     policy_desc="Monitor and block privilege escalation attempts.",
     risk_level=AlertRiskLevel.CRITICAL,
-    risk_details="Successful privilege escalation allows attacker to gain system-level access.",
+
     status=AlertStatus.IN_PROGRESS,
     status_detail="Awaiting endpoint remediation.",
     remediation="Isolate endpoint. Review process execution logs. Check for indicators of post-exploitation activity. Apply latest Windows patches.",
-    comment="UAC bypass technique CVE-2019-1315 detected.",
+
     unmapped="",
     raw_data=json.dumps({"bypass_method": "CMSTP", "target_privilege": "SYSTEM", "cve": "CVE-2019-1315"}),
-    comment_ai="Attacker attempted to escalate privileges using a known Windows UAC bypass.",
-    case=None,
     enrichments=[enrichment_sentinel_threat],
     artifacts=[artifact_powershell_script]
 )
 alert_cloud_config_change = AlertModel(
     title="Unauthorized AWS S3 Bucket Policy Modified",
     severity=Severity.CRITICAL,
-    impact=ImpactLevel.HIGH,
+    impact=Impact.HIGH,
     action=AlertAction.OBSERVED,
     disposition=Disposition.ALERT,
     confidence=Confidence.HIGH,
-    uid="ALERT-CSPM-701",
+
     labels=["cloud-security", "aws", "policy-change", "data-exposure"],
     desc="S3 bucket 'prod-customer-data' bucket policy was modified to allow public read access. Detected via CloudTrail.",
     first_seen_time=past_7d,
@@ -584,7 +543,6 @@ alert_cloud_config_change = AlertModel(
     rule_id="CSPM-AWS-S3-001",
     rule_name="S3 Public Access Policy Change Detection",
     correlation_uid="CORR-CLOUD-006",
-    count=1,
     src_url="https://cspm.example.com/alerts/ALERT-CSPM-701",
     source_uid="cloudtrail-s3-701",
     data_sources=["AWS CloudTrail", "CSPM"],
@@ -604,27 +562,24 @@ alert_cloud_config_change = AlertModel(
     policy_type=AlertPolicyType.SERVICE_CONTROL_POLICY,
     policy_desc="Prevent public S3 bucket policies.",
     risk_level=AlertRiskLevel.CRITICAL,
-    risk_details="Customer data could be exposed to the internet.",
+
     status=AlertStatus.NEW,
     status_detail="Awaiting security team response.",
     remediation="Revert the S3 bucket policy to private. Identify who made the change. Review CloudTrail logs for other policy changes. Enable MFA delete on the bucket.",
-    comment="Potentially malicious or misconfigured. Principal: arn:aws:iam::123456789012:role/lambda-execution",
+
     unmapped="",
     raw_data=json.dumps(
         {"bucket": "prod-customer-data", "action": "PutBucketPolicy", "principal": "lambda-execution", "effect": "Allow", "principal_service": "*"}),
-    comment_ai="AWS S3 bucket configuration was changed to expose customer data publicly.",
-    case=None,
     enrichments=[enrichment_aws_s3_public],
     artifacts=[artifact_aws_role, artifact_cloudtrail_event]
 )
 alert_brute_force_siem = AlertModel(
     title="Brute Force Attack: Multiple Failed Login Attempts Followed by Success",
     severity=Severity.CRITICAL,
-    impact=ImpactLevel.HIGH,
+    impact=Impact.HIGH,
     action=AlertAction.OBSERVED,
     disposition=Disposition.ALERT,
     confidence=Confidence.HIGH,
-    uid="ALERT-BRUTE-FORCE-001",
     labels=["brute-force", "authentication", "ssh", "credential-attack"],
     desc="External IP 45.95.11.22 (China) made 5-10 failed authentication attempts to user 'admin' on srv-web-prod-01, followed by a successful login. Pattern suggests brute force attack.",
     first_seen_time=past_1h,
@@ -632,7 +587,6 @@ alert_brute_force_siem = AlertModel(
     rule_id="AUTH-RULE-BF-001",
     rule_name="Brute Force Attack Detection",
     correlation_uid="CORR-BRUTE-FORCE-001",
-    count=6,
     src_url="https://siem.example.com/alerts/ALERT-BRUTE-FORCE-001",
     source_uid="siem-bf-001",
     data_sources=["SSH Logs", "Syslog", "SIEM"],
@@ -652,28 +606,26 @@ alert_brute_force_siem = AlertModel(
     policy_type=AlertPolicyType.ACCESS_CONTROL_POLICY,
     policy_desc="Detect and prevent brute force attacks.",
     risk_level=AlertRiskLevel.CRITICAL,
-    risk_details="Successful compromise of admin account could lead to full system control. Account from high-risk geographic location (China).",
+
     status=AlertStatus.NEW,
     status_detail="Immediate investigation required. Account may be compromised.",
     remediation="1. Immediately force password change for admin account. 2. Review all commands executed by admin since last_seen_time. 3. Block source IP 45.95.11.22 at firewall. 4. Enable MFA for admin account. 5. Review login history for other successful attempts from this IP.",
-    comment="Risk Score: 85/100. Successful login after multiple failures is strong indicator of compromise.",
+
     unmapped="",
     raw_data=json.dumps(
         {"failed_attempts": 7, "source_ip": "45.95.11.22", "source_country": "CN", "target_user": "admin", "target_host": "srv-web-prod-01", "protocol": "ssh",
          "port": 22}),
-    comment_ai="Brute force attack successfully compromised admin account on production web server. Attacker origin: China. Immediate containment action required.",
-    case=None,
     enrichments=[enrichment_greynoise_scanner, enrichment_geoip_russia],
     artifacts=[artifact_brute_force_ip, artifact_target_user_brute, artifact_target_host_brute]
 )
 alert_sql_injection_siem = AlertModel(
     title="SQL Injection Attack Attempt Detected and Blocked by WAF",
     severity=Severity.HIGH,
-    impact=ImpactLevel.MEDIUM,
+    impact=Impact.MEDIUM,
     action=AlertAction.DENIED,
     disposition=Disposition.BLOCKED,
     confidence=Confidence.HIGH,
-    uid="ALERT-SQL-INJ-001",
+
     labels=["sql-injection", "web-attack", "waf", "owasp-injection"],
     desc="Web Application Firewall detected and blocked SQL injection attack from external IP (Russia). Attacker used sqlmap scanner with multiple SQL injection payloads.",
     first_seen_time=past_30m,
@@ -681,7 +633,6 @@ alert_sql_injection_siem = AlertModel(
     rule_id="WAF-RULE-SQLI-001",
     rule_name="SQL Injection Detection Rule",
     correlation_uid="CORR-SQL-INJ-001",
-    count=1,
     src_url="https://waf.example.com/alerts/ALERT-SQL-INJ-001",
     source_uid="waf-sqli-001",
     data_sources=["WAF", "HTTP Traffic Analysis"],
@@ -701,26 +652,23 @@ alert_sql_injection_siem = AlertModel(
     policy_type=AlertPolicyType.SERVICE_CONTROL_POLICY,
     policy_desc="Block SQL injection attacks at the WAF.",
     risk_level=AlertRiskLevel.HIGH,
-    risk_details="SQL injection could allow attacker to read/modify database contents, affecting all application data.",
+
     status=AlertStatus.NEW,
     status_detail="Attack was successfully blocked. No damage detected. Source IP monitoring enabled.",
     remediation="1. Add source IP to block list. 2. Review WAF logs for other attack attempts. 3. Audit application code for SQL injection vulnerabilities. 4. Implement parameterized queries in application. 5. Consider implementing request rate limiting.",
-    comment="Attack method: sqlmap automated SQL injection scanner. Multiple injection vectors attempted including boolean blind, time-based, and UNION-based.",
+
     unmapped="",
     raw_data=json.dumps({"payload": "id=1' OR '1'='1", "waf_rule_id": "WAF-12345", "blocked_count": 1, "http_status": 403, "user_agent": "sqlmap/1.5.2"}),
-    comment_ai="SQL injection attack from Russia was detected and blocked by WAF. Attacker used automated sqlmap tool. No database compromise detected.",
-    case=None,
     enrichments=[enrichment_urlhaus_malware],
     artifacts=[artifact_malicious_url_sqli, artifact_sqlmap_tool, artifact_waf_server]
 )
 alert_ransomware_siem = AlertModel(
     title="Ransomware Execution Detected: Shadow Copy Deletion, File Encryption, Ransom Note",
     severity=Severity.CRITICAL,
-    impact=ImpactLevel.CRITICAL,
+    impact=Impact.CRITICAL,
     action=AlertAction.OBSERVED,
     disposition=Disposition.ALERT,
     confidence=Confidence.HIGH,
-    uid="ALERT-RANSOMWARE-001",
     labels=["ransomware", "file-encryption", "shadow-copy-deletion", "critical"],
     desc="Multiple critical indicators of ransomware detected on srv-db-master: 1) vssadmin.exe deleted volume shadow copies 2) 20 files renamed to .encrypted extension 3) README_TO_DECRYPT.txt ransom note created. Immediate isolation required.",
     first_seen_time=past_2h,
@@ -728,7 +676,6 @@ alert_ransomware_siem = AlertModel(
     rule_id="EDR-RULE-RANSOMWARE-001",
     rule_name="Ransomware Multi-Indicator Detection",
     correlation_uid="CORR-RANSOMWARE-ACTIVE-001",
-    count=22,
     src_url="https://edr.example.com/alerts/ALERT-RANSOMWARE-001",
     source_uid="edr-ransomware-001",
     data_sources=["EDR", "Process Monitoring", "File System Monitoring"],
@@ -748,17 +695,13 @@ alert_ransomware_siem = AlertModel(
     policy_type=AlertPolicyType.SERVICE_CONTROL_POLICY,
     policy_desc="Immediate blocking of all ransomware indicators.",
     risk_level=AlertRiskLevel.CRITICAL,
-    risk_details="Database server encryption would impact all database users. Potential data loss and extended downtime. Estimated impact: $100K+ per hour of downtime.",
     status=AlertStatus.NEW,
     status_detail="CRITICAL: Immediate action required. Automatic host isolation has been triggered.",
     remediation="IMMEDIATE ACTIONS: 1. Verify host isolation is complete (confirmed). 2. Do NOT power off infected host (may prevent recovery). 3. Disconnect all network cables. 4. Capture forensic image of storage drives. 5. Begin restore from clean backup prior to incident date. 6. Notify business stakeholders of estimated recovery time. INVESTIGATION: 1. Analyze attack entry point (email, SMB, RDP, etc.). 2. Check for lateral movement to other hosts. 3. Review backup integrity to ensure clean restore available. 4. Implement EDR hunting query to find similar patterns.",
-    comment="This is a confirmed active ransomware attack. CRITICAL priority. Finance and Executive team notified. Legal/Compliance briefing initiated. Do NOT attempt to contact attacker or pay ransom without consulting law enforcement.",
     unmapped="",
     raw_data=json.dumps(
         {"shadow_copy_deleted": True, "encrypted_file_count": 20, "ransom_note_created": True, "process_execution": "vssadmin.exe delete shadows /all /quiet",
          "malware_hash": "5d41402abc4b2a76b9719d911017c592", "host": "srv-db-master", "user": "dbadmin", "time_elapsed": "120 seconds"}),
-    comment_ai="CRITICAL: Active ransomware execution detected on production database server. All three indicators of ransomware present: shadow copy deletion, bulk file encryption, ransom note. Estimated 20 files already encrypted. Immediate isolation and recovery activation required.",
-    case=None,
     enrichments=[enrichment_carbonblack_execution],
     artifacts=[artifact_vssadmin_process, artifact_decryptor_malware, artifact_ransom_note_file, artifact_encrypted_files, artifact_ransomware_host,
                artifact_ransomware_user]

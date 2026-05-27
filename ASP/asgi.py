@@ -12,6 +12,8 @@ import os
 import django
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'ASP.settings')
+os.environ.setdefault('ASP_START_BACKGROUND_SERVICES', '1')
+os.environ.setdefault('ASP_BACKGROUND_SERVICES_SOURCE', 'asgi')
 django.setup()
 from channels.auth import AuthMiddlewareStack
 from channels.routing import ProtocolTypeRouter, URLRouter

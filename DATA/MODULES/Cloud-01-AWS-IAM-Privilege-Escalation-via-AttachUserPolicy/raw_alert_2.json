@@ -1,0 +1,62 @@
+{
+  "@timestamp": "2026-04-16T03:01:39.958243Z",
+  "event.dataset": "aws.cloudtrail",
+  "event.module": "cloudtrail",
+  "eventName": "AttachUserPolicy",
+  "eventSource": "iam.amazonaws.com",
+  "eventVersion": "1.08",
+  "eventTime": "2026-04-16T03:01:39.958252Z",
+  "eventID": "d8136993-2a7d-4dfa-a013-530156953d8a",
+  "eventType": "AwsApiCall",
+  "awsRegion": "us-east-1",
+  "sourceIPAddress": "208.67.222.222",
+  "userAgent": "Terraform/1.5.0",
+  "requestID": "8d0c914f-5262-4d7d-9622-afe231aef990",
+  "recipientAccountId": "123456780001",
+  "userIdentity": {
+    "type": "IAMRole",
+    "principalId": "AIDAI4C2EF817C9484BBD",
+    "arn": "arn:aws:iam::123456780001:user/admin-cli",
+    "accountId": "123456780001",
+    "userName": "admin-cli",
+    "accessKeyId": "AKIA57BA57EF32514FAE"
+  },
+  "requestParameters": {
+    "userName": "user-3336"
+  },
+  "responseElements": null,
+  "errorCode": "UnauthorizedOperation",
+  "errorMessage": "User: arn:aws:iam::123456780001:user/admin-cli is not authorized to perform: iam:AttachUserPolicy",
+  "readOnly": false,
+  "cloud.provider": "aws",
+  "cloud.service.name": "iam",
+  "cloud.region": "us-east-1",
+  "cloud.account.id": "123456780001",
+  "event.action": "AttachUserPolicy",
+  "event.category": "iam",
+  "event.outcome": "failure",
+  "event.risk_score": 80,
+  "log.level": "warning",
+  "message": "CloudTrail event: AttachUserPolicy from admin-cli",
+  "event": {
+    "dataset": "aws.cloudtrail",
+    "module": "CloudTrail",
+    "action": "AttachUserPolicy",
+    "category": "iam",
+    "outcome": "failure",
+    "risk_score": 80
+  },
+  "cloud": {
+    "provider": "aws",
+    "service": {
+      "name": "iam"
+    },
+    "region": "us-east-1",
+    "account": {
+      "id": "123456780001"
+    }
+  },
+  "log": {
+    "level": "warning"
+  }
+}

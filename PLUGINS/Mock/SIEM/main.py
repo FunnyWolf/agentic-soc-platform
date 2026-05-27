@@ -4,6 +4,7 @@ import time
 
 import httpx
 
+from PLUGINS.ELK.CONFIG import ELK_HOST, ELK_USER, ELK_PASS
 from PLUGINS.Mock.SIEM import CONFIG
 from PLUGINS.Mock.SIEM import settings
 from PLUGINS.Mock.SIEM.generator.cloud import CloudGenerator
@@ -12,13 +13,14 @@ from PLUGINS.Mock.SIEM.generator.network import NetworkGenerator
 from PLUGINS.Mock.SIEM.scenarios.cloud import CloudPrivilegeEscalationScenario
 from PLUGINS.Mock.SIEM.scenarios.host import RansomwareScenario
 from PLUGINS.Mock.SIEM.scenarios.network import BruteForceScenario
+from PLUGINS.Splunk.CONFIG import SPLUNK_HEC_URL, SPLUNK_TOKEN
 
 
 # --- 发送器类 (同步版本) ---
 class ELKSender:
     def __init__(self):
-        self.url = f"{CONFIG.ELK_HOST}/_bulk"
-        self.auth = (CONFIG.ELK_USER, CONFIG.ELK_PASS)
+        self.url = f"{ELK_HOST}/_bulk"
+        self.auth = (ELK_USER, ELK_PASS)
         self.client = httpx.Client(verify=False, timeout=30.0)
 
     def send(self, batch, index_name):
@@ -39,8 +41,8 @@ class ELKSender:
 
 class SplunkSender:
     def __init__(self):
-        self.url = CONFIG.SPLUNK_HEC_URL
-        self.headers = {"Authorization": f"Splunk {CONFIG.SPLUNK_TOKEN}"}
+        self.url = SPLUNK_HEC_URL
+        self.headers = {"Authorization": f"Splunk {SPLUNK_TOKEN}"}
 
     def send(self, batch, index_name):
         payload = "".join([json.dumps({"event": doc, "index": index_name}) for doc in batch])

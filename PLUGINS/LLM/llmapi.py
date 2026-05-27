@@ -4,7 +4,6 @@ import httpx
 import urllib3
 from langchain_core.messages import AIMessage
 from langchain_core.output_parsers import StrOutputParser
-from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
 
 from Lib.log import logger
@@ -30,11 +29,10 @@ class LLMAPI(object):
             raise ValueError("LLM_CONFIGS in CONFIG.py is missing, empty, or not a list.")
 
         self.configs = LLM_CONFIGS
-        self.default_config = self.configs[0]
         self.temperature = temperature
         self.alive = False
 
-    def get_model(self, tag: str | list[str] | None = None, **kwargs) -> ChatOpenAI | ChatOllama:
+    def get_model(self, tag: str | list[str] | None = None, **kwargs) -> ChatOpenAI:
         """
         Gets and returns the corresponding LangChain ChatModel instance based on the tag.
 
@@ -50,12 +48,12 @@ class LLMAPI(object):
             ValueError: If the client_type in the configuration is not supported.
 
         Returns:
-            ChatOpenAI | ChatOllama: LangChain's chat model instance.
+            ChatOpenAI : LangChain's chat model instance.
         """
         selected_config = None
 
         if tag is None:
-            selected_config = self.default_config
+            selected_config = self.configs[0]
         else:
             for config in self.configs:
                 config_tags = set(config.get("tags", []))
@@ -83,25 +81,12 @@ class LLMAPI(object):
         }
         # Update kwargs to allow overriding default values at runtime
         params.update(kwargs)
-
-        client_type = selected_config.get("type")
-
-        if client_type == 'openai':
-            params.update({
-                "base_url": selected_config.get("base_url"),
-                "api_key": selected_config.get("api_key"),
-                "http_client": httpx.Client(proxy=selected_config.get("proxy")) if selected_config.get("proxy") else None,
-            })
-            return ChatOpenAI(**params)
-
-        elif client_type == 'ollama':
-            params.update({
-                "base_url": selected_config.get("base_url"),
-            })
-            # Ollama doesn't use api_key or http_client in the same way
-            return ChatOllama(**params)
-        else:
-            raise ValueError(f"Unsupported client_type: {client_type}")
+        params.update({
+            "base_url": selected_config.get("base_url"),
+            "api_key": selected_config.get("api_key"),
+            "http_client": httpx.Client(proxy=selected_config.get("proxy")) if selected_config.get("proxy") else None,
+        })
+        return ChatOpenAI(**params)
 
     def alive_check(self):
         for config in self.configs:

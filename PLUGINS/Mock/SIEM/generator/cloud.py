@@ -15,7 +15,7 @@ class CloudGenerator:
         "DeleteUser": "high",
         "CreateAccessKey": "high",
         "UpdateAssumeRolePolicy": "high",
-        "AttachUserPolicy": "high",
+        "AttachUserPolicy": "medium",
         "PutObject": "medium",
         "GetObject": "low",
         "DeleteBucket": "critical",
@@ -39,6 +39,11 @@ class CloudGenerator:
     }
 
     READ_ONLY_ACTIONS = {"GetUser", "ListPolicies", "GetObject", "DescribeInstances", "GetAccountAuthorizationDetails"}
+    BACKGROUND_ATTACH_USER_POLICIES = [
+        "arn:aws:iam::aws:policy/ReadOnlyAccess",
+        "arn:aws:iam::aws:policy/CloudWatchReadOnlyAccess",
+        "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess",
+    ]
 
     @classmethod
     def _generate_request_parameters(cls, event_name):
@@ -59,7 +64,7 @@ class CloudGenerator:
             params["roleSessionName"] = f"session-{random.randint(10000, 99999)}"
         elif event_name == "AttachUserPolicy":
             params["userName"] = f"user-{random.randint(1000, 9999)}"
-            params["policyArn"] = "arn:aws:iam::aws:policy/AdministratorAccess"
+            params["policyArn"] = random.choice(cls.BACKGROUND_ATTACH_USER_POLICIES)
         return params if params else None
 
     @classmethod
@@ -117,6 +122,7 @@ class CloudGenerator:
         user_id = f"AIDAI{uuid.uuid4().hex[:16].upper()}"
         access_key_id = f"AKIA{uuid.uuid4().hex[:16].upper()}"
         account_id = random.choice(settings.AWS_ACCOUNTS)
+        region = random.choice(settings.REGIONS)
         service_name, event_category = cls._get_service_and_category(event_name)
 
         request_params = cls._generate_request_parameters(event_name)
@@ -134,7 +140,7 @@ class CloudGenerator:
             "eventTime": datetime.utcnow().isoformat() + "Z",
             "eventID": str(uuid.uuid4()),
             "eventType": "AwsApiCall",
-            "awsRegion": random.choice(settings.REGIONS),
+            "awsRegion": region,
             "sourceIPAddress": random.choice(settings.EXTERNAL_IPS),
             "userAgent": random.choice([
                 "aws-cli/2.13.0 Python/3.11.0 Linux/5.10.0",
@@ -161,7 +167,7 @@ class CloudGenerator:
             "readOnly": is_read_only,
             "cloud.provider": "aws",
             "cloud.service.name": service_name.lower(),
-            "cloud.region": random.choice(settings.REGIONS),
+            "cloud.region": region,
             "cloud.account.id": account_id,
             "event.action": event_name,
             "event.category": event_category,

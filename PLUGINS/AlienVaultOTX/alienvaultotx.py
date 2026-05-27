@@ -4,6 +4,9 @@ import requests
 
 from PLUGINS.AlienVaultOTX.CONFIG import API_KEY, HTTP_PROXY
 
+MAX_PULSE_SUMMARIES = 5
+MAX_LIST_ITEMS = 12
+
 
 class AlienVaultOTX(object):
     headers = {
@@ -24,19 +27,16 @@ class AlienVaultOTX(object):
             parts = indicator.split('.')
             if all(0 <= int(part) <= 255 for part in parts):
                 result = cls.query_ip(indicator)
-                result['indicator_type'] = 'ip'
                 return result
 
         if re.match(r'^[a-fA-F0-9]{32}$|^[a-fA-F0-9]{40}$|^[a-fA-F0-9]{64}$', indicator):
             result = cls.query_file(indicator)
-            result['indicator_type'] = 'file'
             return result
 
         url_pattern = r'^(https?://|ftp://|www\.)'
         domain_pattern = r'\.'
         if re.match(url_pattern, indicator, re.IGNORECASE) or (re.search(domain_pattern, indicator) and '/' in indicator):
             result = cls.query_url(indicator)
-            result['indicator_type'] = 'url'
             return result
 
         return {
@@ -63,8 +63,10 @@ class AlienVaultOTX(object):
 
         url = f"{cls.base_url}/indicators/IPv4/{ip}/general"
         req_result = cls._get(url)
+        if req_result.get("error"):
+            return cls.summarize_result(req_result, "ip", ip)
         req_result["reputation_score"] = cls.calculate_reputation_score(req_result)
-        return req_result
+        return cls.summarize_result(req_result, "ip", ip)
 
     @classmethod
     def query_url(cls, url: str) -> dict:
@@ -87,9 +89,7 @@ class AlienVaultOTX(object):
             otx_url = f"{cls.base_url}/indicators/url/{encoded_url}/general"
 
             result = cls._get(otx_url)
-            if result and not result.get('error'):
-                result['original_url'] = url
-            return result
+            return cls.summarize_result(result, "url", url)
         except Exception as e:
             return {"error": str(e)}
 
@@ -121,8 +121,124 @@ class AlienVaultOTX(object):
 
         url = f"{cls.base_url}/indicators/file/{file_hash}/general"
         req_result = cls._get(url)
+        if req_result.get("error"):
+            return cls.summarize_result(req_result, "file", file_hash)
         req_result["reputation_score"] = cls.calculate_reputation_score(req_result)
-        return req_result
+        return cls.summarize_result(req_result, "file", file_hash)
+
+    @classmethod
+    def summarize_result(cls, attributes: dict, indicator_type: str, indicator: str) -> dict:
+        if attributes.get("error"):
+            return {
+                "indicator": indicator,
+                "indicator_type": indicator_type,
+                "provider": "AlienVault OTX",
+                "error": attributes.get("error"),
+            }
+
+        pulse_info = attributes.get("pulse_info") or {}
+        pulses = pulse_info.get("pulses") or []
+        reputation_score = attributes.get("reputation_score")
+        pulse_count = pulse_info.get("count", len(pulses))
+
+        summary = {
+            "indicator": indicator,
+            "indicator_type": indicator_type,
+            "provider": "AlienVault OTX",
+            "risk_level": cls._risk_level(reputation_score, pulse_count),
+            "reputation_score": reputation_score,
+            "pulse_count": pulse_count,
+            "tags": cls._limit_list(cls._unique_items(tag for pulse in pulses for tag in pulse.get("tags", []))),
+            "attack_techniques": cls._limit_list(cls._extract_attack_techniques(pulses)),
+            "malware_families": cls._limit_list(cls._extract_related_values(pulse_info, "malware_families")),
+            "adversaries": cls._limit_list(cls._extract_related_values(pulse_info, "adversary")),
+            "industries": cls._limit_list(cls._extract_related_values(pulse_info, "industries")),
+            "validation": cls._compact_named_items(attributes.get("validation") or []),
+            "false_positive": cls._compact_named_items(attributes.get("false_positive") or []),
+            "pulses": cls._compact_pulses(pulses),
+        }
+
+        network_context = cls._network_context(attributes)
+        if network_context:
+            summary["network_context"] = network_context
+
+        return summary
+
+    @staticmethod
+    def _unique_items(items) -> list:
+        unique = []
+        for item in items:
+            if item and item not in unique:
+                unique.append(item)
+        return unique
+
+    @staticmethod
+    def _limit_list(items: list, limit: int = MAX_LIST_ITEMS) -> list:
+        return items[:limit]
+
+    @classmethod
+    def _extract_attack_techniques(cls, pulses: list) -> list:
+        techniques = []
+        for pulse in pulses:
+            for attack in pulse.get("attack_ids", []) or []:
+                display_name = attack.get("display_name") or attack.get("name") or attack.get("id")
+                if display_name:
+                    techniques.append(display_name)
+        return cls._unique_items(techniques)
+
+    @classmethod
+    def _extract_related_values(cls, pulse_info: dict, key: str) -> list:
+        related = pulse_info.get("related") or {}
+        values = []
+        for source in ("alienvault", "other"):
+            values.extend((related.get(source) or {}).get(key, []) or [])
+        return cls._unique_items(values)
+
+    @classmethod
+    def _compact_named_items(cls, items: list) -> list:
+        compact = []
+        for item in items:
+            if isinstance(item, dict):
+                value = item.get("name") or item.get("source") or item.get("description")
+                if value:
+                    compact.append(value)
+            elif item:
+                compact.append(item)
+        return cls._limit_list(cls._unique_items(compact))
+
+    @classmethod
+    def _compact_pulses(cls, pulses: list) -> list:
+        compact = []
+        for pulse in pulses[:MAX_PULSE_SUMMARIES]:
+            compact.append({
+                "name": pulse.get("name"),
+                "description": pulse.get("description"),
+                "tags": cls._limit_list(pulse.get("tags", [])),
+                "attack_techniques": cls._limit_list(cls._extract_attack_techniques([pulse])),
+                "malware_families": cls._limit_list(pulse.get("malware_families", []) or []),
+                "adversary": pulse.get("adversary"),
+                "created": pulse.get("created"),
+                "modified": pulse.get("modified"),
+                "tlp": pulse.get("TLP"),
+            })
+        return compact
+
+    @staticmethod
+    def _network_context(attributes: dict) -> dict:
+        context = {}
+        for field in ("asn", "country_name", "country_code", "region", "city"):
+            if attributes.get(field):
+                context[field] = attributes.get(field)
+        return context
+
+    @staticmethod
+    def _risk_level(reputation_score, pulse_count: int) -> str:
+        score = reputation_score or 0
+        if score >= 50 or pulse_count >= 5:
+            return "high"
+        if score >= 20 or pulse_count > 0:
+            return "medium"
+        return "low"
 
     @classmethod
     def _get(cls, url: str) -> dict:
@@ -134,7 +250,7 @@ class AlienVaultOTX(object):
                     "https": HTTP_PROXY,
                 }
             else:
-                proxies = None
+                proxies = {}
             resp = requests.get(url, headers=cls.headers, proxies=proxies, timeout=10)
             resp.raise_for_status()
             return resp.json()
@@ -197,9 +313,3 @@ class AlienVaultOTX(object):
                     score -= 8  # 每个威胁标签 -8分
 
         return -score
-
-
-if __name__ == "__main__":
-    target_ip = "66.240.205.34"
-    result = AlienVaultOTX.query_ip(target_ip)
-    print(result)

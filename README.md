@@ -1,8 +1,8 @@
 ![cover-v5-optimized](Docker/IMG/img.png)
 
 <p align="center">
-  <a href="https://asp.viperrtp.com/asf/Development/environment_setup/">Getting-started</a> ·
-  <a href="https://asp.viperrtp.com/asf/Introduction/what_is_asf/">Documentation</a>
+  <a href="https://asp.viperrtp.com/asp/Development/environment_setup/">Getting-started</a> ·
+  <a href="https://asp.viperrtp.com/asp/Introduction/what_is_asf/">Documentation</a>
 </p>
 
 <p align="center">

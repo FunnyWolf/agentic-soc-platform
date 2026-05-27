@@ -1,421 +1,634 @@
+from __future__ import annotations
+
+import hashlib
+import ipaddress
 import re
-from typing import List, Dict, Optional, Any, Annotated
+import sys
+from pathlib import Path
+from typing import Any
 
-# Extended mock CMDB data, keyed by CI ID (consistent with the last time)
-EXTENDED_CMDB_DATA = {
-    # 1. Core server CI (unchanged)
-    "SRV-WEB-001": {
-        "ci_id": "SRV-WEB-001", "ci_type": "Server", "hostname": "prod-web-01", "ip_address": ["192.168.10.5", "10.10.10.5"],
-        "ci_status": "Deployed/Active", "business_criticality": "High", "service_id": "SVC-ECOM-001",
-        "owner_team": "WebOps Team", "network_zone": "DMZ", "os_version": "RHEL 8.6",
-        "hardware_model": "Dell PowerEdge R640", "installed_software": [{"name": "nginx", "version": "1.20.1"}, {"name": "php-fpm", "version": "7.4"}],
-        "open_ports": [{"port": 80, "protocol": "TCP"}, {"port": 443, "protocol": "TCP"}], "primary_user_id": None
-    },
-    # 2. Database CI (unchanged)
-    "APP-DB-003": {
-        "ci_id": "APP-DB-003", "ci_type": "Database", "hostname": "prod-db-03", "ip_address": ["172.16.0.22"],
-        "ci_status": "Deployed/Active", "business_criticality": "Critical", "service_id": "SVC-ECOM-001",
-        "owner_team": "DBA Team", "network_zone": "Internal Prod",
-        "installed_software": [{"name": "mysql", "version": "8.0.27"}],
-        "open_ports": [{"port": 3306, "protocol": "TCP"}], "primary_user_id": "user_a"
-    },
-    # 3. Employee CI (unchanged)
-    "EMP-0010": {
-        "ci_id": "EMP-0010", "ci_type": "Employee", "employee_name": "Zhang San", "user_id": "user_a",
-        "department": "IT Operations", "job_title": "Database Administrator", "access_level": "High/Critical"
-    },
-    # 4. PC/Workstation CI (unchanged)
-    "PC-HR-04": {
-        "ci_id": "PC-HR-04", "ci_type": "Workstation", "hostname": "hr-pc-04", "ip_address": ["10.0.1.10"],
-        "ci_status": "Deployed/Active", "business_criticality": "Low", "service_id": "SVC-HR-003",
-        "owner_team": "HR Team", "os_version": "Windows 10", "mac_address": "00:1A:2B:3C:4D:5E",
-        "installed_software": [{"name": "office", "version": "2021"}], "primary_user_id": "user_b"
-    },
-    # 5. Domain Name CI (unchanged)
-    "DNS-ECOM-MAIN": {
-        "ci_id": "DNS-ECOM-MAIN", "ci_type": "DomainName", "domain_name": "example-ecommerce.com",
-        "ci_status": "Active", "business_criticality": "Critical", "owner_team": "Marketing",
-        "dns_registrar": "GoDaddy", "expiration_date": "2026-10-10", "related_ip": ["192.168.10.5"]
-    },
-    # --- New Type 6: NetworkDevice ---
-    "FW-DMZ-01": {
-        "ci_id": "FW-DMZ-01", "ci_type": "NetworkDevice", "hostname": "dmz-fw-01",
-        "ip_address": ["192.168.10.1", "10.10.10.1"], "ci_status": "Active",
-        "business_criticality": "Critical", "owner_team": "NetSec", "device_type": "Firewall",
-        "vendor": "Cisco", "os_version": "ASA 9.1", "location": "DC-Shanghai",
-        "management_ip": "172.31.0.1"
-    },
-    "RTR-CORE-02": {
-        "ci_id": "RTR-CORE-02", "ci_type": "NetworkDevice", "hostname": "core-rtr-02",
-        "ip_address": ["172.16.255.2"], "ci_status": "Active", "business_criticality": "High",
-        "owner_team": "Network", "device_type": "Router", "vendor": "Juniper",
-        "os_version": "Junos 18.4", "location": "DC-Beijing"
-    },
-    "SW-PROD-05": {
-        "ci_id": "SW-PROD-05", "ci_type": "NetworkDevice", "hostname": "prod-sw-05",
-        "ip_address": ["172.16.1.5"], "ci_status": "Active", "business_criticality": "Medium",
-        "owner_team": "Network", "device_type": "Switch", "vendor": "Huawei",
-        "os_version": "VRP 5.1", "location": "DC-Shanghai"
-    },
-    "LB-EXT-01": {
-        "ci_id": "LB-EXT-01", "ci_type": "NetworkDevice", "hostname": "ext-lb-01",
-        "ip_address": ["103.20.10.1"], "ci_status": "Active", "business_criticality": "Critical",
-        "owner_team": "WebOps", "device_type": "LoadBalancer", "vendor": "F5",
-        "os_version": "TMOS 14.1", "location": "Cloud POP"
-    },
-    "VPN-GATE-03": {
-        "ci_id": "VPN-GATE-03", "ci_type": "NetworkDevice", "hostname": "vpn-gate-03",
-        "ip_address": ["203.0.113.1"], "ci_status": "Active", "business_criticality": "Medium",
-        "owner_team": "NetSec", "device_type": "VPN Concentrator", "vendor": "Palo Alto",
-        "os_version": "PAN-OS 10.0", "location": "DC-Shanghai"
-    },
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
-    # --- New Type 7: CloudInstance ---
-    "EC2-PROD-A1": {
-        "ci_id": "EC2-PROD-A1", "ci_type": "CloudInstance", "hostname": "aws-app-a1",
-        "ip_address": ["172.31.5.10"], "ci_status": "Running", "business_criticality": "High",
-        "service_id": "SVC-ECOM-001", "owner_team": "CloudOps", "cloud_provider": "AWS",
-        "region": "us-east-1", "instance_type": "t3.medium", "os_version": "Amazon Linux 2",
-        "installed_software": [{"name": "java", "version": "11"}, {"name": "tomcat", "version": "9"}],
-        "primary_user_id": None
-    },
-    "GCE-DEV-B2": {
-        "ci_id": "GCE-DEV-B2", "ci_type": "CloudInstance", "hostname": "gcp-test-b2",
-        "ip_address": ["10.128.0.5"], "ci_status": "Stopped", "business_criticality": "Low",
-        "service_id": "SVC-DEV-002", "owner_team": "Dev Team", "cloud_provider": "GCP",
-        "region": "asia-east1", "instance_type": "e2-small", "os_version": "Debian 10"
-    },
-    "AZR-ANL-C3": {
-        "ci_id": "AZR-ANL-C3", "ci_type": "CloudInstance", "hostname": "azr-etl-c3",
-        "ip_address": ["40.1.1.1"], "ci_status": "Running", "business_criticality": "Medium",
-        "service_id": "SVC-ANALYTICS-004", "owner_team": "Data Team", "cloud_provider": "Azure",
-        "region": "East Asia", "instance_type": "Standard D4s v3", "os_version": "Windows Server 2019"
-    },
-    "EC2-DR-04": {
-        "ci_id": "EC2-DR-04", "ci_type": "CloudInstance", "hostname": "aws-dr-04",
-        "ip_address": ["172.31.20.10"], "ci_status": "Running", "business_criticality": "High",
-        "service_id": "SVC-ECOM-001", "owner_team": "CloudOps", "cloud_provider": "AWS",
-        "region": "ap-southeast-2", "instance_type": "t3.medium", "os_version": "Amazon Linux 2"
-    },
-    "GCE-ML-05": {
-        "ci_id": "GCE-ML-05", "ci_type": "CloudInstance", "hostname": "gcp-ml-worker",
-        "ip_address": ["10.128.0.6"], "ci_status": "Running", "business_criticality": "Medium",
-        "service_id": "SVC-AI-005", "owner_team": "AI Team", "cloud_provider": "GCP",
-        "region": "us-central1", "instance_type": "n1-standard-8", "os_version": "CentOS 7"
-    }
+from PLUGINS.SIRP.sirpcoremodel import ArtifactType
+from Lib.log import logger
+
+SUPPORTED_ARTIFACT_TYPES = {
+    ArtifactType.HOSTNAME,
+    ArtifactType.IP_ADDRESS,
+    ArtifactType.MAC_ADDRESS,
+    ArtifactType.USER_NAME,
+    ArtifactType.USER,
+    ArtifactType.ACCOUNT,
+    ArtifactType.EMAIL_ADDRESS,
+    ArtifactType.EMAIL,
+    ArtifactType.ENDPOINT,
+    ArtifactType.DEVICE,
+    ArtifactType.RESOURCE_UID,
+    ArtifactType.RESOURCE,
+    ArtifactType.PORT,
+    ArtifactType.SUBNET,
+    ArtifactType.SERIAL_NUMBER,
 }
 
+BUSINESS_PROFILES = [
+    {
+        "bucket": "ecommerce-prod",
+        "service_id": "SVC-ECOM-001",
+        "service_name": "E-Commerce Platform",
+        "business_criticality": "Critical",
+        "owner_team": "WebOps Team",
+        "department": "Online Business",
+        "environment": "Production",
+        "network_zone": "DMZ",
+    },
+    {
+        "bucket": "database-prod",
+        "service_id": "SVC-DATA-002",
+        "service_name": "Core Database Service",
+        "business_criticality": "Critical",
+        "owner_team": "DBA Team",
+        "department": "IT Operations",
+        "environment": "Production",
+        "network_zone": "Internal Prod",
+    },
+    {
+        "bucket": "employee-office",
+        "service_id": "SVC-ENDUSER-003",
+        "service_name": "Employee Endpoint Service",
+        "business_criticality": "Medium",
+        "owner_team": "Endpoint Team",
+        "department": "Corporate IT",
+        "environment": "Office",
+        "network_zone": "Office LAN",
+    },
+    {
+        "bucket": "identity-security",
+        "service_id": "SVC-IAM-004",
+        "service_name": "Identity and Access Management",
+        "business_criticality": "High",
+        "owner_team": "IAM Team",
+        "department": "Security",
+        "environment": "Production",
+        "network_zone": "Internal Prod",
+    },
+    {
+        "bucket": "cloud-workload",
+        "service_id": "SVC-CLOUD-005",
+        "service_name": "Cloud Workload Platform",
+        "business_criticality": "High",
+        "owner_team": "CloudOps Team",
+        "department": "Cloud Platform",
+        "environment": "Cloud",
+        "network_zone": "Cloud VPC",
+    },
+    {
+        "bucket": "network-infra",
+        "service_id": "SVC-NET-006",
+        "service_name": "Enterprise Network Infrastructure",
+        "business_criticality": "High",
+        "owner_team": "Network Team",
+        "department": "Infrastructure",
+        "environment": "Production",
+        "network_zone": "Management",
+    },
+]
 
-class CMDB(object):
-    """
-    Simulates an enterprise-level CMDB interface, focusing on providing contextual search functions for SOC.
-    This class is designed to provide a reliable tool interface for LLM Agents for security incident response and investigation.
-    """
+USER_PREFIX_PROFILES = {
+    "adm": "identity-security",
+    "admin": "identity-security",
+    "sec": "identity-security",
+    "soc": "identity-security",
+    "dba": "database-prod",
+    "db": "database-prod",
+    "fin": "database-prod",
+    "hr": "employee-office",
+    "user": "employee-office",
+    "emp": "employee-office",
+    "cloud": "cloud-workload",
+    "aws": "cloud-workload",
+    "dev": "cloud-workload",
+}
 
-    def __init__(self, data: Dict[str, Any]):
-        """
-        Initializes the CMDB simulator, building multiple indexes to support efficient lookups.
-        """
-        self._data = data
-        self._ip_map = {}
-        self._hostname_map = {}
-        self._mac_map = {}
+HOST_PREFIX_PROFILES = {
+    "prod-web": "ecommerce-prod",
+    "web": "ecommerce-prod",
+    "nginx": "ecommerce-prod",
+    "api": "ecommerce-prod",
+    "db": "database-prod",
+    "mysql": "database-prod",
+    "postgres": "database-prod",
+    "pc": "employee-office",
+    "lap": "employee-office",
+    "desktop": "employee-office",
+    "iam": "identity-security",
+    "ad": "identity-security",
+    "ec2": "cloud-workload",
+    "aws": "cloud-workload",
+    "gce": "cloud-workload",
+    "azr": "cloud-workload",
+    "fw": "network-infra",
+    "rtr": "network-infra",
+    "sw": "network-infra",
+    "vpn": "network-infra",
+    "lb": "network-infra",
+}
 
-        # Build an index for fast CI ID lookup by IP, Hostname, etc.
-        for ci_id, ci in data.items():
-            ci["ci_id"] = ci_id  # Ensure ci_id exists in every CI
+IP_NETWORK_PROFILES = [
+    (ipaddress.ip_network("192.168.10.0/24"), "ecommerce-prod"),
+    (ipaddress.ip_network("172.16.0.0/20"), "database-prod"),
+    (ipaddress.ip_network("10.0.0.0/16"), "employee-office"),
+    (ipaddress.ip_network("10.10.0.0/16"), "ecommerce-prod"),
+    (ipaddress.ip_network("10.20.0.0/16"), "database-prod"),
+    (ipaddress.ip_network("10.30.0.0/16"), "identity-security"),
+    (ipaddress.ip_network("10.40.0.0/16"), "cloud-workload"),
+    (ipaddress.ip_network("172.31.0.0/24"), "network-infra"),
+    (ipaddress.ip_network("172.31.0.0/16"), "cloud-workload"),
+    (ipaddress.ip_network("203.0.113.0/24"), "network-infra"),
+]
 
-            # Index IP addresses (supports multiple IPs)
-            for ip in ci.get("ip_address", []):
-                self._ip_map[ip] = ci_id
-
-            # Index Hostname
-            if ci.get("hostname"):
-                self._hostname_map[ci["hostname"]] = ci_id
-
-            # Index MAC address
-            if ci.get("mac_address"):
-                self._mac_map[ci["mac_address"]] = ci_id
-
-    def _find_ci(self, identifier_type: str, identifier_value: str) -> Optional[Dict[str, Any]]:
-        """Internal method: Find CI data by identifier, return the complete CI dictionary"""
-        ci_id = None
-        identifier_value = identifier_value.strip()
-
-        if identifier_type == "ip_address":
-            ci_id = self._ip_map.get(identifier_value)
-        elif identifier_type == "hostname":
-            ci_id = self._hostname_map.get(identifier_value)
-        elif identifier_type == "mac_address":
-            ci_id = self._mac_map.get(identifier_value)
-        elif identifier_type == "ci_id":
-            ci_id = identifier_value
-
-        return self._data.get(ci_id) if ci_id else None
-
-    # --- 1. Core common retrieval interface ---
-
-    def get_ci_context(self,
-                       identifier_type: Annotated[
-                           str, "The type of identifier used for the query, accepts 'ip_address', 'hostname', 'mac_address', 'ci_id' or 'user_id'"],
-                       identifier_value: Annotated[str, "The specific value of the identifier, for example '192.168.10.5' or 'prod-web-01'"]
-                       ) -> Annotated[
-        Dict[str, Any], "The complete dictionary data of a single matched CI, including hundreds of attributes such as business criticality, owner team, etc."]:
-        """
-        [A. Exact Identifier Retrieval]: Retrieves the complete contextual information of a single configuration item (CI) based on an exact identifier (IP, hostname, CI ID, or user ID).
-        This interface is used to quickly associate technical indicators in alarms with specific business assets when a security incident occurs.
-        If the CI cannot be found, a LookupError is thrown.
-        """
-        if not identifier_type or not identifier_value:
-            return {"error": "Identifier type and value cannot be empty."}
-
-        ci_data = self._find_ci(identifier_type, identifier_value)
-
-        if not ci_data:
-            # Add support for finding employee CIs
-            if identifier_type == "user_id":
-                for ci_data in self._data.values():
-                    if ci_data.get("ci_type") == "Employee" and ci_data.get("user_id") == identifier_value:
-                        return ci_data
-            return {"error": f"CI not found for {identifier_type}: {identifier_value}"}
-
-        return ci_data
-
-    def fuzzy_search_ci(self,
-                        partial_hostname: Annotated[
-                            Optional[str], "Partial hostname fragment, e.g. 'prod-'. If provided, a partial match will be performed."] = None,
-                        regex_pattern: Annotated[Optional[str], "Regular expression for advanced matching"] = None
-                        ) -> Annotated[List[Dict[str, Any]], "A list of matched CIs, returning only CI ID, CI type, hostname, and business criticality."]:
-        """
-        [B. Fuzzy/Partial Match Retrieval]: Retrieves a list of matching configuration items (CIs) based on a partial hostname or regular expression.
-        This interface is used to quickly determine the scope of assets (e.g., finding all AWS EC2 instances) when asset names are incomplete or need to be found according to a specific pattern.
-        If neither partial_hostname nor regex_pattern is provided, a ValueError is thrown.
-        """
-        if not partial_hostname and not regex_pattern:
-            return [{"error": "Either partial_hostname or regex_pattern must be provided."}]
-
-        matching_cis = []
-
-        for ci_data in self._data.values():
-            hostname = ci_data.get("hostname", ci_data.get("ci_id", ""))
-            match = False
-
-            if partial_hostname and partial_hostname.lower() in hostname.lower():
-                match = True
-
-            if regex_pattern:
-                try:
-                    if hostname and re.search(regex_pattern, hostname):
-                        match = True
-                except re.error as e:
-                    return [{"error": f"Invalid regular expression: {e}"}]
-
-            if match:
-                matching_cis.append({
-                    "ci_id": ci_data.get("ci_id"),
-                    "ci_type": ci_data.get("ci_type"),
-                    "business_criticality": ci_data.get("business_criticality"),
-                    "hostname": hostname
-                })
-
-        return matching_cis
-
-    # --- 2. Software/port association retrieval interface ---
-
-    def get_cis_by_software(self,
-                            software_name: Annotated[str, "The name of the software to find, for example 'nginx' or 'java'"],
-                            version: Annotated[Optional[
-                                str], "Optional software version number, for example '11' or '1.20.1'. If not provided, all versions will be matched."] = None
-                            ) -> Annotated[
-        List[Dict[str, Any]], "A list of CIs running the specified software, including CI ID, IP address, CI type, and business criticality."]:
-        """
-        [C. Software Version Retrieval]: Retrieves a list of configuration items (CIs) running a specific software or software version.
-        This interface is used in the vulnerability management process to quickly determine which assets are affected by known software vulnerabilities (such as Log4j, specific versions of Tomcat).
-        """
-        if not software_name:
-            return [{"error": "Software name cannot be empty."}]
-
-        matching_cis = []
-        for ci_data in self._data.values():
-            software_list = ci_data.get("installed_software", [])
-            for software in software_list:
-                name_match = software["name"].lower() == software_name.lower()
-                version_match = (version is None or software["version"] == version)
-
-                if name_match and version_match:
-                    matching_cis.append({
-                        "ci_id": ci_data.get("ci_id"),
-                        "ip_address": ci_data.get("ip_address"),
-                        "ci_type": ci_data.get("ci_type"),
-                        "business_criticality": ci_data.get("business_criticality")
-                    })
-                    break
-
-        return matching_cis
-
-    def get_cis_by_port(self,
-                        port_number: Annotated[int, "The port number to find, for example 22 or 3306"],
-                        protocol: Annotated[str, "Port protocol, for example 'TCP' or 'UDP', defaults to 'TCP'"] = "TCP"
-                        ) -> Annotated[
-        List[Dict[str, Any]], "A list of CIs that open the specified port and protocol, including CI ID, IP address, and network zone."]:
-        """
-        [D. Open Port Retrieval]: Retrieves a list of configuration items (CIs) that have a specific port and protocol open.
-        This interface is used for security audits to quickly identify misconfigured assets or assets with unauthorized externally open services.
-        """
-        if not isinstance(port_number, int) or port_number <= 0:
-            return [{"error": "Invalid port number."}]
-
-        matching_cis = []
-        for ci_data in self._data.values():
-            ports = ci_data.get("open_ports", [])
-            for port_info in ports:
-                if port_info["port"] == port_number and port_info["protocol"].upper() == protocol.upper():
-                    matching_cis.append({
-                        "ci_id": ci_data.get("ci_id"),
-                        "ip_address": ci_data.get("ip_address"),
-                        "network_zone": ci_data.get("network_zone")
-                    })
-                    break
-
-        return matching_cis
-
-    # --- 3. Business service association retrieval interface ---
-
-    def get_cis_by_service(self,
-                           service_id: Annotated[str, "The business service ID to query, for example 'SVC-ECOM-001'"]
-                           ) -> Annotated[List[
-        Dict[str, Any]], "A list of all underlying CIs that support the business service, including CI ID, IP address, CI type, and business criticality."]:
-        """
-        [E. Business Service Query]: Retrieves a list of all underlying configuration items (CIs) that support a specific critical business service.
-        This interface is used for advanced impact analysis to quickly find all related servers, databases, and cloud instances when a business service alarm occurs.
-        """
-        if not service_id:
-            return [{"error": "Service ID cannot be empty."}]
-
-        matching_cis = []
-        for ci_data in self._data.values():
-            # Exclude personnel and domain names, focus only on technical assets
-            if ci_data.get("service_id") == service_id and ci_data.get("ci_type") not in ["Employee", "DomainName"]:
-                matching_cis.append({
-                    "ci_id": ci_data.get("ci_id"),
-                    "ip_address": ci_data.get("ip_address"),
-                    "ci_type": ci_data.get("ci_type"),
-                    "business_criticality": ci_data.get("business_criticality")
-                })
-
-        return matching_cis
-
-    def get_cis_by_user(self,
-                        user_id: Annotated[str, "The user ID to query, for example 'user_a'"]
-                        ) -> Annotated[List[Dict[
-        str, Any]], "A list of all CIs associated with the user, including employee profiles, primary PCs/workstations, or primarily responsible servers."]:
-        """
-        [F. User/Responsible Person Query]: Retrieves a list of all configuration items (CIs) primarily used by or responsible for by a specific user.
-        This interface is used for user-related security incidents (such as phishing, credential leakage) to quickly locate all the user's related assets for isolation or forensics.
-        If the associated CI or user profile cannot be found, a LookupError is thrown.
-        """
-        if not user_id:
-            return [{"error": "User ID cannot be empty."}]
-
-        matching_cis = []
-        found_profile = False
-
-        for ci_data in self._data.values():
-            # Find employee profile
-            if ci_data.get("ci_type") == "Employee" and ci_data.get("user_id") == user_id:
-                matching_cis.append({
-                    "ci_id": ci_data.get("ci_id"),
-                    "ci_type": "Employee Profile",
-                    "employee_name": ci_data.get("employee_name"),
-                    "user_role": "Self"
-                })
-                found_profile = True
-
-            # Find assets (PC, DB, etc.)
-            if ci_data.get("primary_user_id") == user_id:
-                matching_cis.append({
-                    "ci_id": ci_data.get("ci_id"),
-                    "ci_type": ci_data.get("ci_type"),
-                    "hostname": ci_data.get("hostname", ci_data.get("ci_id")),
-                    "user_role": "Primary User"
-                })
-
-        if not matching_cis and not found_profile:
-            return [{"error": f"No CI found associated with user_id: {user_id}"}]
-
-        return matching_cis
+PROFILE_BY_BUCKET = {profile["bucket"]: profile for profile in BUSINESS_PROFILES}
 
 
-# 1. Create a CMDB instance
-cmdb_instance = CMDB(EXTENDED_CMDB_DATA)
+class MockCMDB:
+    """Deterministic medium/small CMDB mock for SOC alert investigation."""
+
+    def lookup(self, artifact_type: ArtifactType | str, artifact_value: str) -> dict[str, Any]:
+        try:
+            artifact_type = ArtifactType(artifact_type)
+        except ValueError:
+            return {
+                "supported": False,
+                "artifact_type": artifact_type,
+                "artifact_value": artifact_value,
+                "reason": "Unknown ArtifactType value.",
+            }
+
+        if artifact_type not in SUPPORTED_ARTIFACT_TYPES:
+            return {
+                "supported": False,
+                "artifact_type": artifact_type,
+                "artifact_value": artifact_value,
+                "reason": "Artifact type is not CMDB-related in this mock.",
+            }
+
+        value = artifact_value.strip()
+        if not value:
+            return {"supported": False, "artifact_type": artifact_type, "reason": "artifact_value is empty."}
+
+        if artifact_type in {ArtifactType.USER_NAME, ArtifactType.USER, ArtifactType.ACCOUNT}:
+            return self._identity_context(artifact_type, value)
+        if artifact_type in {ArtifactType.EMAIL_ADDRESS, ArtifactType.EMAIL}:
+            return self._email_context(artifact_type, value)
+        if artifact_type == ArtifactType.PORT:
+            return self._port_context(artifact_type, value)
+        if artifact_type == ArtifactType.SUBNET:
+            return self._subnet_context(artifact_type, value)
+        if artifact_type in {ArtifactType.RESOURCE_UID, ArtifactType.RESOURCE}:
+            return self._resource_context(artifact_type, value)
+        if artifact_type in {ArtifactType.HOSTNAME, ArtifactType.ENDPOINT, ArtifactType.DEVICE}:
+            return self._asset_context(artifact_type, value, self._profile_for_hostname(value), hostname=value)
+        if artifact_type == ArtifactType.IP_ADDRESS:
+            return self._asset_context(artifact_type, value, self._profile_for_ip(value), ip_address=value)
+        if artifact_type == ArtifactType.MAC_ADDRESS:
+            return self._asset_context(artifact_type, value, self._profile_for_mac(value), mac_address=value)
+        if artifact_type == ArtifactType.SERIAL_NUMBER:
+            return self._asset_context(artifact_type, value, self._profile_for_serial(value), serial_number=value)
+
+        return {"supported": False, "artifact_type": artifact_type, "artifact_value": value}
+
+    def _asset_context(
+            self,
+            artifact_type: ArtifactType,
+            value: str,
+            profile: dict[str, str],
+            hostname: str | None = None,
+            ip_address: str | None = None,
+            mac_address: str | None = None,
+            serial_number: str | None = None,
+    ) -> dict[str, Any]:
+        seed = self._seed(artifact_type, value)
+        asset_type = self._asset_type_for_profile(profile, value)
+        hostname = hostname or self._hostname(seed, asset_type)
+        ip_address = ip_address or self._ip(seed, profile)
+        mac_address = mac_address or self._mac(seed)
+        serial_number = serial_number or f"SN-{self._token(seed, 10)}"
+        owner = self._owner(profile, seed)
+        exposure = self._exposure(asset_type, profile, seed)
+        self._debug_context(artifact_type, value, profile, seed, self._soc_notes(profile, asset_type, exposure))
+
+        return {
+            "supported": True,
+            "query": {"artifact_type": artifact_type, "artifact_value": value},
+            "cmdb_record_type": "asset",
+            "asset": {
+                "asset_id": f"AST-{self._token(profile['bucket'] + ':' + value, 8)}",
+                "asset_type": asset_type,
+                "hostname": hostname,
+                "ip_addresses": [ip_address],
+                "mac_address": mac_address,
+                "serial_number": serial_number,
+                "status": self._pick(seed + ":status", ["Active", "Active", "Active", "Maintenance", "Retired"]),
+                "environment": profile["environment"],
+                "network_zone": profile["network_zone"],
+                "location": self._pick(seed + ":location", ["Shanghai DC", "Beijing DC", "Cloud", "Office", "Remote"]),
+            },
+            "business": self._business(profile),
+            "owner": owner,
+            "exposure": exposure,
+            "related": {
+                "primary_user": owner["user_id"],
+                "nearby_assets": self._nearby_assets(seed, profile, asset_type),
+                "service_assets_hint": f"Assets in {profile['service_id']} usually share owner_team={profile['owner_team']} and zone={profile['network_zone']}.",
+            },
+        }
+
+    def _identity_context(self, artifact_type: ArtifactType, value: str) -> dict[str, Any]:
+        profile = self._profile_for_user(value)
+        seed = self._seed(artifact_type, value)
+        user_id = value
+        workstation = self._asset_context(ArtifactType.HOSTNAME, f"pc-{self._safe_name(value)}", profile)
+        self._debug_context(artifact_type, value, profile, seed, [
+            "Check recent authentication, VPN and endpoint activity for this identity.",
+            "If privilege_level is Privileged or High/Critical, prioritize containment and credential review.",
+        ])
+        return {
+            "supported": True,
+            "query": {"artifact_type": artifact_type, "artifact_value": value},
+            "cmdb_record_type": "identity",
+            "identity": {
+                "user_id": user_id,
+                "display_name": self._display_name(value),
+                "department": profile["department"],
+                "job_title": self._pick(seed + ":title", ["Engineer", "Analyst", "Administrator", "Manager", "Operator"]),
+                "employment_status": "Active",
+                "privilege_level": self._pick(seed + ":priv", ["Standard", "Standard", "Privileged", "High/Critical"]),
+            },
+            "business": self._business(profile),
+            "owner": self._owner(profile, seed),
+            "related": {
+                "primary_endpoint": workstation["asset"],
+                "accounts": [user_id, f"{user_id}@corp.example"],
+                "common_services": [profile["service_id"]],
+            },
+        }
+
+    def _email_context(self, artifact_type: ArtifactType, value: str) -> dict[str, Any]:
+        local_part = value.split("@", 1)[0] if "@" in value else value
+        profile = self._profile_for_user(local_part)
+        identity = self._identity_context(ArtifactType.USER_NAME, local_part)
+        domain = value.split("@", 1)[1] if "@" in value else "corp.example"
+        self._debug_context(artifact_type, value, profile, self._seed(artifact_type, value), [
+            "For phishing alerts, pivot from this mailbox to recent login IPs, forwarding rules and OAuth grants.",
+            "For suspicious sender/recipient alerts, compare mailbox owner department with alert target scope.",
+        ])
+        return {
+            "supported": True,
+            "query": {"artifact_type": artifact_type, "artifact_value": value},
+            "cmdb_record_type": "email_identity",
+            "mailbox": {
+                "email_address": value,
+                "mail_domain": domain,
+                "mail_platform": self._pick(domain, ["Microsoft 365", "Google Workspace", "Exchange Online"]),
+                "mailbox_status": "Active",
+            },
+            "identity": identity["identity"],
+            "business": self._business(profile),
+            "related": identity["related"],
+        }
+
+    def _port_context(self, artifact_type: ArtifactType, value: str) -> dict[str, Any]:
+        if not value.isdigit() or not 1 <= int(value) <= 65535:
+            return {"supported": False, "artifact_type": artifact_type, "artifact_value": value, "reason": "Invalid TCP/UDP port."}
+
+        port = int(value)
+        profile = self._profile_for_port(port)
+        seed = self._seed(artifact_type, value)
+        protocol = self._pick(seed + ":proto", ["TCP", "TCP", "UDP"])
+        self._debug_context(artifact_type, value, profile, seed, [
+            "Use this result as exposure context, not as proof that every related asset has this port open.",
+            "Prioritize internet-facing or management ports during incident scoping.",
+        ])
+        return {
+            "supported": True,
+            "query": {"artifact_type": artifact_type, "artifact_value": value},
+            "cmdb_record_type": "network_exposure",
+            "port": {
+                "port": port,
+                "protocol": protocol,
+                "common_service": self._service_name_for_port(port),
+                "exposure_level": self._pick(seed + ":exposure", ["Internal", "Internal", "Internet-facing", "Management-only"]),
+            },
+            "business": self._business(profile),
+            "related_assets": self._nearby_assets(seed, profile, self._asset_type_for_profile(profile, value)),
+        }
+
+    def _subnet_context(self, artifact_type: ArtifactType, value: str) -> dict[str, Any]:
+        try:
+            network = ipaddress.ip_network(value, strict=False)
+        except ValueError:
+            return {"supported": False, "artifact_type": artifact_type, "artifact_value": value, "reason": "Invalid subnet."}
+
+        profile = self._profile_for_ip(str(network.network_address))
+        seed = self._seed(artifact_type, value)
+        self._debug_context(artifact_type, value, profile, seed, [
+            "Use subnet context for blast-radius estimation and network containment planning.",
+            "Validate exact membership in a real CMDB/IPAM during production response.",
+        ])
+        return {
+            "supported": True,
+            "query": {"artifact_type": artifact_type, "artifact_value": value},
+            "cmdb_record_type": "subnet",
+            "subnet": {
+                "cidr": str(network),
+                "network_zone": profile["network_zone"],
+                "environment": profile["environment"],
+                "estimated_asset_count": self._stable_int(seed + ":count") % 80 + 10,
+                "owner_team": profile["owner_team"],
+            },
+            "business": self._business(profile),
+            "related_assets": self._nearby_assets(seed, profile, self._asset_type_for_profile(profile, value), count=5),
+        }
+
+    def _resource_context(self, artifact_type: ArtifactType, value: str) -> dict[str, Any]:
+        profile = self._profile_for_resource(value)
+        seed = self._seed(artifact_type, value)
+        resource_type = self._resource_type(value)
+        self._debug_context(artifact_type, value, profile, seed, [
+            "Cloud resource alerts should be correlated with IAM changes, security group changes and workload logs.",
+            "If this is a storage or database resource, review public access and recent policy changes.",
+        ])
+        return {
+            "supported": True,
+            "query": {"artifact_type": artifact_type, "artifact_value": value},
+            "cmdb_record_type": "resource",
+            "resource": {
+                "resource_id": value,
+                "resource_type": resource_type,
+                "provider": self._resource_provider(value),
+                "region": self._pick(seed + ":region", ["cn-shanghai", "cn-beijing", "us-east-1", "ap-southeast-1"]),
+                "status": self._pick(seed + ":status", ["Running", "Available", "Active", "Stopped"]),
+            },
+            "business": self._business(profile),
+            "owner": self._owner(profile, seed),
+            "related_assets": self._nearby_assets(seed, profile, "CloudInstance"),
+        }
+
+    def _profile_for_ip(self, value: str) -> dict[str, str]:
+        try:
+            ip = ipaddress.ip_address(value)
+        except ValueError:
+            return self._profile_by_hash(value)
+
+        for network, bucket in IP_NETWORK_PROFILES:
+            if ip in network:
+                return PROFILE_BY_BUCKET[bucket]
+        if ip.is_private:
+            return PROFILE_BY_BUCKET[self._pick(str(ip), ["employee-office", "database-prod", "cloud-workload"])]
+        return PROFILE_BY_BUCKET[self._pick(str(ip), ["ecommerce-prod", "network-infra", "cloud-workload"])]
+
+    def _profile_for_hostname(self, value: str) -> dict[str, str]:
+        normalized = value.lower()
+        for prefix, bucket in HOST_PREFIX_PROFILES.items():
+            if normalized.startswith(prefix) or f"-{prefix}" in normalized:
+                return PROFILE_BY_BUCKET[bucket]
+        return self._profile_by_hash(value)
+
+    def _profile_for_user(self, value: str) -> dict[str, str]:
+        normalized = value.lower().split("@", 1)[0]
+        for prefix, bucket in USER_PREFIX_PROFILES.items():
+            if normalized.startswith(prefix):
+                return PROFILE_BY_BUCKET[bucket]
+        return PROFILE_BY_BUCKET[self._pick(normalized, ["employee-office", "identity-security", "database-prod", "cloud-workload"])]
+
+    def _profile_for_mac(self, value: str) -> dict[str, str]:
+        vendor_hint = value.upper().replace("-", ":")[:8]
+        if vendor_hint in {"00:1A:2B", "3C:52:82", "B8:27:EB"}:
+            return PROFILE_BY_BUCKET["employee-office"]
+        return self._profile_by_hash(value)
+
+    def _profile_for_serial(self, value: str) -> dict[str, str]:
+        lower = value.lower()
+        if lower.startswith(("fw", "rtr", "sw", "net")):
+            return PROFILE_BY_BUCKET["network-infra"]
+        if lower.startswith(("ec2", "aws", "gce", "az")):
+            return PROFILE_BY_BUCKET["cloud-workload"]
+        return self._profile_by_hash(value)
+
+    def _profile_for_port(self, port: int) -> dict[str, str]:
+        if port in {80, 443, 8080, 8443}:
+            return PROFILE_BY_BUCKET["ecommerce-prod"]
+        if port in {1433, 1521, 3306, 5432, 6379, 9200}:
+            return PROFILE_BY_BUCKET["database-prod"]
+        if port in {22, 23, 161, 3389, 5900}:
+            return PROFILE_BY_BUCKET["network-infra"]
+        return self._profile_by_hash(str(port))
+
+    def _profile_for_resource(self, value: str) -> dict[str, str]:
+        lower = value.lower()
+        if lower.startswith(("arn:", "i-", "ec2", "aws", "gcp", "gce", "az", "/subscriptions/")):
+            return PROFILE_BY_BUCKET["cloud-workload"]
+        if any(word in lower for word in ["policy", "role", "user", "iam"]):
+            return PROFILE_BY_BUCKET["identity-security"]
+        return self._profile_by_hash(value)
+
+    def _profile_by_hash(self, seed: str) -> dict[str, str]:
+        return self._pick(seed, BUSINESS_PROFILES)
+
+    def _asset_type_for_profile(self, profile: dict[str, str], value: str) -> str:
+        lower = value.lower()
+        if profile["bucket"] == "network-infra":
+            return self._pick(value, ["Firewall", "Router", "Switch", "VPN Gateway", "Load Balancer"])
+        if profile["bucket"] == "cloud-workload":
+            return "CloudInstance"
+        if profile["bucket"] == "database-prod" or any(word in lower for word in ["db", "sql", "mysql", "postgres"]):
+            return "Database"
+        if profile["bucket"] == "employee-office" or lower.startswith(("pc", "lap", "desktop")):
+            return "Workstation"
+        return "Server"
+
+    def _exposure(self, asset_type: str, profile: dict[str, str], seed: str) -> dict[str, Any]:
+        ports = {
+            "Server": [22, 80, 443],
+            "Database": [22, 3306],
+            "Workstation": [3389],
+            "CloudInstance": [22, 443, 8080],
+            "Firewall": [22, 443],
+            "Router": [22, 161],
+            "Switch": [22, 161],
+            "VPN Gateway": [443, 500, 4500],
+            "Load Balancer": [80, 443],
+        }.get(asset_type, [443])
+        return {
+            "internet_exposed": profile["network_zone"] == "DMZ" or asset_type in {"Load Balancer", "VPN Gateway"},
+            "open_ports": [{"port": port, "protocol": "TCP" if port not in {500, 4500, 161} else "UDP"} for port in ports],
+            "installed_software": self._software(asset_type, seed),
+            "edr_installed": asset_type in {"Server", "Database", "Workstation", "CloudInstance"},
+            "logging_level": self._pick(seed + ":logging", ["Standard", "Enhanced", "Verbose"]),
+        }
+
+    def _software(self, asset_type: str, seed: str) -> list[dict[str, str]]:
+        catalog = {
+            "Server": [{"name": "nginx", "version": "1.24"}, {"name": "openssh", "version": "9"}],
+            "Database": [{"name": "mysql", "version": "8.0"}, {"name": "backup-agent", "version": "3"}],
+            "Workstation": [{"name": "office", "version": "2021"}, {"name": "edr-agent", "version": "5"}],
+            "CloudInstance": [{"name": "cloud-agent", "version": "2"}, {"name": "container-runtime", "version": "stable"}],
+            "Firewall": [{"name": "network-os", "version": "stable"}],
+            "Router": [{"name": "network-os", "version": "stable"}],
+            "Switch": [{"name": "network-os", "version": "stable"}],
+            "VPN Gateway": [{"name": "vpn-service", "version": "stable"}],
+            "Load Balancer": [{"name": "load-balancer", "version": "stable"}],
+        }
+        return catalog.get(asset_type, [{"name": self._pick(seed, ["agent", "service", "daemon"]), "version": "mock-current"}])
+
+    def _business(self, profile: dict[str, str]) -> dict[str, str]:
+        return {
+            "service_id": profile["service_id"],
+            "service_name": profile["service_name"],
+            "business_criticality": profile["business_criticality"],
+            "department": profile["department"],
+            "environment": profile["environment"],
+        }
+
+    def _owner(self, profile: dict[str, str], seed: str) -> dict[str, str]:
+        user_prefix = {
+            "WebOps Team": "webops",
+            "DBA Team": "dba",
+            "Endpoint Team": "endpoint",
+            "IAM Team": "iam",
+            "CloudOps Team": "cloudops",
+            "Network Team": "netops",
+        }.get(profile["owner_team"], "owner")
+        return {
+            "owner_team": profile["owner_team"],
+            "user_id": f"{user_prefix}_{self._token(seed + ':owner', 4).lower()}",
+            "oncall": f"{profile['owner_team'].lower().replace(' ', '-')}-oncall",
+        }
+
+    def _nearby_assets(self, seed: str, profile: dict[str, str], asset_type: str, count: int = 3) -> list[dict[str, Any]]:
+        return [
+            {
+                "asset_id": f"AST-{self._token(seed + ':nearby:' + str(index), 8)}",
+                "asset_type": asset_type,
+                "hostname": self._hostname(seed + f":nearby:{index}", asset_type),
+                "ip_address": self._ip(seed + f":nearby:{index}", profile),
+                "relationship": self._pick(seed + f":rel:{index}", ["same_service", "same_subnet", "same_owner_team", "same_application_tier"]),
+            }
+            for index in range(1, count + 1)
+        ]
+
+    def _soc_notes(self, profile: dict[str, str], asset_type: str, exposure: dict[str, Any]) -> list[str]:
+        notes = [
+            f"Treat this as {profile['business_criticality']} business context for {profile['service_name']}.",
+            f"Notify {profile['owner_team']} if containment or forensic collection is needed.",
+        ]
+        if exposure["internet_exposed"]:
+            notes.append("Internet-exposed asset: prioritize external attack surface and WAF/proxy log review.")
+        if asset_type in {"Database", "IAM", "CloudInstance"} or profile["business_criticality"] == "Critical":
+            notes.append("High-impact asset: preserve evidence before disruptive containment if possible.")
+        return notes
+
+    def _debug_context(self, artifact_type: ArtifactType, value: str, profile: dict[str, str], seed: str, notes: list[str]) -> None:
+        logger.debug(
+            "Mock CMDB lookup artifact_type=%s artifact_value=%s profile_bucket=%s seed_hash=%s notes=%s",
+            artifact_type.value,
+            value,
+            profile["bucket"],
+            self._token(seed, 12),
+            notes,
+        )
+
+    def _hostname(self, seed: str, asset_type: str) -> str:
+        prefix = {
+            "Server": "srv",
+            "Database": "db",
+            "Workstation": "pc",
+            "CloudInstance": "cloud",
+            "Firewall": "fw",
+            "Router": "rtr",
+            "Switch": "sw",
+            "VPN Gateway": "vpn",
+            "Load Balancer": "lb",
+        }.get(asset_type, "asset")
+        return f"{prefix}-{self._token(seed, 6).lower()}"
+
+    def _ip(self, seed: str, profile: dict[str, str]) -> str:
+        ranges = {
+            "ecommerce-prod": "192.168.10.0/24",
+            "database-prod": "172.16.0.0/20",
+            "employee-office": "10.0.0.0/16",
+            "identity-security": "10.30.0.0/16",
+            "cloud-workload": "172.31.0.0/16",
+            "network-infra": "172.31.0.0/24",
+        }
+        network = ipaddress.ip_network(ranges[profile["bucket"]])
+        offset = self._stable_int(seed + ":ip") % (network.num_addresses - 2) + 1
+        return str(network.network_address + offset)
+
+    def _mac(self, seed: str) -> str:
+        digest = self._token(seed + ":mac", 12)
+        return ":".join(digest[index:index + 2] for index in range(0, 12, 2))
+
+    def _service_name_for_port(self, port: int) -> str:
+        return {
+            22: "SSH",
+            25: "SMTP",
+            53: "DNS",
+            80: "HTTP",
+            443: "HTTPS",
+            500: "IKE",
+            161: "SNMP",
+            3306: "MySQL",
+            3389: "RDP",
+            4500: "IPSec NAT-T",
+            5432: "PostgreSQL",
+            6379: "Redis",
+            8080: "HTTP Alternate",
+            8443: "HTTPS Alternate",
+            9200: "Elasticsearch",
+        }.get(port, "Unknown/Custom")
+
+    def _resource_type(self, value: str) -> str:
+        lower = value.lower()
+        if lower.startswith(("i-", "ec2")) or ":instance/" in lower:
+            return "Cloud Compute Instance"
+        if "bucket" in lower or ":s3" in lower:
+            return "Object Storage Bucket"
+        if "role" in lower or "policy" in lower:
+            return "IAM Resource"
+        if "db" in lower or "rds" in lower:
+            return "Cloud Database"
+        return "Generic Resource"
+
+    def _resource_provider(self, value: str) -> str:
+        lower = value.lower()
+        if lower.startswith("arn:") or lower.startswith(("i-", "ec2", "aws")):
+            return "AWS"
+        if lower.startswith(("gcp", "gce")):
+            return "GCP"
+        if lower.startswith(("az", "/subscriptions/")):
+            return "Azure"
+        return "Internal"
+
+    def _display_name(self, value: str) -> str:
+        parts = re.split(r"[._-]+", value.split("@", 1)[0])
+        return " ".join(part.capitalize() for part in parts if part) or value
+
+    def _safe_name(self, value: str) -> str:
+        return re.sub(r"[^a-zA-Z0-9-]", "-", value).strip("-").lower() or "unknown"
+
+    def _seed(self, artifact_type: ArtifactType, artifact_value: str) -> str:
+        return f"{artifact_type.value}:{artifact_value}"
+
+    def _token(self, seed: str, length: int) -> str:
+        return hashlib.sha256(seed.encode("utf-8")).hexdigest()[:length].upper()
+
+    def _stable_int(self, seed: str) -> int:
+        return int(self._token(seed, 12), 16)
+
+    def _pick(self, seed: str, values: list[Any]) -> Any:
+        return values[self._stable_int(seed) % len(values)]
 
 
-# 2. Bind instance methods to global function variables for use by LangChain Agent.
-# This method is optimal because it preserves Annotated Type Hints and Docstrings.
-
-def get_ci_context_tool(
-        identifier_type: Annotated[str, "The type of identifier used for the query, accepts 'ip_address', 'hostname', 'mac_address', 'ci_id' or 'user_id'"],
-        identifier_value: Annotated[str, "The specific value of the identifier, for example '192.168.10.5' or 'prod-web-01'"]
-) -> Annotated[
-    Dict[str, Any], "The complete dictionary data of a single matched CI, including hundreds of attributes such as business criticality, owner team, etc."]:
-    """
-    Retrieves the complete contextual information of a single configuration item (CI) based on an exact identifier (IP, hostname, CI ID, or user ID).
-    This interface is used to quickly associate technical indicators in alarms with specific business assets when a security incident occurs.
-    """
-    return cmdb_instance.get_ci_context(identifier_type, identifier_value)
-
-
-def fuzzy_search_ci_tool(
-        partial_hostname: Annotated[Optional[str], "Partial hostname fragment, e.g. 'prod-'. If provided, a partial match will be performed."] = None,
-        regex_pattern: Annotated[Optional[str], "Regular expression for advanced matching, for example 'aws-\\d+'. Choose one from partial_hostname."] = None
-) -> Annotated[List[Dict[str, Any]], "A list of matched CIs, returning only CI ID, CI type, hostname, and business criticality."]:
-    """
-    Retrieves a list of matching configuration items (CIs) based on a partial hostname or regular expression.
-    This interface is used to quickly determine the scope of assets (e.g., finding all AWS EC2 instances) when asset names are incomplete or need to be found according to a specific pattern.
-    """
-    return cmdb_instance.fuzzy_search_ci(partial_hostname, regex_pattern)
-
-
-def get_cis_by_software_tool(
-        software_name: Annotated[str, "The name of the software to find, for example 'nginx' or 'java'"],
-        version: Annotated[
-            Optional[str], "Optional software version number, for example '11' or '1.20.1'. If not provided, all versions will be matched."] = None
-) -> Annotated[List[Dict[str, Any]], "A list of CIs running the specified software, including CI ID, IP address, CI type, and business criticality."]:
-    """
-    Retrieves a list of configuration items (CIs) running a specific software or software version.
-    This interface is used in the vulnerability management process to quickly determine which assets are affected by known software vulnerabilities.
-    """
-    return cmdb_instance.get_cis_by_software(software_name, version)
-
-
-def get_cis_by_port_tool(
-        port_number: Annotated[int, "The port number to find, for example 22 or 3306"],
-        protocol: Annotated[str, "Port protocol, for example 'TCP' or 'UDP', defaults to 'TCP'"] = "TCP"
-) -> Annotated[List[Dict[str, Any]], "A list of CIs that open the specified port and protocol, including CI ID, IP address, and network zone."]:
-    """
-    Retrieves a list of configuration items (CIs) that have a specific port and protocol open.
-    This interface is used for security audits to quickly identify misconfigured assets or assets with unauthorized externally open services.
-    """
-    return cmdb_instance.get_cis_by_port(port_number, protocol)
-
-
-def get_cis_by_service_tool(
-        service_id: Annotated[str, "The business service ID to query, for example 'SVC-ECOM-001'"]
-) -> Annotated[
-    List[Dict[str, Any]], "A list of all underlying CIs that support the business service, including CI ID, IP address, CI type, and business criticality."]:
-    """
-    Retrieves a list of all underlying configuration items (CIs) that support a specific critical business service.
-    This interface is used for advanced impact analysis to quickly find all related servers, databases, and cloud instances when a business service alarm occurs.
-    """
-    return cmdb_instance.get_cis_by_service(service_id)
-
-
-def get_cis_by_user_tool(
-        user_id: Annotated[str, "The user ID to query, for example 'user_a'"]
-) -> Annotated[List[
-    Dict[str, Any]], "A list of all CIs associated with the user, including employee profiles, primary PCs/workstations, or primarily responsible servers."]:
-    """
-    Retrieves a list of all configuration items (CIs) primarily used by or responsible for by a specific user.
-    This interface is used for user-related security incidents (such as phishing, credential leakage) to quickly locate all the user's related assets for isolation or forensics.
-    """
-    return cmdb_instance.get_cis_by_user(user_id)
+cmdb_instance = MockCMDB()

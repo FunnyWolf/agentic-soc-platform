@@ -1,0 +1,65 @@
+{
+  "@timestamp": "2026-04-30T10:22:59.324651Z",
+  "event.dataset": "host",
+  "event.module": "endpoint",
+  "event.category": "process",
+  "event.type": "process_started",
+  "event.action": "process_started",
+  "event.outcome": "success",
+  "host.name": "srv-db-slave-01",
+  "host.id": "7c47b724-6abf-4f4f-9cd8-7664ceedeba4",
+  "host.os.name": "Windows",
+  "user.name": "d.liu",
+  "user.id": "S-1-5-21-271440861-667955336-945575370-1001",
+  "process.pid": 922,
+  "process.name": "vssadmin.exe",
+  "process.command_line": "vssadmin.exe delete shadows /all /quiet",
+  "process.executable": "C:\Windows\System32\vssadmin.exe",
+  "process.hash.md5": "26040ba822144f209f808147c9994eaf",
+  "process.hash.sha256": "270069e9e89e43de9575093fedc95672",
+  "process.parent.name": "cmd.exe",
+  "process.parent.pid": 270,
+  "process.working_directory": "C:\Windows\System32",
+  "event.duration": 1413,
+  "log.level": "critical",
+  "risk_score": 100,
+  "message": "Shadow Copy deletion detected - ransomware indicator",
+  "event": {
+    "dataset": "host",
+    "module": "endpoint",
+    "category": "process",
+    "type": "process_started",
+    "action": "process_started",
+    "outcome": "success",
+    "duration": 1413
+  },
+  "host": {
+    "name": "srv-db-slave-01",
+    "id": "7c47b724-6abf-4f4f-9cd8-7664ceedeba4",
+    "os": {
+      "name": "Windows"
+    }
+  },
+  "user": {
+    "name": "d.liu",
+    "id": "S-1-5-21-271440861-667955336-945575370-1001"
+  },
+  "process": {
+    "pid": 922,
+    "name": "vssadmin.exe",
+    "command_line": "vssadmin.exe delete shadows /all /quiet",
+    "executable": "C:\Windows\System32\vssadmin.exe",
+    "hash": {
+      "md5": "26040ba822144f209f808147c9994eaf",
+      "sha256": "270069e9e89e43de9575093fedc95672"
+    },
+    "parent": {
+      "name": "cmd.exe",
+      "pid": 270
+    },
+    "working_directory": "C:\Windows\System32"
+  },
+  "log": {
+    "level": "critical"
+  }
+}

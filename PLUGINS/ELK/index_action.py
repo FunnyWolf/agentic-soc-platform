@@ -22,6 +22,30 @@ class SIEMAlertProcessor:
         self.scheduler = BackgroundScheduler()
         self.last_check_time = None
 
+    @staticmethod
+    def _parse_hits(hits):
+        if isinstance(hits, str):
+            return json.loads(hits)
+        if isinstance(hits, dict):
+            return [hits]
+        return hits or []
+
+    @classmethod
+    def _normalize_hit_value(cls, value):
+        if isinstance(value, dict):
+            if set(value.keys()) == {"keyword"}:
+                return cls._normalize_hit_value(value.get("keyword"))
+            return {k: cls._normalize_hit_value(v) for k, v in value.items() if not k.endswith(".keyword")}
+        if isinstance(value, list):
+            return [cls._normalize_hit_value(item) for item in value]
+        return value
+
+    @classmethod
+    def _extract_source(cls, hit: Dict[str, Any]) -> Dict[str, Any]:
+        source = hit.get('_source') if isinstance(hit.get('_source'), dict) else hit
+        source = cls._normalize_hit_value(source)
+        return source if isinstance(source, dict) else {}
+
     def start_monitoring(self):
         trigger = IntervalTrigger(minutes=POLL_INTERVAL_MINUTES)
         self.scheduler.add_job(
@@ -86,7 +110,7 @@ class SIEMAlertProcessor:
         try:
             rule_name = alert_data.get("rule", {}).get("name")
             hits = alert_data.get("context", {}).get("hits", [])
-            hits = json.loads(hits)
+            hits = self._parse_hits(hits)
             if not rule_name:
                 logger.warning("Alert missing rule name, skipping")
                 return False
@@ -97,7 +121,7 @@ class SIEMAlertProcessor:
 
             for hit in hits:
                 if isinstance(hit, dict):
-                    _source = hit.pop('_source', {}) if '_source' in hit else hit
+                    _source = self._extract_source(hit)
                     logger.debug(f"Processing hit for rule: {rule_name}")
                     self.redis_stream_api.send_message(rule_name, _source)
                     logger.debug("Message sent to Redis stream")

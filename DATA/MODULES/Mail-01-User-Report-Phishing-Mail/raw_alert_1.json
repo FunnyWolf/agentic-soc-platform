@@ -1,0 +1,21 @@
+{
+  "headers": {
+    "From": "\"Freelancer Inc. Billing\" <billing@freelancerinc.co>",
+    "To": "\"Valued Customer\" <user@example.com>",
+    "Subject": "Invoice 2025-11-05 from Freelancer Inc.",
+    "Date": "Wed, 5 Nov 2025 15:45:00 +0800",
+    "Return-Path": "<postmaster@freelancerinc.co>",
+    "Authentication-Results": "mx.example.com; spf=pass smtp.mail=billing@freelancerinc.co; dkim=pass header.d=freelancerinc.co"
+  },
+  "body": {
+    "plain_text": "Dear Valued Customer,\n\nPlease find attached the invoice for services rendered in October 2025. Total amount due is $1,250.00.\n\nDue Date: 2025-11-20\n\nView invoice details online:\nhttps://billing.freelancerinc.co/invoice/view/2025-11-05-123\n\nThank you for your business.",
+    "html": "<html><body><p>Dear Valued Customer,</p><p>Please find attached the invoice for services rendered in October 2025. Total amount due is <b>$1,250.00</b>.</p><p>Due Date: 2025-11-20</p><p>View invoice details online:<br><a href='https://billing.freelancerinc.co/invoice/view/2025-11-05-123'>View Invoice</a></p></body></html>"
+  },
+  "attachments": [
+    {
+      "filename": "Invoice_2025-11-05.pdf",
+      "filepath": "attachments/Invoice_2025-11-05.pdf",
+      "content_type": "application/pdf"
+    }
+  ]
+}
