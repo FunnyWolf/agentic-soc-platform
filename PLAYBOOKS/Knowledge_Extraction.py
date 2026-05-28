@@ -1,5 +1,5 @@
 from Lib.baseplaybook import BasePlaybook
-from PLUGINS.SIRP.analysis import extract_knowledge_from_case
+from Lib.analysis import extract_knowledge_from_case
 from PLUGINS.SIRP.sirpapi import Case, Knowledge
 from PLUGINS.SIRP.sirpbasemodel import AI_PROFILE_INVESTIGATION
 from PLUGINS.SIRP.sirpextramodel import KnowledgeModel, KnowledgeSource, PlaybookJobStatus

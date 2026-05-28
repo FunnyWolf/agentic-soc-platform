@@ -1,5 +1,5 @@
 from Lib.baseplaybook import BasePlaybook
-from PLUGINS.SIRP.analysis import (
+from Lib.analysis import (
     build_analysis_input_json,
     build_analysis_record,
     build_case_analysis_patch,

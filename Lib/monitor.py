@@ -15,7 +15,7 @@ from Lib.playbookloader import PlaybookLoader
 from Lib.threadmodulemanager import thread_module_manager
 from Lib.xcache import Xcache
 from PLUGINS.Redis.redis_stream_api import RedisStreamAPI
-from PLUGINS.SIRP.analysis import run_case_analysis
+from Lib.analysis import run_case_analysis
 from PLUGINS.SIRP.sirpapi import Playbook, Case
 from PLUGINS.SIRP.sirpextramodel import PlaybookJobStatus, PlaybookModel
 
