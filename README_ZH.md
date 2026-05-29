@@ -1,6 +1,6 @@
 ![cover](Docker/IMG/img.png)
 
-# Agentic SOC Platform
+<h1 align="center">Agentic SOC Platform</h1>
 
 <p align="center">
   <a href="https://asp.viperrtp.com/zh/asp/Development/environment_setup/">快速部署</a> ·
@@ -9,8 +9,6 @@
 </p>
 
 <p align="center">
-    <a href="https://asp.viperrtp.com/" target="_blank">
-        <img alt="Static Badge" src="https://img.shields.io/badge/Website-F04438"></a>
     <a href="https://github.com/funnywolf/agentic-soc-platform/graphs/commit-activity" target="_blank">
         <img alt="Commits last month" src="https://img.shields.io/github/commit-activity/m/funnywolf/agentic-soc-platform?labelColor=%20%2332b583&color=%20%2312b76a"></a>
     <a href="https://github.com/funnywolf/agentic-soc-platform/" target="_blank">
@@ -77,12 +75,6 @@ MIT 开源许可证,全部本地化部署数据不出内网,模块/插件/Playbo
 ![开源私有化](Docker/IMG/img_8.png)
 
 ---
-
-## 工作流程
-
-```
-SIEM 告警 → Webhook 转发 → Redis Stream → Module 自动处理 → Case/Alert/Artifact → AI 分析报告 → 分析师决策
-```
 
 ## 官方网站
 
