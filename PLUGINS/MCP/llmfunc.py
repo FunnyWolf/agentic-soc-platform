@@ -6,7 +6,7 @@ from pydantic import Field
 
 from Lib.playbookloader import PlaybookLoader
 from PLUGINS.Redis.redis_stream_api import RedisStreamAPI
-from PLUGINS.SIEM.models import AdaptiveQueryInput, KeywordSearchInput, SchemaExplorerInput, KeywordSearchOutput, IndexInfo, SchemaIndexSummary, \
+from PLUGINS.SIEM.models import AdaptiveQueryInput, KeywordSearchInput, SchemaExplorerInput, QueryOutput, IndexInfo, SchemaIndexSummary, \
     DiscoverIndexFieldsInput, DiscoverIndexFieldsOutput
 from PLUGINS.SIEM.tools import SIEMToolKit
 from PLUGINS.SIRP.nocolymodel import Group, Condition, Operator
@@ -324,7 +324,7 @@ def siem_keyword_search(
         time_field: Annotated[str, Field(description="Time field used for range filtering (用于时间范围过滤的字段名)")] = "@timestamp",
         index_name: Annotated[
             Optional[str], Field(description="Target SIEM index or source; None means all indices (目标 SIEM 索引或数据源,None 表示全部索引)")] = None
-) -> Annotated[list[KeywordSearchOutput], Field(description="Search hits as JSON strings (命中的事件列表,每条为 JSON 字符串)")]:
+) -> Annotated[list[QueryOutput], Field(description="Search hits as JSON strings (命中的事件列表,每条为 JSON 字符串)")]:
     """Search SIEM events by keyword and time range. (按关键词和时间范围搜索 SIEM 事件)"""
     input_data = KeywordSearchInput(
         keyword=keyword,

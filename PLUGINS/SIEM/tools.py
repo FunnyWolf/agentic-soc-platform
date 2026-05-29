@@ -3,16 +3,15 @@ from typing import List, Union
 from PLUGINS.SIEM.backends import ELKQueryBackend, SplunkQueryBackend
 from PLUGINS.SIEM.models import (
     AdaptiveQueryInput,
-    AdaptiveQueryOutput,
     DiscoverIndexFieldsInput,
     DiscoverIndexFieldsOutput,
     KeywordSearchInput,
-    KeywordSearchOutput,
+    QueryOutput,
     SchemaExplorerInput,
     SchemaIndexSummary, IndexInfo,
 )
 from PLUGINS.SIEM.registry import get_backend_type, get_default_agg_fields, get_index_info, list_indices
-from PLUGINS.SIEM.response import build_adaptive_output, build_keyword_output
+from PLUGINS.SIEM.response import build_query_output
 
 
 class SIEMToolKit:
@@ -42,22 +41,21 @@ class SIEMToolKit:
         return index_info
 
     @classmethod
-    def execute_adaptive_query(cls, input_data: AdaptiveQueryInput) -> AdaptiveQueryOutput:
+    def execute_adaptive_query(cls, input_data: AdaptiveQueryInput) -> QueryOutput:
         """
         Execute an exact-match SIEM query and return an LLM-safe response.
 
-        The response uses three status levels:
-        - `records`: returns projected records when result volume is small
-        - `sample`: returns statistics and projected sample records
-        - `summary`: returns statistics only
+        The response uses two status levels:
+        - `records`: returns projected records when result volume is small (<=100)
+        - `summary`: returns statistics plus sample records when result volume is large
         """
         backend = get_backend_type(input_data.index_name)
         query_backend = cls._get_query_backend(backend)
         backend_result = query_backend.execute_structured_query(input_data)
-        return build_adaptive_output(input_data, backend_result)
+        return build_query_output(input_data, backend_result)
 
     @classmethod
-    def keyword_search(cls, input_data: KeywordSearchInput) -> List[KeywordSearchOutput]:
+    def keyword_search(cls, input_data: KeywordSearchInput) -> List[QueryOutput]:
         """
         Execute keyword search against SIEM data and return one result per matched index.
 
@@ -68,9 +66,10 @@ class SIEMToolKit:
         if input_data.index_name:
             backend = get_backend_type(input_data.index_name)
             backend_result = cls._get_query_backend(backend).execute_keyword_query(input_data)
-            return [build_keyword_output(input_data, backend_result)]
+            return [build_query_output(input_data, backend_result,
+                                       index_distribution=backend_result.index_distribution)]
 
-        results: list[KeywordSearchOutput] = []
+        results: list[QueryOutput] = []
         indices_by_backend = cls.get_indices_by_backend()
 
         for backend_name, indices in indices_by_backend.items():
@@ -84,7 +83,8 @@ class SIEMToolKit:
                     index_name=index_name,
                 )
                 backend_result = query_backend.execute_keyword_query(per_index_input)
-                results.append(build_keyword_output(per_index_input, backend_result))
+                results.append(build_query_output(per_index_input, backend_result,
+                                                  index_distribution=backend_result.index_distribution))
 
         return results
 
@@ -100,7 +100,7 @@ class SIEMToolKit:
         return query_backend.discover_index_fields(input_data.index_name)
 
     @staticmethod
-    def _get_query_backend(backend: str):
+    def _get_query_backend(backend: str) -> type[ELKQueryBackend | SplunkQueryBackend]:
         if backend == "ELK":
             return ELKQueryBackend
         if backend == "Splunk":

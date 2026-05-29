@@ -1,8 +1,5 @@
-import re
-
 import httpx
 import urllib3
-from langchain_core.messages import AIMessage
 from langchain_core.output_parsers import StrOutputParser
 from langchain_openai import ChatOpenAI
 
@@ -151,57 +148,3 @@ class LLMAPI(object):
             raise ValueError("Model responded but did not use the requested tool.")
 
         return True
-
-    @staticmethod
-    def extract_think(message: AIMessage) -> AIMessage:
-        """
-        Checks if a <think>...</think> tag exists at the beginning of the AIMessage content.
-        Temporary solution for a Langchain Bug
-        If it exists, it will:
-        1. Extract the content within the <think> tag.
-        2. Store the extracted content in message.additional_kwargs['reasoning_content'].
-        3. Remove the <think>...</think> tag block from message.content.
-        4. Return a new, modified AIMessage object.
-
-        If it does not exist, the original message object is returned as is.
-
-        Args:
-            message: The LangChain AIMessage object to be processed.
-
-        Returns:
-            A processed AIMessage object, or the original object if there is no match.
-        """
-        # Ensure content is a string type
-        if not isinstance(message.content, str):
-            return message
-
-        # Regular expression to match the <think> tag at the beginning and capture its content.
-        # The re.DOTALL flag allows '.' to match any character, including newlines.
-        # `^`      - matches the beginning of the string
-        # `<think>`- matches the literal <think>
-        # `(.*?)`  - non-greedily captures all characters until the next pattern
-        # `</think>`- matches the literal </think>
-        # `\s*`    - matches any whitespace characters (including newlines) after the think tag
-        pattern = r"^<think>(.*?)</think>\s*"
-
-        match = re.match(pattern, message.content, re.DOTALL)
-
-        if match:
-            # Extract the content of capture group 1, which is the text inside the <think> tag
-            reasoning_content = match.group(1).strip()
-
-            # Remove the entire matched <think>...</think> part from the original content
-            new_content = message.content[match.end():]
-
-            # Create a copy of additional_kwargs for modification
-            # This is to avoid directly modifying the original dictionary that may be referenced elsewhere
-            updated_kwargs = message.additional_kwargs.copy()
-            updated_kwargs['reasoning_content'] = reasoning_content
-
-            # Return a new AIMessage instance because LangChain message objects are immutable
-            message.additional_kwargs = updated_kwargs
-            message.content = new_content
-            return message
-        else:
-            # If there is no match, return the original message
-            return message

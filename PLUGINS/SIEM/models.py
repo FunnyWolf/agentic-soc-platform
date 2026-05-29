@@ -1,51 +1,13 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from typing import Any, Dict, List, Literal, Optional, Union
 
-from dateutil import parser as dateutil_parser
 from pydantic import BaseModel, Field, model_validator, field_validator
 
-SUMMARY_THRESHOLD = 1000
+from PLUGINS.SIEM.time_utils import normalize_time_range_inputs, validate_time_range_order
+
 SAMPLE_THRESHOLD = 100
 SAMPLE_COUNT = 5
-UTC_TIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
-
-
-def _normalize_time_input(value: Any, relative_base: datetime) -> str:
-    system_timezone = relative_base.tzinfo or timezone.utc
-    if isinstance(value, datetime):
-        parsed = value
-    else:
-        try:
-            parsed = dateutil_parser.parse(str(value), default=relative_base)
-        except (ValueError, OverflowError):
-            raise ValueError(f"Unable to parse time value: {value}")
-
-    if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=system_timezone)
-    parsed = parsed.astimezone(timezone.utc)
-
-    return parsed.strftime(UTC_TIME_FORMAT)
-
-
-def _normalize_time_range_inputs(data: Any) -> Any:
-    if not isinstance(data, dict):
-        return data
-
-    normalized = dict(data)
-    relative_base = datetime.now(datetime.now().astimezone().tzinfo or timezone.utc)
-    for field_name in ("time_range_start", "time_range_end"):
-        if field_name in normalized and normalized[field_name] is not None:
-            normalized[field_name] = _normalize_time_input(normalized[field_name], relative_base)
-    return normalized
-
-
-def _validate_time_range_order(start: str, end: str) -> None:
-    start_dt = datetime.strptime(start, UTC_TIME_FORMAT).replace(tzinfo=timezone.utc)
-    end_dt = datetime.strptime(end, UTC_TIME_FORMAT).replace(tzinfo=timezone.utc)
-    if end_dt <= start_dt:
-        raise ValueError("time_range_end must be later than time_range_start")
 
 
 class SchemaIndexSummary(BaseModel):
@@ -125,11 +87,11 @@ class AdaptiveQueryInput(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def normalize_time_range_inputs(cls, data: Any) -> Any:
-        return _normalize_time_range_inputs(data)
+        return normalize_time_range_inputs(data)
 
     @model_validator(mode="after")
     def validate_time_range_order(self):
-        _validate_time_range_order(self.time_range_start, self.time_range_end)
+        validate_time_range_order(self.time_range_start, self.time_range_end)
         return self
 
 
@@ -171,11 +133,11 @@ class KeywordSearchInput(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def normalize_time_range_inputs(cls, data: Any) -> Any:
-        return _normalize_time_range_inputs(data)
+        return normalize_time_range_inputs(data)
 
     @model_validator(mode="after")
     def validate_time_range_order(self):
-        _validate_time_range_order(self.time_range_start, self.time_range_end)
+        validate_time_range_order(self.time_range_start, self.time_range_end)
         return self
 
     @field_validator("keyword")
@@ -211,16 +173,15 @@ class FieldStat(BaseModel):
     )
 
 
-class AdaptiveQueryOutput(BaseModel):
+class QueryOutput(BaseModel):
     backend: Literal["ELK", "Splunk"] = Field(..., description="Backend that executed the query")
     index_name: str = Field(..., description="Index/source queried by the tool")
-    status: Literal["records", "sample", "summary"] = Field(
+    status: Literal["records", "summary"] = Field(
         ...,
         description=(
             "Response type indicator based on result volume. "
             f"'records' returns up to {SAMPLE_THRESHOLD} projected records, "
-            f"'sample' returns statistics plus up to {SAMPLE_COUNT} projected records, "
-            f"'summary' returns statistics only."
+            f"'summary' returns statistics plus up to {SAMPLE_COUNT} sample records."
         ),
     )
     total_hits: int = Field(..., description="Total number of matching records in the SIEM backend")
@@ -230,41 +191,9 @@ class AdaptiveQueryOutput(BaseModel):
         description="Whether the tool omitted matching events or record fields to keep the payload LLM-safe",
     )
     message: str = Field(..., description="Human-readable status message describing the response")
-    statistics: List[FieldStat] = Field(
-        default_factory=list,
-        description="Top-N value distribution for each aggregation field",
-    )
-    records: List[Dict[str, Any]] = Field(
-        default_factory=list,
-        description=(
-            "Projected log records. "
-            "These records may omit non-essential fields to control response size."
-        ),
-    )
-
-
-class KeywordSearchOutput(BaseModel):
-    backend: Literal["ELK", "Splunk"] = Field(..., description="Backend that executed the search")
-    index_name: str = Field(..., description="Index/source represented by this result")
-    status: Literal["records", "sample", "summary"] = Field(
-        ...,
-        description=(
-            "Response type indicator based on result volume. "
-            f"'records' returns up to {SAMPLE_THRESHOLD} projected records, "
-            f"'sample' returns statistics plus up to {SAMPLE_COUNT} projected records, "
-            f"'summary' returns statistics only."
-        ),
-    )
-    total_hits: int = Field(..., description="Total number of matching records for this result set")
-    returned_records: int = Field(..., description="Number of records included in the response payload")
-    truncated: bool = Field(
-        ...,
-        description="Whether the tool omitted matching events or record fields to keep the payload LLM-safe",
-    )
-    message: str = Field(..., description="Human-readable status message describing the response")
-    index_distribution: Dict[str, int] = Field(
-        default_factory=dict,
-        description="Distribution of hits across indices seen by this search result",
+    index_distribution: Optional[Dict[str, int]] = Field(
+        default=None,
+        description="Distribution of hits across indices (only populated for keyword search)",
     )
     statistics: List[FieldStat] = Field(
         default_factory=list,
