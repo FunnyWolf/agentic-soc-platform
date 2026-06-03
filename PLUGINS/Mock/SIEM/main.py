@@ -46,7 +46,7 @@ class SplunkSender:
 
     def send(self, batch, index_name):
         payload = "".join([json.dumps({"event": doc, "index": index_name}) for doc in batch])
-        with httpx.Client(verify=False) as client:
+        with httpx.Client(verify=False, timeout=30.0) as client:
             resp = client.post(self.url, content=payload, headers=self.headers)
             if resp.status_code >= 400:
                 raise Exception(f"Splunk Error: {resp.text}")
@@ -72,9 +72,18 @@ def run_engine(generators, senders, scenario_mapping=None):
                 scenario_instance = scenario_class()
                 batch.extend(scenario_instance.get_logs())
 
-            # 3. 同步发送到所有目标
-            for s in senders:
-                s.send(batch, index_name)
+            # 3. 同步发送到所有目标（带重试）
+            for attempt in range(3):
+                try:
+                    for s in senders:
+                        s.send(batch, index_name)
+                    break
+                except Exception as e:
+                    wait = 2 ** (attempt + 1)
+                    print(f"[WARN] Send attempt {attempt+1}/3 failed: {e}. Retrying in {wait}s...")
+                    time.sleep(wait)
+            else:
+                print(f"[ERROR] Send failed after 3 attempts, skipping batch for {index_name}.")
 
         # 控制频率 (简单 Sleep)
         time.sleep(settings.BATCH_SIZE / settings.EPS)
