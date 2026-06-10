@@ -6,8 +6,7 @@ from typing import List, Optional
 
 from dateutil import parser
 
-from Lib.basemodule import BaseModule
-from Lib.correlation import Correlation
+from Lib.basemodule import BaseModule, Correlation
 from PLUGINS.SIRP.sirpapi import Alert, Case
 from PLUGINS.SIRP.sirpcoremodel import (
     ArtifactName,

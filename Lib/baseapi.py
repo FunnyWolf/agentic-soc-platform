@@ -1,11 +1,15 @@
 import os
 import sys
 from abc import ABC
+from typing import Annotated, List, Any, Dict
 
 from langchain_core.prompts import SystemMessagePromptTemplate, HumanMessagePromptTemplate
+from langgraph.graph import add_messages
+from pydantic import BaseModel
 
 from Lib.configs import DATA_DIR
 from Lib.log import logger
+from PLUGINS.SIRP.sirpcoremodel import CaseModel, AlertModel, ArtifactModel
 
 
 class BaseAPI(ABC):
@@ -62,10 +66,11 @@ class BaseAPI(ABC):
 
             if os.path.isfile(os.path.join(DATA_DIR, fname)):  # "ES-Rule-21-Phishing_user_report_mail/senior_phishing_expert.md"
                 template_path = os.path.join(DATA_DIR, fname)
-            elif os.path.isfile(os.path.join(DATA_DIR, "PLAYBOOKS", self.module_name, fname)):  # "ES-Rule-21-Phishing_user_report_mail/senior_phishing_expert.md"
+            elif os.path.isfile(
+                    os.path.join(DATA_DIR, "PLAYBOOKS", self.module_name, fname)):  # "ES-Rule-21-Phishing_user_report_mail/senior_phishing_expert.md"
                 template_path = os.path.join(DATA_DIR, "PLAYBOOKS", self.module_name, fname)
-            elif os.path.isfile(os.path.join(DATA_DIR, "MODULES",self.module_name, fname)):  # "ES-Rule-21-Phishing_user_report_mail/senior_phishing_expert.md"
-                 template_path = os.path.join(DATA_DIR, "MODULES", self.module_name, fname)
+            elif os.path.isfile(os.path.join(DATA_DIR, "MODULES", self.module_name, fname)):  # "ES-Rule-21-Phishing_user_report_mail/senior_phishing_expert.md"
+                template_path = os.path.join(DATA_DIR, "MODULES", self.module_name, fname)
             else:
                 template_path = os.path.join(DATA_DIR, self.module_name, fname)
 
@@ -117,3 +122,12 @@ class BaseAPI(ABC):
 
     def run(self):
         raise NotImplementedError
+
+
+class BaseAgentState(BaseModel):
+    messages: Annotated[List[Any], add_messages] = []
+    case: CaseModel = None
+    alert: AlertModel = None
+    artifact: ArtifactModel = None
+    temp_data: Dict[str, Any] = {}
+    analyze_result: Dict[str, Any] = {}
