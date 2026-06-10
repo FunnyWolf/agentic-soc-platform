@@ -562,51 +562,6 @@ class OptionSet(object):
             raise Exception(f"error_code: {response_data.get('error_code')} error_msg: {response_data.get('error_msg')}")
 
     @staticmethod
-    def cleanup_deleted_options():
-        """清理所有 OptionSet 中已删除的选项"""
-        # 清除缓存，获取最新数据
-        Xcache.delete_sirp_optionset()
-
-        url = f"{SIRP_URL}/api/v3/app/optionsets"
-        response = _request_with_timing("GET", url, timeout=SIRP_REQUEST_TIMEOUT)
-        response.raise_for_status()
-        response_data = response.json()
-
-        if not response_data.get("success"):
-            raise Exception(f"error_code: {response_data.get('error_code')} error_msg: {response_data.get('error_msg')}")
-
-        optionsets = response_data.get("data").get("optionsets")
-        cleaned = []
-
-        for optionset in optionsets:
-            name = optionset["name"]
-            optionset_id = optionset["id"]
-            options = optionset.get("options", [])
-            enable_color = optionset.get("enableColor", False)
-            enable_score = optionset.get("enableScore", False)
-
-            # 检查是否有已删除的选项
-            has_deleted = any(opt.get("isDeleted", False) for opt in options)
-            if not has_deleted:
-                continue
-
-            # 过滤掉已删除的选项
-            new_options = [opt for opt in options if not opt.get("isDeleted", False)]
-            deleted_count = len(options) - len(new_options)
-
-            print(f"{name}: removing {deleted_count} deleted options")
-            OptionSet.update(
-                optionset_id=optionset_id,
-                name=name,
-                options=new_options,
-                enable_color=enable_color,
-                enable_score=enable_score,
-            )
-            cleaned.append(name)
-
-        return cleaned
-
-    @staticmethod
     def get(name):
         optionsets = OptionSet.list()
         for optionset in optionsets:
