@@ -2,8 +2,7 @@ from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph.state import CompiledStateGraph
 
-from Lib.baseapi import BaseAPI
-from Lib.llmapi import BaseAgentState
+from Lib.baseapi import BaseAPI, BaseAgentState
 from Lib.log import logger
 from PLUGINS.SIRP.sirpapi import Playbook, Notice
 from PLUGINS.SIRP.sirpextramodel import PlaybookJobStatus, PlaybookModel

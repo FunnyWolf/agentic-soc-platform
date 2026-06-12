@@ -277,6 +277,37 @@ class DiscoverIndexFieldsInput(BaseModel):
         ...,
         description="Backend type that owns this index.",
     )
+    time_range_start: Optional[str] = Field(
+        default=None,
+        description="Optional start time for sampling. Accepts common datetime strings, normalized to UTC ISO8601.",
+    )
+    time_range_end: Optional[str] = Field(
+        default=None,
+        description="Optional end time for sampling. Accepts common datetime strings, normalized to UTC ISO8601.",
+    )
+    doc_limit: int = Field(
+        default=10000,
+        ge=1,
+        le=100000,
+        description="Number of documents to scan for field discovery.",
+    )
+    max_samples_per_field: int = Field(
+        default=20,
+        ge=1,
+        le=100,
+        description="Maximum number of sample values to collect per field.",
+    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_time_range_inputs(cls, data: Any) -> Any:
+        return normalize_time_range_inputs(data)
+
+    @model_validator(mode="after")
+    def validate_time_range_order(self):
+        if self.time_range_start is not None and self.time_range_end is not None:
+            validate_time_range_order(self.time_range_start, self.time_range_end)
+        return self
 
 
 class DiscoveredFieldInfo(BaseModel):

@@ -120,21 +120,27 @@ class ELKQueryBackend:
         return [b["key"] for b in buckets if b["doc_count"] > 0]
 
     @classmethod
-    def discover_index_fields(cls, index_name: str) -> DiscoverIndexFieldsOutput:
+    def discover_index_fields(cls, index_name: str, time_start: str | None = None,
+                              time_end: str | None = None, doc_limit: int = 10000,
+                              max_samples: int = 20) -> DiscoverIndexFieldsOutput:
         from PLUGINS.SIEM.query_builders import get_elk_field_types
         field_types = get_elk_field_types(index_name)
         if not field_types:
             return DiscoverIndexFieldsOutput(backend=cls.backend_name, index_name=index_name, total_fields=0, fields=[])
 
         all_fields = [f for f in field_types if not f.startswith("_")]
-        response = cls._search(index_name, {"match_all": {}}, size=10000, request_timeout=60)
+        if time_start and time_end:
+            query: dict = {"bool": {"must": [build_time_range_clause("@timestamp", time_start, time_end)]}}
+        else:
+            query = {"match_all": {}}
+        response = cls._search(index_name, query, size=doc_limit, request_timeout=60)
         hits = response.get("hits", {}).get("hits", [])
 
         field_values: dict[str, list] = {}
         for hit in hits:
             source = hit.get("_source", {})
             for fname in all_fields:
-                if len(field_values.get(fname, [])) >= 5:
+                if len(field_values.get(fname, [])) >= max_samples:
                     continue
                 value = get_nested_value(source, fname)
                 if value is None:
@@ -270,10 +276,18 @@ class SplunkQueryBackend:
                 if isinstance(item, dict) and "index" in item and "count" in item and int(item["count"]) > 0]
 
     @classmethod
-    def discover_index_fields(cls, index_name: str) -> DiscoverIndexFieldsOutput:
+    def discover_index_fields(cls, index_name: str, time_start: str | None = None,
+                              time_end: str | None = None, doc_limit: int = 10000,
+                              max_samples: int = 20) -> DiscoverIndexFieldsOutput:
         service = SplunkClient.get_service()
+        time_kwargs = {}
+        if time_start and time_end:
+            start_time, end_time = parse_time_range(time_start, time_end)
+            time_kwargs["earliest_time"] = start_time
+            time_kwargs["latest_time"] = end_time
         oneshot = service.jobs.oneshot(
-            f'search index="{index_name}" | head 10000 | fieldsummary maxvals=5', output_mode="json",
+            f'search index="{index_name}" | head {doc_limit} | fieldsummary maxvals={max_samples}',
+            output_mode="json", **time_kwargs,
         )
 
         skip_fields = {"_time", "_raw", "_indextime", "_cd", "_serial", "_bkt", "_si",

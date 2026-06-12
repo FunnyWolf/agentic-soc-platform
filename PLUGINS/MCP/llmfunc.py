@@ -364,9 +364,17 @@ def siem_discover_index_fields(
         index_name: Annotated[
             str, Field(description="Target SIEM index/source name to discover fields from the live backend (目标 SIEM 索引名称,从实时后端发现字段)")],
         backend: Annotated[Literal["ELK", "Splunk"], Field(description="Backend type: 'ELK' or 'Splunk' (后端类型: 'ELK' 或 'Splunk')")],
+        time_range_start: Annotated[Optional[str], Field(description="Optional UTC start time for sampling in ISO8601 (可选的采样起始时间,ISO8601 格式)")] = None,
+        time_range_end: Annotated[Optional[str], Field(description="Optional UTC end time for sampling in ISO8601 (可选的采样结束时间,ISO8601 格式)")] = None,
+        doc_limit: Annotated[int, Field(description="Number of documents to scan, default 10000 (扫描的日志条数,默认 10000)")] = 10000,
+        max_samples_per_field: Annotated[int, Field(description="Max sample values per field, default 20 (每个字段最大样例值数量,默认 20)")] = 20,
 ) -> Annotated[DiscoverIndexFieldsOutput, Field(description="Discovered fields with types and sample values (发现的字段信息,包含类型和样本值)")]:
-    """Discover all fields of a live SIEM index, returning field names, types, and top-5 sample values. Useful for generating index YAML configs. (从实时 SIEM 索引发现所有字段,返回字段名、类型和 Top-5 样本值,用于生成索引 YAML 配置)"""
-    input_data = DiscoverIndexFieldsInput(index_name=index_name, backend=backend)
+    """Discover all fields of a live SIEM index, returning field names, types, and sample values. Useful for generating index YAML configs. (从实时 SIEM 索引发现所有字段,返回字段名、类型和样本值,用于生成索引 YAML 配置)"""
+    input_data = DiscoverIndexFieldsInput(
+        index_name=index_name, backend=backend,
+        time_range_start=time_range_start, time_range_end=time_range_end,
+        doc_limit=doc_limit, max_samples_per_field=max_samples_per_field,
+    )
     return SIEMToolKit.discover_index_fields(input_data)
 
 

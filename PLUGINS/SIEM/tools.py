@@ -124,7 +124,13 @@ class SIEMToolKit:
         This is intended for generating index YAML configuration files.
         """
         query_backend = cls._get_query_backend(input_data.backend)
-        return query_backend.discover_index_fields(input_data.index_name)
+        return query_backend.discover_index_fields(
+            input_data.index_name,
+            time_start=input_data.time_range_start,
+            time_end=input_data.time_range_end,
+            doc_limit=input_data.doc_limit,
+            max_samples=input_data.max_samples_per_field,
+        )
 
     @staticmethod
     def _get_query_backend(backend: str) -> type[ELKQueryBackend | SplunkQueryBackend]:
