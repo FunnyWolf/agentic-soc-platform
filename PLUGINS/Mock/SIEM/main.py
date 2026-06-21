@@ -4,7 +4,7 @@ import time
 
 import httpx
 
-from PLUGINS.ELK.CONFIG import ELK_HOST, ELK_USER, ELK_PASS
+from PLUGINS.ELK.CONFIG import ELK_HOST, ELK_KEY
 from PLUGINS.Mock.SIEM import CONFIG
 from PLUGINS.Mock.SIEM import settings
 from PLUGINS.Mock.SIEM.generator.cloud import CloudGenerator
@@ -20,8 +20,10 @@ from PLUGINS.Splunk.CONFIG import SPLUNK_HEC_URL, SPLUNK_TOKEN
 class ELKSender:
     def __init__(self):
         self.url = f"{ELK_HOST}/_bulk"
-        self.auth = (ELK_USER, ELK_PASS)
-        self.client = httpx.Client(verify=False, timeout=30.0)
+        self.headers = {
+            "Content-Type": "application/x-ndjson",
+            "Authorization": f"ApiKey {ELK_KEY}"
+        }
 
     def send(self, batch, index_name):
         payload = ""
@@ -29,14 +31,14 @@ class ELKSender:
             payload += json.dumps({"index": {"_index": index_name}}) + "\n"
             payload += json.dumps(doc) + "\n"
 
-        resp = self.client.post(
-            self.url,
-            content=payload,
-            auth=self.auth,
-            headers={"Content-Type": "application/x-ndjson"}
-        )
-        if resp.status_code >= 400:
-            raise Exception(f"ELK Error: {resp.text}")
+        with httpx.Client(verify=False, timeout=30.0, trust_env=False) as client:
+            resp = client.post(
+                self.url,
+                content=payload,
+                headers=self.headers
+            )
+            if resp.status_code >= 400:
+                raise Exception(f"ELK Error: {resp.text}")
 
 
 class SplunkSender:
@@ -46,7 +48,7 @@ class SplunkSender:
 
     def send(self, batch, index_name):
         payload = "".join([json.dumps({"event": doc, "index": index_name}) for doc in batch])
-        with httpx.Client(verify=False, timeout=30.0) as client:
+        with httpx.Client(verify=False, timeout=30.0, trust_env=False) as client:
             resp = client.post(self.url, content=payload, headers=self.headers)
             if resp.status_code >= 400:
                 raise Exception(f"Splunk Error: {resp.text}")
