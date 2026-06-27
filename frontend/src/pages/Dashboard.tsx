@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useMemo, useState, type ReactNode} from 'react'
+import {useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode} from 'react'
 import {Area, Gauge, Radar as RadarChart} from '@ant-design/charts'
 import {Alert, Badge, Button, Card, Progress, Segmented, Skeleton, Space, Statistic, Tag, Tooltip, Typography} from 'antd'
 import {InfoCircleOutlined, ReloadOutlined} from '@ant-design/icons'
@@ -16,6 +16,16 @@ const windowOptions: { label: string; value: DashboardWindow }[] = [
 ]
 const chartTheme = 'classicDark' as const
 const lucideIconProps = { size: 16, strokeWidth: 2 }
+const riskBands = ['STABLE', 'GUARDED', 'ELEVATED', 'CRITICAL'] as const
+
+type RiskBand = typeof riskBands[number]
+type MetricTone = 'critical' | 'warning' | 'signal' | 'success' | 'intel' | 'neutral'
+
+interface RiskPostureLevel {
+  band: RiskBand
+  color: string
+  summary: string
+}
 
 function hasValues(data: DashboardLabelValue[]) {
   return data.some((item) => item.value > 0)
@@ -53,6 +63,83 @@ function severityColor(severity: string) {
   return severityColors[severity] || '#1677ff'
 }
 
+function getRiskPostureLevel(value: number | null | undefined): RiskPostureLevel {
+  const score = value ?? 0
+  if (score >= 80) {
+    return { band: 'CRITICAL', color: '#ff4d4f', summary: 'Critical pressure requires command attention.' }
+  }
+  if (score >= 55) {
+    return { band: 'ELEVATED', color: '#fa8c16', summary: 'Elevated risk pressure across active signals.' }
+  }
+  if (score >= 35) {
+    return { band: 'GUARDED', color: '#fadb14', summary: 'Guarded posture with monitored signal pressure.' }
+  }
+  return { band: 'STABLE', color: '#52c41a', summary: 'Stable posture with no dominant pressure.' }
+}
+
+function commandNarrative(data: DashboardOverview | null) {
+  if (!data) return 'Waiting for telemetry handshake.'
+  const {summary} = data
+  const posture = getRiskPostureLevel(summary.active_risk_index)
+  const leadSignal = summary.open_critical_cases > 0
+    ? `${formatNumber(summary.open_critical_cases)} critical case${summary.open_critical_cases === 1 ? '' : 's'} open`
+    : summary.critical_high_alerts > 0
+      ? `${formatNumber(summary.critical_high_alerts)} critical/high alert${summary.critical_high_alerts === 1 ? '' : 's'} observed`
+      : 'critical signal quiet'
+  const automation = summary.failed_playbooks > 0
+    ? `${formatNumber(summary.failed_playbooks)} failed playbook${summary.failed_playbooks === 1 ? '' : 's'}`
+    : `${formatPercent(summary.automation_success_rate)} automation success`
+  return `${posture.band} posture · ${leadSignal} · ${automation}`
+}
+
+function automationTone(summary: DashboardOverview['summary'] | undefined): MetricTone {
+  if (!summary) return 'neutral'
+  return summary.failed_playbooks > 0 ? 'critical' : 'success'
+}
+
+function eventTimeParts(timestamp: string) {
+  const value = new Date(timestamp)
+  return {
+    time: value.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    date: value.toLocaleDateString([], { month: 'short', day: '2-digit' }),
+  }
+}
+
+function compactMitreTacticLabel(label: string) {
+  const normalized = label.trim()
+  const labels: Record<string, string> = {
+    Reconnaissance: 'Recon',
+    'Resource Development': 'Resource',
+    'Initial Access': 'Initial',
+    Execution: 'Exec',
+    Persistence: 'Persist',
+    'Privilege Escalation': 'Priv Esc',
+    'Defense Evasion': 'Defense',
+    'Credential Access': 'Cred',
+    Discovery: 'Discover',
+    'Lateral Movement': 'Lateral',
+    Collection: 'Collect',
+    'Command and Control': 'C2',
+    'Command & Control': 'C2',
+    Exfiltration: 'Exfil',
+    Impact: 'Impact',
+  }
+  if (labels[normalized]) return labels[normalized]
+  if (normalized.length <= 10) return normalized
+  return normalized
+    .replace(/\band\b/gi, '&')
+    .split(/\s+/)
+    .map((part) => part.slice(0, 4))
+    .slice(0, 2)
+    .join(' ')
+}
+
+function eventAccentColor(item: DashboardHighlight) {
+  if (item.kind === 'case') return statusColor(item.status)
+  if (item.status === 'Resolved' || item.status === 'Closed') return '#52c41a'
+  return '#b37feb'
+}
+
 function generatedAtLabel(value: string | undefined) {
   if (!value) return 'Waiting for telemetry'
   return `Last refresh ${new Date(value).toLocaleString()}`
@@ -88,6 +175,9 @@ function MetricCard({
   tooltip,
   accent = '#1677ff',
   sub,
+  category,
+  tone = 'signal',
+  priority = false,
 }: {
   title: string
   value: ReactNode
@@ -95,6 +185,9 @@ function MetricCard({
   tooltip?: string
   accent?: string
   sub?: ReactNode
+  category?: string
+  tone?: MetricTone
+  priority?: boolean
 }) {
   const statisticTitle = (
     <Space size={6}>
@@ -108,7 +201,8 @@ function MetricCard({
   )
 
   return (
-    <Card className="dashboard-metric-card" style={{ '--metric-color': accent } as React.CSSProperties} styles={{ body: { padding: 16 } }}>
+    <Card className={`dashboard-metric-card tone-${tone}${priority ? ' priority' : ''}`} style={{ '--metric-color': accent } as CSSProperties} styles={{ body: { padding: 16 } }}>
+      {category && <div className="dashboard-metric-category">{category}</div>}
       <Statistic title={statisticTitle} value={value as string | number} suffix={suffix} styles={{ content: { color: '#f5faff' } }} />
       {sub && <div className="dashboard-metric-sub">{sub}</div>}
     </Card>
@@ -122,6 +216,8 @@ function MeanTimeCard({ title, metric, tooltip, accent }: { title: string; metri
       value={formatDuration(metric.seconds)}
       tooltip={tooltip}
       accent={accent}
+      category="Response Clock"
+      tone="signal"
       sub={`${metric.sample_count} valid sample${metric.sample_count === 1 ? '' : 's'}`}
     />
   )
@@ -130,29 +226,30 @@ function MeanTimeCard({ title, metric, tooltip, accent }: { title: string; metri
 function RiskPostureCard({ data, loading }: { data: DashboardOverview | null; loading: boolean }) {
   const riskIndex = data?.summary.active_risk_index ?? 0
   const clampedRiskIndex = Math.min(100, Math.max(0, riskIndex))
+  const riskLevel = getRiskPostureLevel(riskIndex)
   const gaugeConfig = useMemo(() => ({
     data: {
       percent: clampedRiskIndex / 100,
-      thresholds: [0.55, 0.8, 1],
+      thresholds: [0.35, 0.55, 0.8, 1],
     },
     height: 190,
     theme: chartTheme,
     scale: {
       color: {
-        range: ['#52c41a', '#fadb14', '#fa8c16'],
+        range: ['#52c41a', '#13c2c2', '#fa8c16', '#ff4d4f'],
       },
     },
     style: {
       arcLineWidth: 9,
       pointerLineWidth: 3,
       pointerLineCap: 'round',
-      pointerStroke: '#69b1ff',
+      pointerStroke: riskLevel.color,
       pinR: 7,
       pinFill: '#061528',
-      pinStroke: '#69b1ff',
+      pinStroke: riskLevel.color,
       textContent: () => '',
     },
-  }), [clampedRiskIndex])
+  }), [clampedRiskIndex, riskLevel.color])
 
   return (
     <CyberCard
@@ -167,13 +264,22 @@ function RiskPostureCard({ data, loading }: { data: DashboardOverview | null; lo
       {loading && !data ? (
         <Skeleton active paragraph={{ rows: 4 }} />
       ) : (
-        <div className="dashboard-risk-body">
+        <div className="dashboard-risk-body" style={{ '--risk-color': riskLevel.color } as CSSProperties}>
           <div className="dashboard-risk-gauge">
             <Gauge {...gaugeConfig} />
           </div>
           <div className="dashboard-risk-score">
-            <div className="dashboard-risk-value">{riskIndex}</div>
+            <div className="dashboard-risk-value-row">
+              <div className="dashboard-risk-value">{riskIndex}</div>
+              <span className="dashboard-risk-level">{riskLevel.band}</span>
+            </div>
             <div className="dashboard-risk-label">weighted pressure / 100</div>
+            <div className="dashboard-risk-summary">{riskLevel.summary}</div>
+            <div className="dashboard-risk-band">
+              {riskBands.map((band) => (
+                <span className={band === riskLevel.band ? 'active' : ''} key={band}>{band}</span>
+              ))}
+            </div>
             <div className="dashboard-risk-meta">
               <div className="dashboard-chip"><span>Open cases</span><span>{formatNumber(data?.summary.open_cases)}</span></div>
               <div className="dashboard-chip"><span>Critical cases</span><span>{formatNumber(data?.summary.open_critical_cases)}</span></div>
@@ -198,7 +304,7 @@ function statusColor(status: string) {
 }
 
 function signalColor(index: number) {
-  return ['#69b1ff', '#13c2c2', '#b37feb', '#f759ab', '#faad14', '#52c41a'][index % 6]
+  return ['#69b1ff', '#13c2c2', '#b37feb', '#597ef7', '#36cfc9', '#9254de'][index % 6]
 }
 
 function ChartPanel({ title, children, compact = false, className = '' }: { title: ReactNode; children: ReactNode; compact?: boolean; className?: string }) {
@@ -214,7 +320,7 @@ function AlertTrend({ data }: { data: DashboardLabelValue[] }) {
     data,
     xField: 'label',
     yField: 'value',
-    height: 150,
+    height: 190,
     autoFit: true,
     smooth: true,
     colorField: 'value',
@@ -226,7 +332,7 @@ function AlertTrend({ data }: { data: DashboardLabelValue[] }) {
 }
 
 function SeverityPressure({ data }: { data: DashboardLabelValue[] }) {
-  const visibleData = data.filter((item) => item.label !== 'Info')
+  const visibleData = data.filter((item) => !['Info', 'Informational'].includes(item.label))
   const maxValue = Math.max(...visibleData.map((item) => item.value), 0)
   const total = visibleData.reduce((sum, item) => sum + item.value, 0)
 
@@ -358,12 +464,17 @@ function ThreatKeywordCloud({ data }: { data: DashboardKeyword[] }) {
 function SecurityDomainRadar({ data }: { data: DashboardLabelValue[] }) {
   const visibleData = data.filter((item) => item.value > 0)
   if (!hasValues(visibleData)) return <CyberEmpty title="No Domain Signals" />
-  const maxValue = Math.max(...visibleData.map((item) => item.value), 1)
+  const radarData = visibleData.map((item) => ({
+    ...item,
+    fullLabel: item.label,
+    label: compactMitreTacticLabel(item.label),
+  }))
+  const maxValue = Math.max(...radarData.map((item) => item.value), 1)
   const config = {
-    data: visibleData,
+    data: radarData,
     xField: 'label',
     yField: 'value',
-    height: 260,
+    height: 220,
     autoFit: true,
     theme: chartTheme,
     coordinateType: 'polar' as const,
@@ -395,7 +506,20 @@ function SecurityDomainRadar({ data }: { data: DashboardLabelValue[] }) {
     },
   }
 
-  return <RadarChart {...config} />
+  return (
+    <div className="dashboard-radar-wrap">
+      <RadarChart {...config} />
+      <div className="dashboard-radar-legend">
+        {radarData.map((item, index) => (
+          <span key={`${item.fullLabel}-${index}`} title={`${item.fullLabel}: ${item.value}`}>
+            <i style={{ background: signalColor(index), color: signalColor(index) }} />
+            <strong>{item.label}</strong>
+            <em>{item.fullLabel}</em>
+          </span>
+        ))}
+      </div>
+    </div>
+  )
 }
 
 function MitreSeverityMatrix({ data }: { data: DashboardMitreSeverityCell[] }) {
@@ -514,21 +638,43 @@ function HighlightStream({ highlights }: { highlights: DashboardHighlight[] }) {
 
   return (
     <div className="dashboard-event-stream">
-      {highlights.map((item) => (
-        <div className="dashboard-event" key={`${item.kind}-${item.id}`} style={{ '--event-color': severityColor(item.severity) } as React.CSSProperties}>
-          <div className="dashboard-event-title">
-            <strong title={item.title}>{item.title || item.readable_id}</strong>
-            <Badge color={severityColor(item.severity)} text={item.severity || 'Unknown'} />
+      {highlights.map((item) => {
+        const timestamp = eventTimeParts(item.timestamp)
+        const eventAccent = eventAccentColor(item)
+        return (
+          <div
+            className="dashboard-event"
+            key={`${item.kind}-${item.id}`}
+            style={{ '--event-color': eventAccent, '--severity-color': severityColor(item.severity) } as CSSProperties}
+          >
+            <div className="dashboard-event-time">
+              <span>{timestamp.time}</span>
+              <small>{timestamp.date}</small>
+            </div>
+            <div className="dashboard-event-body">
+              <div className="dashboard-event-title">
+                <strong title={item.title}>{item.title || item.readable_id}</strong>
+                <Badge color={severityColor(item.severity)} text={item.severity || 'Unknown'} />
+              </div>
+              <div className="dashboard-event-meta">
+                <span>{item.kind.toUpperCase()}</span>
+                <span>{item.readable_id}</span>
+                <span>{item.status || 'Unknown'}</span>
+                <span>{item.subtitle}</span>
+              </div>
+            </div>
           </div>
-          <div className="dashboard-event-meta">
-            <span>{item.kind.toUpperCase()}</span>
-            <span>{item.readable_id}</span>
-            <span>{item.status || 'Unknown'}</span>
-            <span>{item.subtitle}</span>
-            <span>{new Date(item.timestamp).toLocaleString()}</span>
-          </div>
-        </div>
-      ))}
+        )
+      })}
+    </div>
+  )
+}
+
+function CommandSignalPill({ label, value, color, emphasis = false }: { label: string; value: ReactNode; color: string; emphasis?: boolean }) {
+  return (
+    <div className={`dashboard-command-pill${emphasis ? ' emphasis' : ''}`} style={{ '--signal-color': color } as CSSProperties}>
+      <span>{label}</span>
+      <strong>{value}</strong>
     </div>
   )
 }
@@ -558,15 +704,20 @@ export default function Dashboard() {
   }, [loadOverview, selectedWindow])
 
   const summary = data?.summary
+  const riskLevel = getRiskPostureLevel(summary?.active_risk_index)
 
   return (
     <div className="dashboard-page">
       <div className="dashboard-shell">
         <section className="dashboard-hero">
           <div className="dashboard-hero-content">
-            <div>
+            <div className="dashboard-hero-copy">
               <div className="dashboard-eyebrow"><RadioTower size={14} /> Cyber Command Center</div>
               <h1 className="dashboard-title">Security Posture Dashboard</h1>
+              <div className="dashboard-command-summary" style={{ '--posture-color': riskLevel.color } as CSSProperties}>
+                <span className="dashboard-command-state">{riskLevel.band}</span>
+                <span className="dashboard-command-copy">{commandNarrative(data)}</span>
+              </div>
             </div>
             <div className="dashboard-hero-actions">
               {error && <Alert className="dashboard-soft-alert" type="warning" title={error} showIcon />}
@@ -586,18 +737,25 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
+          <div className="dashboard-command-strip">
+            <CommandSignalPill label="Risk Index" value={`${formatNumber(summary?.active_risk_index)} / 100`} color={riskLevel.color} emphasis />
+            <CommandSignalPill label="Critical Cases" value={formatNumber(summary?.open_critical_cases)} color="#ff4d4f" />
+            <CommandSignalPill label="Critical/High Alerts" value={formatNumber(summary?.critical_high_alerts)} color="#fa8c16" />
+            <CommandSignalPill label="Automation" value={formatPercent(summary?.automation_success_rate)} color={summary?.failed_playbooks ? '#ff4d4f' : '#52c41a'} />
+            <CommandSignalPill label="Window" value={selectedWindow.toUpperCase()} color="#69b1ff" />
+          </div>
         </section>
 
         <div className="dashboard-posture-grid">
           <RiskPostureCard data={data} loading={loading} />
           <div className="dashboard-posture-stack">
             <div className="dashboard-grid posture-kpis">
-              <MetricCard title="Open Critical Cases" value={formatNumber(summary?.open_critical_cases)} accent="#ff4d4f" sub={`${formatNumber(summary?.open_cases)} open cases`} />
-              <MetricCard title="Cases In Window" value={formatNumber(summary?.total_cases)} accent="#1677ff" sub={`${selectedWindow} operating window`} />
-              <MetricCard title="Critical / High Alerts" value={formatNumber(summary?.critical_high_alerts)} accent="#fa8c16" sub={`${formatNumber(summary?.total_alerts)} alerts observed`} />
-              <MetricCard title="Artifacts In Scope" value={formatNumber(summary?.total_artifacts)} accent="#722ed1" sub="Distinct entities linked to alerts" />
-              <MetricCard title="Automation Success" value={formatPercent(summary?.automation_success_rate)} accent="#52c41a" sub={`${formatNumber(summary?.running_playbooks)} running · ${formatNumber(summary?.failed_playbooks)} failed`} />
-              <MetricCard title="Knowledge Signals" value={formatNumber(summary?.total_knowledge)} accent="#13c2c2" sub={`${formatNumber(summary?.total_enrichments)} enrichments`} />
+              <MetricCard title="Open Critical Cases" value={formatNumber(summary?.open_critical_cases)} accent="#ff4d4f" category="Primary Risk" tone="critical" priority sub={`${formatNumber(summary?.open_cases)} open cases`} />
+              <MetricCard title="Critical / High Alerts" value={formatNumber(summary?.critical_high_alerts)} accent="#fa8c16" category="Primary Risk" tone="warning" priority sub={`${formatNumber(summary?.total_alerts)} alerts observed`} />
+              <MetricCard title="Automation Success" value={formatPercent(summary?.automation_success_rate)} accent={summary?.failed_playbooks ? '#ff4d4f' : '#52c41a'} category="Response Capacity" tone={automationTone(summary)} sub={`${formatNumber(summary?.running_playbooks)} running · ${formatNumber(summary?.failed_playbooks)} failed`} />
+              <MetricCard title="Cases In Window" value={formatNumber(summary?.total_cases)} accent="#1677ff" category="Operating Volume" tone="signal" sub={`${selectedWindow} operating window`} />
+              <MetricCard title="Artifacts In Scope" value={formatNumber(summary?.total_artifacts)} accent="#722ed1" category="Entity Surface" tone="intel" sub="Distinct entities linked to alerts" />
+              <MetricCard title="Knowledge Signals" value={formatNumber(summary?.total_knowledge)} accent="#13c2c2" category="Intel Depth" tone="intel" sub={`${formatNumber(summary?.total_enrichments)} enrichments`} />
             </div>
             <div className="dashboard-grid posture-mean-times">
               <MeanTimeCard
@@ -635,7 +793,7 @@ export default function Dashboard() {
         </div>
 
         <div className="dashboard-grid operations">
-          <ChartPanel title={<><ChartSpline {...lucideIconProps} /> Alert Telemetry Trend</>} compact>
+          <ChartPanel title={<><ChartSpline {...lucideIconProps} /> Alert Telemetry Trend</>} className="dashboard-trend-card">
             {loading && !data ? <Skeleton active paragraph={{ rows: 6 }} /> : <AlertTrend data={data?.alert_trend || []} />}
           </ChartPanel>
           <ChartPanel title={<><Workflow {...lucideIconProps} /> Automation State</>}>
@@ -650,8 +808,8 @@ export default function Dashboard() {
           <ChartPanel title={<><TextSearch {...lucideIconProps} /> Threat Keyword Cloud</>} className="dashboard-keyword-card">
             {loading && !data ? <Skeleton active paragraph={{ rows: 6 }} /> : <ThreatKeywordCloud data={data?.threat_keywords || []} />}
           </ChartPanel>
-          <ChartPanel title={<><RadarIcon {...lucideIconProps} /> Security Domain Radar</>}>
-            {loading && !data ? <Skeleton active paragraph={{ rows: 6 }} /> : <SecurityDomainRadar data={data?.product_category_distribution || []} />}
+          <ChartPanel title={<><RadarIcon {...lucideIconProps} /> MITRE Tactic Radar</>}>
+            {loading && !data ? <Skeleton active paragraph={{ rows: 6 }} /> : <SecurityDomainRadar data={data?.mitre_tactics || []} />}
           </ChartPanel>
           <ChartPanel title={<><Target {...lucideIconProps} /> MITRE Severity Matrix</>} className="dashboard-mitre-card">
             {loading && !data ? <Skeleton active paragraph={{ rows: 6 }} /> : <MitreSeverityMatrix data={data?.mitre_severity_heatmap || []} />}
