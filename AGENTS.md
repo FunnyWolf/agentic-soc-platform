@@ -17,12 +17,6 @@ frontend 是vite + ant design实现的前端
 - 如果可以尽量使用ant design 的组件特性和功能实现,如果默认组件效果实现不了或需要定制,才考虑定制化实现
 - 尽量使用Ant Design 默认的 CSS,除非用户明确说明或要求
 - 前端的所有修改都不需要执行npm build验证
-- 前端文档 https://ant.design/components/select-cn.md  https://ant.design/components/descriptions-cn.md 其他ant design组件你可以按照上述组件推测,如果你找不到可以提出我来提供.
--
-
-### 历史代码
-
-agentic-soc-platform 是先前版本代码,主要功能已经迁移到 backend . agentic-soc-platform/PLUGINS/SIRP 是与之前用低代码平台构建的前端和数据存储的API. 代码在新版本稳定后会删除
 
 ### 项目文档
 
