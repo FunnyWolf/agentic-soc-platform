@@ -1,11 +1,11 @@
-![cover](Docker/IMG/img.png)
+![cover](img/img.png)
 
 <h1 align="center">Agentic SOC Platform</h1>
 
 <p align="center">
-  <a href="https://asp.viperrtp.com/asp/Development/environment_setup/">Quick Start</a> ·
-  <a href="https://asp.viperrtp.com/asp/Introduction/what_is_asp/">Documentation</a> ·
-  <a href="https://asp.viperrtp.com/sirp/Introduction/what_is_sirp/">SIRP Platform</a>
+  <a href="https://asp.viperrtp.com/asp/quick-start/deployment/">Quick Start</a> ·
+  <a href="https://asp.viperrtp.com/asp/overview/">Learn More</a> ·
+  <a href="https://asp.viperrtp.com/asp/workspace/case/">Workspace Features</a>
 </p>
 
 <p align="center">
@@ -22,57 +22,69 @@
   <a href="./README_ZH.md"><img alt="简体中文版自述文件" src="https://img.shields.io/badge/简体中文-d9d9d9"></a>
 </p>
 
-**Agentic SOC Platform** is an open-source security operations platform built on Agentic AI — free your security team from alert fatigue and focus on real threats.
+**Agentic SOC Platform** is an open-source security operations platform built on Agentic AI, enabling agents to proactively participate in triage, investigation, enrichment, and knowledge accumulation so security teams can move from alert fatigue to AI-assisted decision-making.
 
 ---
 
-### Alert Aggregation, 99% Noise Reduction
+### Alert Floods, Converged into Actionable Cases
 
-The Module framework continuously consumes SIEM alerts, automatically extracts IOCs and correlates them — reducing millions of logs to just a handful of actionable cases.
+Modules stream SIEM / Webhook alerts, extract IOCs, correlate related signals, and generate Cases, Alerts, and Artifacts so massive log volumes converge into a small number of actionable cases.
 
-![Alert Aggregation](Docker/IMG/img_1.png)
+![Alert Floods, Converged into Actionable Cases](img/img_1.png)
 
 ### AI-Powered Investigation, Seconds Not Hours
 
-LLM auto-generates structured investigation reports — verdicts, attack chains, IOCs, and remediation advice in seconds, not hours.
+Compress hours of manual analysis into seconds, automatically producing severity, confidence, impact, priority, verdicts, and structured investigation reports.
 
-![AI Investigation Reports](Docker/IMG/img_2.png)
+![AI-Powered Investigation, Seconds Not Hours](img/img_2.png)
 
-### One-Click Automation
+### One Click to Drive Complex Investigations
 
-Playbooks support one-click execution of case investigation, knowledge extraction, and threat intelligence enrichment — let AI handle the complexity while analysts focus on decisions.
+Launch LLM investigation, knowledge extraction, threat intelligence enrichment, and CMDB enrichment around each Case, orchestrating traditional SOAR workflows and AI analysis in the same Playbook system.
 
-![One-Click Automation](Docker/IMG/img_3.png)
+![One Click to Drive Complex Investigations](img/img_3.png)
 
-### Unified Multi-SIEM Access
+### Deep Harness Agent Integration
 
-Manage ELK, Splunk and other SIEM indices through a single YAML configuration. One API to search across all backends — LLM and analysts never need to worry about the underlying differences.
+Expose ASP capabilities to Claude Code / Codex / OpenCode and other Harness Agents through plugins and MCP, enabling agents to operate Cases, search logs, query threat intelligence, and write modules and playbooks directly.
 
-![Unified Multi-SIEM Access](Docker/IMG/img_4.png)
+![Deep Harness Agent Integration](img/img_6.png)
+
+### Multi-SIEM Access, One Investigation Entry Point
+
+Support Splunk, ELK configuration, unified log search, and Webhook alert ingestion so LLMs, agents, and analysts all work with the same security context.
+
+![Multi-SIEM Access, One Investigation Entry Point](img/img_4.png)
 
 ### Automated Threat Intelligence Enrichment
 
-When artifacts are created, threat intelligence providers are queried automatically. Reputation scores, pulse information, and malware context are attached to IOCs to accelerate analyst judgment.
+Automatically enrich IOCs and Artifacts with reputation, pulses, asset, identity, and historical context so every suspicious entity appears with evidence for judgment.
 
-![Threat Intelligence Enrichment](Docker/IMG/img_5.png)
-
-### Deep Code Agent Integration
-
-Integrated with Claude Code via MCP protocol, providing professional security agents and skills — operate cases, search logs, and write modules directly from within an AI agent.
-
-![Code Agent Integration](Docker/IMG/img_6.png)
+![Automated Threat Intelligence Enrichment](img/img_5.png)
 
 ### Knowledge Accumulation, Smarter Over Time
 
-Automatically extract reusable security knowledge from closed cases, continuously building an organizational knowledge base that makes future investigations faster and more accurate.
+Extract reusable knowledge from closed Case investigation records, response processes, and discussions, allowing organizational experience to grow with every response.
 
-![Knowledge Accumulation](Docker/IMG/img_7.png)
+![Knowledge Accumulation](img/img_7.png)
 
-### Open Source, Private Deployment, Pure Python
+### Collaboration, Audit, and Access Control Built In
 
-MIT licensed, fully on-premise deployment — your data never leaves your network. Modules, plugins, and playbooks are all Python scripts with zero technology stack barriers.
+Local / LDAP login, user roles, API Keys, Inbox notifications, and Audit Log provide foundational governance so security operations no longer depend on fragmented tools.
 
-![Open Source & Private](Docker/IMG/img_8.png)
+![Collaboration, Audit, and Access Control Built In](img/img_9.png)
+
+### Low-Cost Adaptation, Highly Flexible Customization
+
+Use Python Modules to adapt new SIEM rules and alert sources, and use Playbooks to orchestrate LLM analysis and automated actions so the platform grows with your security scenarios.
+
+![Low-Cost Adaptation, Highly Flexible Customization](img/img_10.png)
+
+### Open Source, Private Deployment, Python & Typescript
+
+MIT licensed, fully local deployment supported. Security data stays inside your network, while the backend, frontend, and extension scripts remain clear and controllable.
+
+![Open Source & Private](img/img_8.png)
 
 ---
 
@@ -82,6 +94,6 @@ MIT licensed, fully on-premise deployment — your data never leaves your networ
 
 ## 404Starlink
 
-<img src="./Docker/IMG/logo.png" width="30%">
+<img src="./img/logo.png" width="30%">
 
 Agentic SOC Platform has joined [404Starlink](https://github.com/knownsec/404StarLink)
