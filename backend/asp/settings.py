@@ -12,7 +12,7 @@ from apps.common.logging import (
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
-CUSTOM_DIR = Path(os.environ.get("ASP_CUSTOM_DIR", BASE_DIR / "custom"))
+CUSTOM_DIR = BASE_DIR / "custom"
 
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "dev-secret-key-change-in-prod-32-byte-minimum")
 DEBUG = os.environ.get("DJANGO_DEBUG", "false").lower() == "true"

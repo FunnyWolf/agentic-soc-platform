@@ -1,9 +1,11 @@
 from unittest.mock import patch
 
-from django.test import SimpleTestCase, override_settings
+from django.test import SimpleTestCase, TestCase
 from django.urls import Resolver404, resolve
 from rest_framework.test import APIClient
 
+from apps.settings.models import RuntimeConfig
+from apps.settings.runtime_config import invalidate
 from apps.webhook.schemas import WebhookResult
 from apps.webhook.service import (
     WebhookRedisError,
@@ -26,9 +28,15 @@ class FailingRedisClient:
         raise RuntimeError("redis unavailable")
 
 
-class WebhookServiceTests(SimpleTestCase):
-    @override_settings(WEBHOOK_REDIS_STREAM_MAXLEN=123)
+class WebhookServiceTests(TestCase):
+    def set_stream_maxlen(self, value):
+        config = RuntimeConfig.get_current()
+        config.stream_maxlen = value
+        config.save(update_fields=["stream_maxlen", "updated_at"])
+        invalidate("runtime")
+
     def test_handle_splunk_webhook_writes_result_to_search_stream(self):
+        self.set_stream_maxlen(123)
         redis_client = FakeRedisClient()
 
         result = handle_splunk_webhook(
@@ -49,8 +57,8 @@ class WebhookServiceTests(SimpleTestCase):
         with self.assertRaisesMessage(ValueError, "search_name is required."):
             handle_splunk_webhook({"search_name": " ", "result": {}}, redis_client=FakeRedisClient())
 
-    @override_settings(WEBHOOK_REDIS_STREAM_MAXLEN=456)
     def test_handle_kibana_webhook_writes_normalized_sources(self):
+        self.set_stream_maxlen(456)
         redis_client = FakeRedisClient()
 
         result = handle_kibana_webhook(

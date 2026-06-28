@@ -92,20 +92,10 @@ def get_runtime_config():
 
 
 def get_prompt_language():
-    from django.conf import settings
-
-    override = getattr(settings, "AGENTIC_PROMPT_LANGUAGE", None)
-    if override:
-        return str(override).strip().lower()
     return get_runtime_config()["prompt_language"]
 
 
 def get_stream_maxlen():
-    from django.conf import settings
-
-    override = getattr(settings, "WEBHOOK_REDIS_STREAM_MAXLEN", None)
-    if override is not None:
-        return int(override)
     try:
         return get_runtime_config()["stream_maxlen"]
     except Exception as exc:

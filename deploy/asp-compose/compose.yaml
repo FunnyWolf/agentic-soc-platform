@@ -3,7 +3,6 @@ x-asp-backend: &asp-backend
   env_file:
     - .env
   environment:
-    ASP_CUSTOM_DIR: /app/custom
     PYTHONPATH: /opt/asp/custom-packages:/app/custom
   volumes:
     - ./custom:/app/custom
