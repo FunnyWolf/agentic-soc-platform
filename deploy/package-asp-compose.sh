@@ -59,6 +59,7 @@ rm -rf "$staging"
 mkdir -p "$dist_dir"
 cp -a "$source_dir" "$staging"
 rm -f "$staging/.env"
+chmod +x "$staging"/scripts/*.sh
 
 env_example="$staging/.env.example"
 if [ -n "$backend_image" ]; then
