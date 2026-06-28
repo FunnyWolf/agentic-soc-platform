@@ -147,21 +147,59 @@ docker compose stop
 
 不要在生产环境执行 `docker compose down -v`，除非明确要删除 PostgreSQL、Redis 和 RustFS 的 Docker 数据卷。
 
-## 升级
+## 备份 & 恢复
 
-升级前至少备份 `.env`、`custom/`、`certs/` 和 PostgreSQL 数据：
+备份和恢复都在目录名为 `asp-compose` 的部署目录中执行，避免 Docker Compose volume 名称变化。
+
+停机全量备份：
 
 ```bash
-mkdir -p backups
-set -a
-. ./.env
-set +a
-
-tar -czf "backups/asp-config-$(date +%Y%m%d%H%M%S).tar.gz" .env custom certs
-docker compose exec -T postgres pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB" > "backups/postgres-$(date +%Y%m%d%H%M%S).sql"
+BACKUP_DIR="$PWD/backups/asp-full-$(date +%Y%m%d%H%M%S)"
+mkdir -p "$BACKUP_DIR"
+docker compose stop
+tar -czf "$BACKUP_DIR/files.tar.gz" --exclude='./backups' .env .env.example compose.yaml scripts custom certs logs
+docker run --rm \
+  -v asp-compose_postgres-data:/volumes/postgres-data:ro \
+  -v asp-compose_redis-data:/volumes/redis-data:ro \
+  -v asp-compose_rustfs-data:/volumes/rustfs-data:ro \
+  -v asp-compose_custom-python-packages:/volumes/custom-python-packages:ro \
+  -v asp-compose_static-files:/volumes/static-files:ro \
+  -v "$BACKUP_DIR:/backup" \
+  alpine sh -lc 'cd /volumes && tar -czf /backup/volumes.tar.gz postgres-data redis-data rustfs-data custom-python-packages static-files'
+docker compose up -d
+./scripts/doctor.sh
 ```
 
-从新发布包替换 `compose.yaml`、`scripts/` 和 `.env.example`，然后在现有 `.env` 中更新镜像标签：
+全量恢复：
+
+```bash
+BACKUP_DIR=/path/to/asp-full-backup
+tar -xzf "$BACKUP_DIR/files.tar.gz" -C .
+docker compose down --remove-orphans
+docker run --rm \
+  -v asp-compose_postgres-data:/volumes/postgres-data \
+  -v asp-compose_redis-data:/volumes/redis-data \
+  -v asp-compose_rustfs-data:/volumes/rustfs-data \
+  -v asp-compose_custom-python-packages:/volumes/custom-python-packages \
+  -v asp-compose_static-files:/volumes/static-files \
+  -v "$BACKUP_DIR:/backup" \
+  alpine sh -lc '
+    for dir in postgres-data redis-data rustfs-data custom-python-packages static-files; do
+      rm -rf "/volumes/$dir"/* "/volumes/$dir"/.[!.]* "/volumes/$dir"/..?*
+    done
+    tar -xzf /backup/volumes.tar.gz -C /volumes
+  '
+docker compose up -d
+./scripts/doctor.sh
+```
+
+恢复前不要修改 `asp-compose` 目录名。
+
+## 升级
+
+升级前先完成一次停机全量备份。
+
+编辑 `.env`，把镜像标签更新到目标版本：
 
 ```text
 ASP_BACKEND_IMAGE=ghcr.io/funnywolf/agentic-soc-platform/asp-backend:<version>
@@ -175,3 +213,5 @@ ASP_FRONTEND_IMAGE=ghcr.io/funnywolf/agentic-soc-platform/asp-frontend:<version>
 ```
 
 `upgrade.sh` 会拉取镜像、执行数据库迁移、启动服务，并执行 `./scripts/doctor.sh`。
+
+只有发布说明明确要求更新发布包文件时，才替换 `compose.yaml`、`scripts/` 和 `.env.example`。请保留现有 `.env`、`custom/`、`certs/` 和 Docker named volumes。

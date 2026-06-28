@@ -147,21 +147,59 @@ docker compose stop
 
 Do not run `docker compose down -v` in production unless you explicitly want to delete PostgreSQL, Redis, and RustFS Docker volumes.
 
-## Upgrade
+## Backup & Restore
 
-Before upgrading, back up at least `.env`, `custom/`, `certs/`, and PostgreSQL data:
+Run backups and restores from a deployment directory named `asp-compose`, so Docker Compose volume names stay unchanged.
+
+Full stopped backup:
 
 ```bash
-mkdir -p backups
-set -a
-. ./.env
-set +a
-
-tar -czf "backups/asp-config-$(date +%Y%m%d%H%M%S).tar.gz" .env custom certs
-docker compose exec -T postgres pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB" > "backups/postgres-$(date +%Y%m%d%H%M%S).sql"
+BACKUP_DIR="$PWD/backups/asp-full-$(date +%Y%m%d%H%M%S)"
+mkdir -p "$BACKUP_DIR"
+docker compose stop
+tar -czf "$BACKUP_DIR/files.tar.gz" --exclude='./backups' .env .env.example compose.yaml scripts custom certs logs
+docker run --rm \
+  -v asp-compose_postgres-data:/volumes/postgres-data:ro \
+  -v asp-compose_redis-data:/volumes/redis-data:ro \
+  -v asp-compose_rustfs-data:/volumes/rustfs-data:ro \
+  -v asp-compose_custom-python-packages:/volumes/custom-python-packages:ro \
+  -v asp-compose_static-files:/volumes/static-files:ro \
+  -v "$BACKUP_DIR:/backup" \
+  alpine sh -lc 'cd /volumes && tar -czf /backup/volumes.tar.gz postgres-data redis-data rustfs-data custom-python-packages static-files'
+docker compose up -d
+./scripts/doctor.sh
 ```
 
-Replace `compose.yaml`, `scripts/`, and `.env.example` from the new release package, then update the image tags in your existing `.env`:
+Full restore:
+
+```bash
+BACKUP_DIR=/path/to/asp-full-backup
+tar -xzf "$BACKUP_DIR/files.tar.gz" -C .
+docker compose down --remove-orphans
+docker run --rm \
+  -v asp-compose_postgres-data:/volumes/postgres-data \
+  -v asp-compose_redis-data:/volumes/redis-data \
+  -v asp-compose_rustfs-data:/volumes/rustfs-data \
+  -v asp-compose_custom-python-packages:/volumes/custom-python-packages \
+  -v asp-compose_static-files:/volumes/static-files \
+  -v "$BACKUP_DIR:/backup" \
+  alpine sh -lc '
+    for dir in postgres-data redis-data rustfs-data custom-python-packages static-files; do
+      rm -rf "/volumes/$dir"/* "/volumes/$dir"/.[!.]* "/volumes/$dir"/..?*
+    done
+    tar -xzf /backup/volumes.tar.gz -C /volumes
+  '
+docker compose up -d
+./scripts/doctor.sh
+```
+
+Do not change the `asp-compose` directory name before restoring.
+
+## Upgrade
+
+Before upgrading, complete a full stopped backup.
+
+Edit `.env` and update image tags to the target version:
 
 ```text
 ASP_BACKEND_IMAGE=ghcr.io/funnywolf/agentic-soc-platform/asp-backend:<version>
@@ -175,3 +213,5 @@ Run the upgrade:
 ```
 
 `upgrade.sh` pulls images, runs database migrations, starts services, and executes `./scripts/doctor.sh`.
+
+Only replace `compose.yaml`, `scripts/`, and `.env.example` when the release notes explicitly require package file updates. Keep the existing `.env`, `custom/`, `certs/`, and Docker named volumes.
