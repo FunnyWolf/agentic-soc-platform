@@ -1,5 +1,5 @@
 import {useEffect} from 'react'
-import {Navigate, Route, Routes} from 'react-router-dom'
+import {Navigate, Route, Routes, useLocation} from 'react-router-dom'
 import Login from './pages/Login'
 import MainLayout from './components/MainLayout'
 import ResourceDetailRoute from './components/ResourceDetailRoute'
@@ -15,8 +15,10 @@ import CustomDefinitions from './pages/CustomDefinitions'
 import {useAuthStore} from './stores/auth'
 import {hasPermission, type PermissionKey} from './utils/permissions'
 import {getMe} from './api/auth'
+import {buildLoginRedirectPath} from './utils/authRedirect'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const location = useLocation()
   const token = useAuthStore((s) => s.token)
   const user = useAuthStore((s) => s.user)
   const setAuth = useAuthStore((s) => s.setAuth)
@@ -28,7 +30,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     })
   }, [setAuth, token, user?.role])
 
-  if (!token) return <Navigate to="/login" replace />
+  if (!token) return <Navigate to={buildLoginRedirectPath(`${location.pathname}${location.search}${location.hash}`)} replace />
   return <>{children}</>
 }
 

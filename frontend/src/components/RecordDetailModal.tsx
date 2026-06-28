@@ -1,6 +1,6 @@
 import {useCallback, useEffect, useMemo, useRef, useState} from 'react'
 import {Button, Divider, Empty, message, Modal, Spin, theme, Tooltip} from 'antd'
-import {CloseOutlined, FileTextOutlined, HistoryOutlined, MenuFoldOutlined, MenuUnfoldOutlined, MessageOutlined, ReloadOutlined} from '@ant-design/icons'
+import {CloseOutlined, FileTextOutlined, HistoryOutlined, MenuFoldOutlined, MenuUnfoldOutlined, MessageOutlined, ReloadOutlined, ShareAltOutlined} from '@ant-design/icons'
 import client from '../api/client'
 import type {FieldEditingController, OpenResourceOptions, ResourceConfig} from '../types/records'
 import AuditTimeline from './AuditTimeline'
@@ -10,6 +10,7 @@ import RecordBasicView from './RecordBasicView'
 import RecordTimestampSummary from './RecordTimestampSummary'
 import {editableValuesEqual, normalizeEditableDraftValue, normalizeEditableSaveValue} from './fieldEditing'
 import {typography} from '../utils/typography'
+import {buildRecordShareUrl} from '../utils/recordShare'
 
 interface RecordDetailModalProps {
   config: ResourceConfig
@@ -143,6 +144,12 @@ export default function RecordDetailModal({ config, rowId, open, initialTabKey, 
         if (status === 404) {
           clearFieldEditing()
           message.warning('Record not found or has been deleted')
+          onClose()
+          return
+        }
+        if (status === 403) {
+          clearFieldEditing()
+          message.error('You do not have permission to view this record')
           onClose()
           return
         }
@@ -374,6 +381,25 @@ export default function RecordDetailModal({ config, rowId, open, initialTabKey, 
   const toggleActivityDrawer = (drawer: ActivityDrawerKey) => {
     setActivityDrawer((current) => current === drawer ? null : drawer)
   }
+  const shareUrl = useMemo(() => (
+    rowId === null || rowId === undefined ? null : buildRecordShareUrl(config.key, rowId)
+  ), [config.key, rowId])
+  const copyShareUrl = useCallback(async () => {
+    if (!shareUrl) {
+      message.error('This record cannot be shared')
+      return
+    }
+    if (!navigator.clipboard?.writeText) {
+      message.error('Clipboard is not available')
+      return
+    }
+    try {
+      await navigator.clipboard.writeText(shareUrl)
+      message.success('Share link copied')
+    } catch {
+      message.error('Failed to copy share link')
+    }
+  }, [shareUrl])
 
   return (
     <Modal
@@ -450,6 +476,16 @@ export default function RecordDetailModal({ config, rowId, open, initialTabKey, 
                   <Divider vertical style={{ height: 24, margin: '8px 4px', borderColor: token.colorBorderSecondary }} />
                 </>
               )}
+              <Tooltip title="Copy share link">
+                <Button
+                  type="text"
+                  size="large"
+                  style={headerActionButtonStyle}
+                  icon={<ShareAltOutlined />}
+                  disabled={!loadedCurrentRecord || !shareUrl || saving}
+                  onClick={copyShareUrl}
+                />
+              </Tooltip>
               <Tooltip title="Refresh record">
                 <Button
                   type="text"
