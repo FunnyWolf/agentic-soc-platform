@@ -1,11 +1,14 @@
+from datetime import timedelta
 from unittest.mock import patch
 
 from django.test import SimpleTestCase, TestCase
 from django.urls import Resolver404, resolve
+from django.utils import timezone
 from rest_framework.test import APIClient
 
-from apps.settings.models import RuntimeConfig
-from apps.settings.runtime_config import invalidate
+from apps.settings.models import RuntimeConfig, SiemElkConfig
+from apps.settings.runtime_config import get_elk_config, invalidate
+from apps.webhook.elk_actions import ELKActionProcessor
 from apps.webhook.schemas import WebhookResult
 from apps.webhook.service import (
     WebhookRedisError,
@@ -26,6 +29,26 @@ class FakeRedisClient:
 class FailingRedisClient:
     def send_message(self, stream, data, *, maxlen=None):
         raise RuntimeError("redis unavailable")
+
+
+class FakeElkClient:
+    def __init__(self):
+        self.searches = []
+
+    def search(self, **kwargs):
+        self.searches.append(kwargs)
+        return {
+            "hits": {
+                "hits": [
+                    {
+                        "_source": {
+                            "rule": {"name": "rule-without-hits"},
+                            "context": {"hits": []},
+                        }
+                    }
+                ]
+            }
+        }
 
 
 class WebhookServiceTests(TestCase):
@@ -106,6 +129,30 @@ class WebhookServiceTests(TestCase):
                 {"rule": {"name": "rule"}, "context": {"hits": [{"_source": {"event": "login"}}]}},
                 redis_client=FailingRedisClient(),
             )
+
+
+class ELKActionProcessorTests(TestCase):
+    def test_process_once_refreshes_config_cached_before_settings_change(self):
+        config = SiemElkConfig.get_current()
+        config.host = "https://elk.example.com:9200"
+        config.api_key = "test-api-key"
+        config.process_alert_from_index_enabled = False
+        config.save()
+        invalidate("elk")
+
+        elk_client = FakeElkClient()
+        processor = ELKActionProcessor(elk_client=elk_client, interval_seconds=60)
+        self.assertFalse(get_elk_config()["process_alert_from_index_enabled"])
+
+        config.process_alert_from_index_enabled = True
+        config.save(update_fields=["process_alert_from_index_enabled", "updated_at"])
+
+        end_time = timezone.now()
+        result = processor.process_once(start_time=end_time - timedelta(seconds=60), end_time=end_time)
+
+        self.assertEqual(result.actions, 1)
+        self.assertEqual(result.skipped, 1)
+        self.assertEqual(len(elk_client.searches), 1)
 
 
 class WebhookAPITests(SimpleTestCase):

@@ -5,11 +5,13 @@ from datetime import UTC, timedelta
 
 from django.utils import timezone
 
-from apps.settings.runtime_config import get_elk_config
+from apps.settings.runtime_config import get_elk_config, invalidate
 from apps.webhook.service import handle_kibana_webhook
 from integrations.siem.clients import get_elk_client
 
 logger = logging.getLogger(__name__)
+
+ELK_CLIENT_CONFIG_FIELDS = ("host", "api_key", "verify_certs", "request_timeout_seconds")
 
 
 @dataclass
@@ -25,7 +27,7 @@ def format_es_time(value):
 
 class ELKActionProcessor:
     def __init__(self, *, elk_client=None, index_name=None, interval_seconds=None, size=None):
-        config = get_elk_config()
+        config = self.load_config()
         self.elk_client = elk_client
         self.index_name_override = index_name
         self.interval_seconds_override = interval_seconds
@@ -33,7 +35,17 @@ class ELKActionProcessor:
         self.index_name = index_name if index_name is not None else config["action_index"]
         self.interval_seconds = interval_seconds if interval_seconds is not None else config["action_poll_interval_seconds"]
         self.size = size if size is not None else config["action_size"]
+        self.elk_client_config = self.client_config(config)
         self.last_check_time = None
+
+    @staticmethod
+    def load_config():
+        invalidate("elk")
+        return get_elk_config()
+
+    @staticmethod
+    def client_config(config):
+        return tuple(config[field] for field in ELK_CLIENT_CONFIG_FIELDS)
 
     @staticmethod
     def parse_hits(hits):
@@ -44,7 +56,11 @@ class ELKActionProcessor:
         return hits if isinstance(hits, list) else []
 
     def refresh_config(self):
-        config = get_elk_config()
+        config = self.load_config()
+        elk_client_config = self.client_config(config)
+        if self.elk_client is None and elk_client_config != self.elk_client_config:
+            get_elk_client.cache_clear()
+        self.elk_client_config = elk_client_config
         if self.index_name_override is None:
             self.index_name = config["action_index"]
         if self.interval_seconds_override is None:
