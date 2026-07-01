@@ -2,11 +2,15 @@ import json
 from datetime import timezone as datetime_timezone
 from functools import wraps
 from inspect import signature
+from uuid import UUID
 
 from asgiref.sync import sync_to_async
+from django.contrib.auth import get_user_model
+from django.contrib.contenttypes.models import ContentType
 from django.utils.dateparse import parse_datetime
 from mcp.server.fastmcp import Context
 
+from apps.accounts.permissions import is_business_writer
 from apps.agentic.services.playbooks import (
     create_pending_playbook_run,
     list_playbook_definitions as list_playbook_definition_records,
@@ -14,12 +18,17 @@ from apps.agentic.services.playbooks import (
 from apps.audit.context import audit_actor
 from apps.alerts.models import Alert
 from apps.artifacts.models import Artifact
+from apps.attachments.models import Attachment
 from apps.cases.models import Case
+from apps.comments.models import Comment
 from apps.comments.services import create_record_comment
 from apps.common.redis_stream import RedisStreamClient
 from apps.enrichments.models import Enrichment, EnrichmentProvider
 from apps.knowledge.models import Knowledge
 from apps.mcp.serializers import (
+    DEFAULT_COMMENTS_LIMIT,
+    normalize_comments_limit,
+    serialize_attachment,
     serialize_alert,
     serialize_artifact,
     serialize_case,
@@ -83,6 +92,22 @@ def _bool(value, default=True):
             return default
         return normalized not in {"0", "false", "no", "off"}
     return bool(value)
+
+
+def _current_request(ctx):
+    if ctx is None:
+        return None
+    request_context = getattr(ctx, "request_context", None)
+    return getattr(request_context, "request", None)
+
+
+def _comments_kwargs(include_comments, comments_limit, ctx):
+    include = _bool(include_comments, default=False)
+    return {
+        "include_comments": include,
+        "comments_limit": normalize_comments_limit(comments_limit) if include else DEFAULT_COMMENTS_LIMIT,
+        "request": _current_request(ctx),
+    }
 
 
 def _json_object(value, field_name):
@@ -185,7 +210,7 @@ def _find_comment_target(target_id):
 def _current_user(ctx):
     if ctx is None:
         raise ValueError("MCP write tool requires an authenticated MCP request")
-    request = ctx.request_context.request
+    request = _current_request(ctx)
     scope = getattr(request, "scope", {}) if request is not None else {}
     user = scope.get("user")
     if user is None or not getattr(user, "is_authenticated", False):
@@ -193,8 +218,91 @@ def _current_user(ctx):
     return user
 
 
+def _current_business_writer(ctx):
+    user = _current_user(ctx)
+    if not is_business_writer(user):
+        raise ValueError("MCP write tool requires an admin or user role")
+    return user
+
+
+def _normalize_file_key(file_key):
+    text = str(file_key or "").strip()
+    if not text:
+        raise ValueError("file_key is required")
+    try:
+        return UUID(text)
+    except ValueError as exc:
+        raise ValueError(f"Invalid file_key: {text}") from exc
+
+
+def _find_attachment_by_file_key(file_key):
+    normalized_key = _normalize_file_key(file_key)
+    try:
+        return Attachment.objects.get(access_key=normalized_key)
+    except Attachment.DoesNotExist as exc:
+        raise ValueError(f"Attachment not found for file_key: {normalized_key}") from exc
+
+
+def _attachments_from_file_keys(file_keys):
+    normalized_keys = []
+    seen_keys = set()
+    for item in _list(file_keys):
+        key = _normalize_file_key(item)
+        if key not in seen_keys:
+            normalized_keys.append(key)
+            seen_keys.add(key)
+    if not normalized_keys:
+        return []
+
+    attachments = {
+        item.access_key: item
+        for item in Attachment.objects.filter(access_key__in=normalized_keys)
+    }
+    missing_keys = [str(key) for key in normalized_keys if key not in attachments]
+    if missing_keys:
+        raise ValueError(f"Attachment not found for file_key: {', '.join(missing_keys)}")
+    return [attachments[key] for key in normalized_keys]
+
+
+def _content_type_for_record(record):
+    return ContentType.objects.get_for_model(record, for_concrete_model=False)
+
+
+def _parent_comment_for_target(content_object, parent_id):
+    if parent_id in (None, ""):
+        return None
+    try:
+        parent = Comment.objects.get(pk=int(parent_id))
+    except (TypeError, ValueError, Comment.DoesNotExist) as exc:
+        raise ValueError(f"Parent comment not found: {parent_id}") from exc
+
+    content_type = _content_type_for_record(content_object)
+    if parent.content_type_id != content_type.id or parent.object_id != str(content_object.pk):
+        raise ValueError("parent_id must belong to the same target")
+    return parent
+
+
+def _mention_users(mentions):
+    users = []
+    seen_ids = set()
+    user_model = get_user_model()
+    for item in _list(mentions):
+        text = str(item or "").strip()
+        if not text:
+            continue
+        user = user_model.objects.filter(username=text).first()
+        if user is None and text.isdigit():
+            user = user_model.objects.filter(pk=int(text)).first()
+        if user is None:
+            raise ValueError(f"Mention user not found: {text}")
+        if user.id not in seen_ids:
+            users.append(user)
+            seen_ids.add(user.id)
+    return users
+
+
 def list_cases(case_id=None, status=None, severity=None, confidence=None, verdict=None, correlation_uid=None, title=None, tags=None, include_related=True,
-               limit=10):
+               limit=10, include_comments=False, comments_limit=DEFAULT_COMMENTS_LIMIT, ctx: Context = None):
     queryset = Case.objects.all().order_by("-created_at")
     if case_id:
         queryset = queryset.filter(case_id=_record_id(case_id))
@@ -213,7 +321,11 @@ def list_cases(case_id=None, status=None, severity=None, confidence=None, verdic
     if tag_values := _list(tags):
         for tag in tag_values:
             queryset = queryset.filter(tags__contains=[tag])
-    return [serialize_case(item, include_related=_bool(include_related)) for item in queryset[:_limit(limit)]]
+    comments_kwargs = _comments_kwargs(include_comments, comments_limit, ctx)
+    return [
+        serialize_case(item, include_related=_bool(include_related), **comments_kwargs)
+        for item in queryset[:_limit(limit)]
+    ]
 
 
 def update_case(case_id, severity_ai=None, confidence_ai=None, impact_ai=None, priority_ai=None, verdict_ai=None, summary=None, ctx: Context = None):
@@ -236,19 +348,30 @@ def update_case(case_id, severity_ai=None, confidence_ai=None, impact_ai=None, p
     return serialize_case(case, include_related=True)
 
 
-def add_comment(target_id, body, ctx: Context):
-    if not str(body or "").strip():
-        raise ValueError("body is required")
+def get_file(file_key, ctx: Context = None):
+    return serialize_attachment(_find_attachment_by_file_key(file_key), request=_current_request(ctx))
+
+
+def add_comment(target_id, body="", file_keys=None, parent_id=None, mentions=None, ctx: Context = None):
+    user = _current_business_writer(ctx)
     content_object = _find_comment_target(target_id)
+    attachments = _attachments_from_file_keys(file_keys)
+    body_text = str(body or "")
+    if not body_text.strip() and not attachments:
+        raise ValueError("body or file_keys are required")
     comment = create_record_comment(
-        author=_current_user(ctx),
+        author=user,
         content_object=content_object,
-        body=str(body),
+        body=body_text,
+        parent=_parent_comment_for_target(content_object, parent_id),
+        mentions=_mention_users(mentions),
+        attachments=attachments,
     )
-    return serialize_comment(comment)
+    return serialize_comment(comment, request=_current_request(ctx))
 
 
-def list_alerts(alert_id=None, status=None, severity=None, confidence=None, correlation_uid=None, include_related=False, limit=10):
+def list_alerts(alert_id=None, status=None, severity=None, confidence=None, correlation_uid=None, include_related=False,
+                limit=10, include_comments=False, comments_limit=DEFAULT_COMMENTS_LIMIT, ctx: Context = None):
     include_related = _bool(include_related, default=False)
     queryset = Alert.objects.select_related("case").all().order_by("-created_at")
     if include_related:
@@ -263,10 +386,15 @@ def list_alerts(alert_id=None, status=None, severity=None, confidence=None, corr
         queryset = queryset.filter(confidence__in=confidence_values)
     if correlation_uid:
         queryset = queryset.filter(correlation_uid=correlation_uid)
-    return [serialize_alert(item, include_related=include_related) for item in queryset[:_limit(limit)]]
+    comments_kwargs = _comments_kwargs(include_comments, comments_limit, ctx)
+    return [
+        serialize_alert(item, include_related=include_related, **comments_kwargs)
+        for item in queryset[:_limit(limit)]
+    ]
 
 
-def list_artifacts(artifact_id=None, type=None, role=None, value=None, include_related=False, limit=10):
+def list_artifacts(artifact_id=None, type=None, role=None, value=None, include_related=False, limit=10,
+                   include_comments=False, comments_limit=DEFAULT_COMMENTS_LIMIT, ctx: Context = None):
     include_related = _bool(include_related, default=False)
     queryset = Artifact.objects.all().order_by("-created_at")
     if include_related:
@@ -279,7 +407,11 @@ def list_artifacts(artifact_id=None, type=None, role=None, value=None, include_r
         queryset = queryset.filter(role__in=role_values)
     if value:
         queryset = queryset.filter(value=value)
-    return [serialize_artifact(item, include_enrichments=include_related) for item in queryset[:_limit(limit)]]
+    comments_kwargs = _comments_kwargs(include_comments, comments_limit, ctx)
+    return [
+        serialize_artifact(item, include_enrichments=include_related, **comments_kwargs)
+        for item in queryset[:_limit(limit)]
+    ]
 
 
 def create_enrichment(target_id, name="", type="Other", value="", uid="", desc="", data="", ctx: Context = None):
@@ -319,7 +451,8 @@ def execute_playbook(name, case_id, user_input=None, ctx: Context = None):
     return serialize_playbook(playbook)
 
 
-def list_playbooks(playbook_id=None, job_status=None, case_id=None, include_related=False, limit=10):
+def list_playbooks(playbook_id=None, job_status=None, case_id=None, include_related=False, limit=10,
+                   include_comments=False, comments_limit=DEFAULT_COMMENTS_LIMIT, ctx: Context = None):
     include_related = _bool(include_related, default=False)
     queryset = Playbook.objects.select_related("case").all().order_by("-created_at")
     if playbook_id:
@@ -328,7 +461,11 @@ def list_playbooks(playbook_id=None, job_status=None, case_id=None, include_rela
         queryset = queryset.filter(job_status__in=job_status_values)
     if case_id:
         queryset = queryset.filter(case__case_id=_record_id(case_id))
-    return [serialize_playbook(item, include_related=include_related) for item in queryset[:_limit(limit)]]
+    comments_kwargs = _comments_kwargs(include_comments, comments_limit, ctx)
+    return [
+        serialize_playbook(item, include_related=include_related, **comments_kwargs)
+        for item in queryset[:_limit(limit)]
+    ]
 
 
 def update_knowledge(knowledge_id, title=None, body=None, expires_at=None, tags=None, ctx: Context = None):
@@ -347,14 +484,18 @@ def update_knowledge(knowledge_id, title=None, body=None, expires_at=None, tags=
     return serialize_knowledge(knowledge)
 
 
-def search_knowledge(keyword, limit=10):
+def search_knowledge(keyword, limit=10, include_comments=False, comments_limit=DEFAULT_COMMENTS_LIMIT, ctx: Context = None):
     keywords = _list(keyword)
     queryset = Knowledge.objects.none()
     for item in keywords:
         queryset = queryset | Knowledge.objects.filter(title__icontains=item)
         queryset = queryset | Knowledge.objects.filter(body__icontains=item)
         queryset = queryset | Knowledge.objects.filter(tags__contains=[item])
-    return [serialize_knowledge(item) for item in queryset.order_by("-created_at")[:_limit(limit)]]
+    comments_kwargs = _comments_kwargs(include_comments, comments_limit, ctx)
+    return [
+        serialize_knowledge(item, **comments_kwargs)
+        for item in queryset.order_by("-created_at")[:_limit(limit)]
+    ]
 
 
 def read_stream_message_by_id(stream_name, message_id):
@@ -460,6 +601,7 @@ MCP_TOOL_FUNCTIONS = [
     read_stream_head,
     list_cases,
     update_case,
+    get_file,
     add_comment,
     list_alerts,
     list_artifacts,
