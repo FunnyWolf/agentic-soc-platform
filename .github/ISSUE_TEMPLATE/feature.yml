@@ -1,0 +1,55 @@
+name: Feature
+description: Suggest a new capability or improvement.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting an improvement. Please focus on the user problem and expected outcome.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What problem or limitation should this feature solve?
+      placeholder: Describe the workflow, pain point, or missing capability.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What would you like to happen?
+      placeholder: Describe the behavior, UI, API, or workflow you expect.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Are there existing workarounds or other approaches?
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Which part of the platform is this related to?
+      options:
+        - Frontend
+        - Backend
+        - MCP / Plugin
+        - Playbook / Automation
+        - Documentation
+        - Deployment
+        - Other
+  - type: textarea
+    id: success-criteria
+    attributes:
+      label: Success criteria
+      description: How should we know this feature is complete?
+      placeholder: Describe the expected outcome in a verifiable way.
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional context
+      description: Links, screenshots, examples, or related issues.
