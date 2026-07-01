@@ -1,7 +1,7 @@
 import type {Key} from 'react'
 import {useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState} from 'react'
 import {Button, Checkbox, Divider, Input, message, Pagination, Popconfirm, Popover, Select, Space, Table, Tooltip} from 'antd'
-import {ClearOutlined, CloseOutlined, DeleteOutlined, FilterOutlined, HolderOutlined, ReloadOutlined, SettingOutlined} from '@ant-design/icons'
+import {ClearOutlined, CloseOutlined, DeleteOutlined, FilterOutlined, HolderOutlined, PushpinFilled, PushpinOutlined, ReloadOutlined, SettingOutlined} from '@ant-design/icons'
 import {closestCenter, DndContext, type DragEndEvent, PointerSensor, useSensor, useSensors} from '@dnd-kit/core'
 import {arrayMove, SortableContext, useSortable, verticalListSortingStrategy} from '@dnd-kit/sortable'
 import {CSS} from '@dnd-kit/utilities'
@@ -98,7 +98,16 @@ function columnKey(column: Record<string, unknown>, index: number) {
 }
 
 function isLockedColumn(column: Record<string, unknown>) {
-  return Boolean(column.required || column.fixed)
+  return Boolean(column.required)
+}
+
+function isDefaultLeftFixedColumn(column: Record<string, unknown>) {
+  return column.fixed === true || column.fixed === 'left'
+}
+
+function isPrimaryIdColumn(column: Record<string, unknown>) {
+  const key = String(column.key)
+  return Boolean(column.openRecord && (key.endsWith('_id') || key === 'username'))
 }
 
 function columnScrollWidth(column: Record<string, unknown>) {
@@ -110,6 +119,7 @@ function columnScrollWidth(column: Record<string, unknown>) {
 interface ColumnSettings {
   visible: Set<string>
   order: string[]
+  fixedLeft: Set<string>
 }
 
 function normalizeColumnOrder(order: string[] | undefined, columns: Record<string, unknown>[]) {
@@ -118,14 +128,65 @@ function normalizeColumnOrder(order: string[] | undefined, columns: Record<strin
   return [...validOrder, ...keys.filter((key) => !validOrder.includes(key))]
 }
 
+function defaultFixedLeftColumns(columns: Record<string, unknown>[]) {
+  return columns
+    .filter(isDefaultLeftFixedColumn)
+    .map((column) => String(column.key))
+}
+
+function primaryIdColumnKeys(columns: Record<string, unknown>[]) {
+  return columns
+    .filter(isPrimaryIdColumn)
+    .map((column) => String(column.key))
+}
+
+function normalizeFixedLeftColumns(fixedLeft: string[] | undefined, columns: Record<string, unknown>[]) {
+  const keys = new Set(columns.map((column) => String(column.key)))
+  const seen = new Set<string>()
+  return (fixedLeft || []).filter((key) => {
+    if (!keys.has(key) || seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
+function normalizePinnedColumnOrder(order: string[], fixedLeft: Set<string>, primaryIds = new Set<string>()) {
+  return [
+    ...order.filter((key) => primaryIds.has(key)),
+    ...order.filter((key) => fixedLeft.has(key) && !primaryIds.has(key)),
+    ...order.filter((key) => !fixedLeft.has(key) && !primaryIds.has(key)),
+  ]
+}
+
+function moveColumnToPinnedGroupEnd(order: string[], key: string, fixedLeft: Set<string>, primaryIds: Set<string>) {
+  const withoutTarget = order.filter((item) => item !== key)
+  return [
+    ...withoutTarget.filter((item) => primaryIds.has(item)),
+    ...withoutTarget.filter((item) => fixedLeft.has(item) && !primaryIds.has(item)),
+    key,
+    ...withoutTarget.filter((item) => !fixedLeft.has(item) && !primaryIds.has(item)),
+  ]
+}
+
+function columnSettingsPayload(visible: Set<string>, order: string[], fixedLeft: Set<string>) {
+  return {
+    visible: [...visible],
+    order,
+    fixedLeft: [...fixedLeft],
+  }
+}
+
 function defaultColumnSettings(columns: Record<string, unknown>[]): ColumnSettings {
+  const primaryIds = new Set(primaryIdColumnKeys(columns))
+  const fixedLeft = new Set([...defaultFixedLeftColumns(columns), ...primaryIds])
   return {
     visible: new Set(
       columns
-        .filter((column) => isLockedColumn(column) || column.defaultVisible !== false)
+        .filter((column) => isLockedColumn(column) || fixedLeft.has(String(column.key)) || column.defaultVisible !== false)
         .map((column) => String(column.key)),
     ),
-    order: normalizeColumnOrder(undefined, columns),
+    order: normalizePinnedColumnOrder(normalizeColumnOrder(undefined, columns), fixedLeft, primaryIds),
+    fixedLeft,
   }
 }
 
@@ -134,10 +195,20 @@ function resolveColumnSettings(savedSettings: SavedColumnSettings | null | undef
     .filter(isLockedColumn)
     .map((column) => String(column.key))
   if (savedSettings) {
-    const keys = columns.map((column) => String(column.key))
+    const keys = new Set(columns.map((column) => String(column.key)))
+    const primaryIds = new Set(primaryIdColumnKeys(columns))
+    const fixedLeft = new Set(
+      [
+        ...(Array.isArray(savedSettings.fixedLeft)
+          ? normalizeFixedLeftColumns(savedSettings.fixedLeft, columns)
+          : defaultFixedLeftColumns(columns)),
+        ...primaryIds,
+      ],
+    )
     return {
-      visible: new Set([...(savedSettings.visible || []).filter((key) => keys.includes(key)), ...lockedKeys]),
-      order: normalizeColumnOrder(savedSettings.order, columns),
+      visible: new Set([...(savedSettings.visible || []).filter((key) => keys.has(key)), ...lockedKeys, ...fixedLeft]),
+      order: normalizePinnedColumnOrder(normalizeColumnOrder(savedSettings.order, columns), fixedLeft, primaryIds),
+      fixedLeft,
     }
   }
   return defaultColumnSettings(columns)
@@ -148,17 +219,23 @@ function SortableColumnSetting({
   title,
   checked,
   locked,
+  pinned,
+  pinnedLocked,
   onToggle,
+  onTogglePinned,
 }: {
   columnKey: string
   title: string
   checked: boolean
   locked: boolean
+  pinned: boolean
+  pinnedLocked: boolean
   onToggle: (key: string) => void
+  onTogglePinned: (key: string) => void
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: columnKey,
-    disabled: locked,
+    disabled: pinnedLocked,
   })
 
   return (
@@ -181,11 +258,22 @@ function SortableColumnSetting({
         type="text"
         size="small"
         icon={<HolderOutlined />}
-        disabled={locked}
-        style={{ cursor: locked ? 'not-allowed' : 'grab' }}
+        disabled={pinnedLocked}
+        style={{ cursor: pinnedLocked ? 'not-allowed' : 'grab' }}
         {...attributes}
         {...listeners}
         onClick={(event) => event.stopPropagation()}
+      />
+      <Button
+        aria-label={pinned ? 'Unpin from left' : 'Pin to left'}
+        type="text"
+        size="small"
+        icon={pinned ? <PushpinFilled /> : <PushpinOutlined />}
+        disabled={pinnedLocked}
+        onClick={(event) => {
+          event.stopPropagation()
+          onTogglePinned(columnKey)
+        }}
       />
       <Checkbox
         checked={checked}
@@ -246,6 +334,7 @@ export default function DataTable<RecordType extends Record<string, unknown> = R
   const [tableResetKey, setTableResetKey] = useState(0)
   const [visibleColumns, setVisibleColumns] = useState(initialColumnSettings.visible)
   const [columnOrder, setColumnOrder] = useState(initialColumnSettings.order)
+  const [fixedLeftColumns, setFixedLeftColumns] = useState(initialColumnSettings.fixedLeft)
   const [selectedRowKeys, setSelectedRowKeys] = useState<Key[]>([])
   const [selectedRows, setSelectedRows] = useState<RecordType[]>([])
   const [loadedPreferenceKey, setLoadedPreferenceKey] = useState<string | null>(null)
@@ -261,6 +350,7 @@ export default function DataTable<RecordType extends Record<string, unknown> = R
     () => `${resolvedTableKey}:${normalizedColumns.map((column) => String(column.key)).join('|')}`,
     [normalizedColumns, resolvedTableKey],
   )
+  const primaryIdColumns = useMemo(() => new Set(primaryIdColumnKeys(normalizedColumns)), [normalizedColumns])
   const preferencesLoaded = loadedPreferenceKey === preferenceScopeKey
 
   useEffect(() => {
@@ -279,6 +369,7 @@ export default function DataTable<RecordType extends Record<string, unknown> = R
         const nextColumnSettings = resolveColumnSettings(preference.column_settings, normalizedColumns)
         setVisibleColumns(nextColumnSettings.visible)
         setColumnOrder(nextColumnSettings.order)
+        setFixedLeftColumns(nextColumnSettings.fixedLeft)
         setPageSize(preference.page_size && PAGE_SIZE_OPTIONS.includes(preference.page_size) ? preference.page_size : 20)
         setPage(1)
         setLoadedPreferenceKey(preferenceScopeKey)
@@ -287,6 +378,7 @@ export default function DataTable<RecordType extends Record<string, unknown> = R
         if (!active) return
         setVisibleColumns(initialColumnSettings.visible)
         setColumnOrder(initialColumnSettings.order)
+        setFixedLeftColumns(initialColumnSettings.fixedLeft)
         setPageSize(20)
         setPage(1)
         setLoadedPreferenceKey(preferenceScopeKey)
@@ -408,62 +500,66 @@ export default function DataTable<RecordType extends Record<string, unknown> = R
 
   const antColumns = useMemo(() => {
     const normalizedColumnMap = new Map(normalizedColumns.map((column) => [String(column.key), column]))
-    const orderedColumns = columnOrder
+    const orderedColumns = normalizePinnedColumnOrder(columnOrder, fixedLeftColumns, primaryIdColumns)
       .map((key) => normalizedColumnMap.get(key))
       .filter((column): column is Record<string, unknown> => Boolean(column))
     const visibleDataColumns = orderedColumns
       .filter((column) => visibleColumns.has(String(column.key)))
-      .map((column) => ({
-        ...column,
-        ellipsis: column.ellipsis ?? true,
-        render: (value: unknown, record: RecordType, index: number) => {
-          const originalRender = column.render as ((value: unknown, record: RecordType, index: number) => React.ReactNode) | undefined
-          const renderedValue = originalRender ? originalRender(value, record, index) : value
-          const displayValue = column.uppercase && typeof renderedValue === 'string'
-            ? renderedValue.toUpperCase()
-            : renderedValue
+      .map((column) => {
+        const key = String(column.key)
+        return {
+          ...column,
+          fixed: fixedLeftColumns.has(key) || primaryIdColumns.has(key) ? 'left' : column.fixed === 'right' ? 'right' : undefined,
+          ellipsis: column.ellipsis ?? true,
+          render: (value: unknown, record: RecordType, index: number) => {
+            const originalRender = column.render as ((value: unknown, record: RecordType, index: number) => React.ReactNode) | undefined
+            const renderedValue = originalRender ? originalRender(value, record, index) : value
+            const displayValue = column.uppercase && typeof renderedValue === 'string'
+              ? renderedValue.toUpperCase()
+              : renderedValue
 
-          const openRecordTab = typeof column.openRecordTab === 'string' ? column.openRecordTab : undefined
-          const openResource = column.openResource as ResourceColumn<RecordType>['openResource']
-          const linkedResourceKey = typeof openResource?.resourceKey === 'function'
-            ? openResource.resourceKey(record)
-            : openResource?.resourceKey
-          const linkedRowId = openResource?.rowId(record)
-          if (openResource && linkedResourceKey && linkedRowId !== null && linkedRowId !== undefined && onOpenResource) {
-            return (
-              <Button
-                type="link"
-                size="small"
-                onClick={(event) => {
-                  event.stopPropagation()
-                  onOpenResource(linkedResourceKey, linkedRowId)
-                }}
-                style={{ padding: 0, height: 'auto', fontFamily: 'inherit' }}
-              >
-                {displayValue as React.ReactNode}
-              </Button>
-            )
-          }
+            const openRecordTab = typeof column.openRecordTab === 'string' ? column.openRecordTab : undefined
+            const openResource = column.openResource as ResourceColumn<RecordType>['openResource']
+            const linkedResourceKey = typeof openResource?.resourceKey === 'function'
+              ? openResource.resourceKey(record)
+              : openResource?.resourceKey
+            const linkedRowId = openResource?.rowId(record)
+            if (openResource && linkedResourceKey && linkedRowId !== null && linkedRowId !== undefined && onOpenResource) {
+              return (
+                <Button
+                  type="link"
+                  size="small"
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    onOpenResource(linkedResourceKey, linkedRowId)
+                  }}
+                  style={{ padding: 0, height: 'auto', fontFamily: 'inherit' }}
+                >
+                  {displayValue as React.ReactNode}
+                </Button>
+              )
+            }
 
-          if ((column.openRecord || openRecordTab) && onRowClick) {
-            return (
-              <Button
-                type="link"
-                size="small"
-                onClick={(event) => {
-                  event.stopPropagation()
-                  onRowClick(record, openRecordTab ? { tabKey: openRecordTab } : undefined)
-                }}
-                style={{ padding: 0, height: 'auto', fontFamily: 'inherit' }}
-              >
-                {displayValue as React.ReactNode}
-              </Button>
-            )
-          }
+            if ((column.openRecord || openRecordTab) && onRowClick) {
+              return (
+                <Button
+                  type="link"
+                  size="small"
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    onRowClick(record, openRecordTab ? { tabKey: openRecordTab } : undefined)
+                  }}
+                  style={{ padding: 0, height: 'auto', fontFamily: 'inherit' }}
+                >
+                  {displayValue as React.ReactNode}
+                </Button>
+              )
+            }
 
-          return displayValue as React.ReactNode
-        },
-      })) as ColumnsType<RecordType>
+            return displayValue as React.ReactNode
+          },
+        }
+      }) as ColumnsType<RecordType>
 
     return [
       ...visibleDataColumns,
@@ -503,7 +599,7 @@ export default function DataTable<RecordType extends Record<string, unknown> = R
         },
       },
     ] as ColumnsType<RecordType>
-  }, [actionColumnWidth, columnOrder, handleDelete, normalizedColumns, onOpenResource, onRowClick, rowActions, visibleColumns])
+  }, [actionColumnWidth, columnOrder, fixedLeftColumns, handleDelete, normalizedColumns, onOpenResource, onRowClick, primaryIdColumns, rowActions, visibleColumns])
 
   const tableScrollX = useMemo(() => {
     const normalizedColumnMap = new Map(normalizedColumns.map((column) => [String(column.key), column]))
@@ -519,20 +615,54 @@ export default function DataTable<RecordType extends Record<string, unknown> = R
 
   const orderedColumnSettings = useMemo(() => {
     const normalizedColumnMap = new Map(normalizedColumns.map((column) => [String(column.key), column]))
-    return columnOrder
+    return normalizePinnedColumnOrder(columnOrder, fixedLeftColumns, primaryIdColumns)
       .map((key) => normalizedColumnMap.get(key))
-      .filter((column): column is Record<string, unknown> => Boolean(column))
-  }, [columnOrder, normalizedColumns])
+      .filter((column): column is Record<string, unknown> => (
+        column !== undefined && !primaryIdColumns.has(String(column.key))
+      ))
+  }, [columnOrder, fixedLeftColumns, normalizedColumns, primaryIdColumns])
 
   const toggleColumn = (key: string) => {
     const column = normalizedColumns.find((item) => String(item.key) === key)
-    if (!column || isLockedColumn(column)) return
+    if (!column || isLockedColumn(column) || primaryIdColumns.has(key)) return
     const next = new Set(visibleColumns)
+    const nextFixedLeft = new Set(fixedLeftColumns)
+    let nextOrder = columnOrder
     if (next.has(key)) next.delete(key)
     else next.add(key)
+    if (!next.has(key)) {
+      nextFixedLeft.delete(key)
+      nextOrder = normalizePinnedColumnOrder(columnOrder, nextFixedLeft, primaryIdColumns)
+    }
     setVisibleColumns(next)
+    setFixedLeftColumns(nextFixedLeft)
+    setColumnOrder(nextOrder)
     updateTablePreference(resolvedTableKey, {
-      column_settings: { visible: [...next], order: columnOrder },
+      column_settings: columnSettingsPayload(next, nextOrder, nextFixedLeft),
+    }).catch(() => message.error('Failed to save table preferences'))
+  }
+
+  const togglePinnedColumn = (key: string) => {
+    const column = normalizedColumns.find((item) => String(item.key) === key)
+    if (!column || primaryIdColumns.has(key)) return
+    const nextVisible = new Set(visibleColumns)
+    const nextFixedLeft = new Set(fixedLeftColumns)
+    let nextOrder: string[]
+
+    if (nextFixedLeft.has(key)) {
+      nextFixedLeft.delete(key)
+      nextOrder = normalizePinnedColumnOrder(columnOrder, nextFixedLeft, primaryIdColumns)
+    } else {
+      nextFixedLeft.add(key)
+      nextVisible.add(key)
+      nextOrder = moveColumnToPinnedGroupEnd(columnOrder, key, nextFixedLeft, primaryIdColumns)
+    }
+
+    setVisibleColumns(nextVisible)
+    setFixedLeftColumns(nextFixedLeft)
+    setColumnOrder(nextOrder)
+    updateTablePreference(resolvedTableKey, {
+      column_settings: columnSettingsPayload(nextVisible, nextOrder, nextFixedLeft),
     }).catch(() => message.error('Failed to save table preferences'))
   }
 
@@ -542,28 +672,33 @@ export default function DataTable<RecordType extends Record<string, unknown> = R
 
   const handleColumnDragEnd = ({ active, over }: DragEndEvent) => {
     if (!over || active.id === over.id) return
-    const oldIndex = columnOrder.indexOf(String(active.id))
-    const newIndex = columnOrder.indexOf(String(over.id))
+    if (primaryIdColumns.has(String(active.id))) return
+    const currentOrder = normalizePinnedColumnOrder(columnOrder, fixedLeftColumns, primaryIdColumns)
+    const oldIndex = currentOrder.indexOf(String(active.id))
+    const newIndex = currentOrder.indexOf(String(over.id))
     if (oldIndex === -1 || newIndex === -1) return
-    const next = arrayMove(columnOrder, oldIndex, newIndex)
+    const next = normalizePinnedColumnOrder(arrayMove(currentOrder, oldIndex, newIndex), fixedLeftColumns, primaryIdColumns)
     setColumnOrder(next)
     updateTablePreference(resolvedTableKey, {
-      column_settings: { visible: [...visibleColumns], order: next },
+      column_settings: columnSettingsPayload(visibleColumns, next, fixedLeftColumns),
     }).catch(() => message.error('Failed to save table preferences'))
   }
 
   const columnSettingsContent = (
-    <div style={{ width: 260, maxHeight: 420, overflowY: 'auto' }}>
+    <div style={{ width: 300, maxHeight: 420, overflowY: 'auto' }}>
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleColumnDragEnd}>
-        <SortableContext items={columnOrder} strategy={verticalListSortingStrategy}>
+        <SortableContext items={orderedColumnSettings.map((column) => String(column.key))} strategy={verticalListSortingStrategy}>
           {orderedColumnSettings.map((column) => (
             <SortableColumnSetting
               key={String(column.key)}
               columnKey={String(column.key)}
               title={String(column.title)}
               checked={visibleColumns.has(String(column.key))}
-              locked={isLockedColumn(column)}
+              locked={isLockedColumn(column) || primaryIdColumns.has(String(column.key))}
+              pinned={fixedLeftColumns.has(String(column.key))}
+              pinnedLocked={primaryIdColumns.has(String(column.key))}
               onToggle={toggleColumn}
+              onTogglePinned={togglePinnedColumn}
             />
           ))}
         </SortableContext>
