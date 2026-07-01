@@ -38,7 +38,8 @@ class MCPASGIMountTests(SimpleTestCase):
     def test_asp_asgi_mounts_new_mcp_path_only(self):
         from asp.asgi import application
 
-        paths = [route.path for route in application.routes if isinstance(route, Mount)]
+        http_application = application.application_mapping["http"]
+        paths = [route.path for route in http_application.routes if isinstance(route, Mount)]
 
         self.assertIn("/api/mcp", paths)
         self.assertNotIn("/api/agentic/mcp", paths)

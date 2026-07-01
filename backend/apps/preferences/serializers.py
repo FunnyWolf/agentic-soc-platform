@@ -17,15 +17,17 @@ def validate_column_settings(value):
         return value
     if not isinstance(value, dict):
         raise serializers.ValidationError("column_settings must be an object.")
-    allowed_keys = {"visible", "order"}
+    allowed_keys = {"visible", "order", "fixedLeft"}
     unknown_keys = set(value.keys()) - allowed_keys
     if unknown_keys:
         raise serializers.ValidationError("column_settings contains unsupported keys.")
     _validate_string_array(value.get("visible", []), "column_settings.visible")
     _validate_string_array(value.get("order", []), "column_settings.order")
+    _validate_string_array(value.get("fixedLeft", []), "column_settings.fixedLeft")
     return {
         "visible": value.get("visible", []),
         "order": value.get("order", []),
+        "fixedLeft": value.get("fixedLeft", []),
     }
 
 

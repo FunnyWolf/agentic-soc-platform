@@ -4,6 +4,7 @@ import type {SavedTableFilter, TableFilterState} from '../types/records'
 export interface ColumnSettings {
   visible: string[]
   order: string[]
+  fixedLeft?: string[]
 }
 
 export interface TablePreference {
