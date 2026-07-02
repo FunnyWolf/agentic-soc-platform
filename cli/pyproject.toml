@@ -1,0 +1,25 @@
+[project]
+name = "asp-cli"
+version = "0.1.0"
+description = "Command line client for Agentic SOC Platform"
+requires-python = ">=3.11"
+dependencies = [
+    "httpx>=0.28.1",
+    "jmespath>=1.0.1",
+    "pydantic>=2.13.4",
+    "rich>=14.2.0",
+    "typer>=0.20.0",
+]
+
+[project.scripts]
+asp = "asp_cli.main:run"
+
+[build-system]
+requires = ["hatchling>=1.28"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/asp_cli"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"src/asp_cli/spec/operations.json" = "asp_cli/spec/operations.json"

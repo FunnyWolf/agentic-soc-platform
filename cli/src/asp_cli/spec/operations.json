@@ -1,0 +1,404 @@
+{
+  "schema_version": "0.1.0",
+  "api_version": "v1",
+  "min_cli_version": "0.1.0",
+  "operations": [
+    {
+      "id": "agent.version",
+      "cli_path": "doctor",
+      "method": "GET",
+      "endpoint": "/api/agent/v1/version/",
+      "permission": "authenticated",
+      "capabilities": ["agent.version"],
+      "aliases": [],
+      "examples": [
+        "asp doctor",
+        "asp doctor --output json"
+      ]
+    },
+    {
+      "id": "auth.login",
+      "cli_path": "auth login",
+      "method": "local",
+      "endpoint": null,
+      "permission": "local",
+      "capabilities": [],
+      "aliases": [],
+      "examples": [
+        "asp auth login --api-url https://asp.example.com --api-key asp_xxx"
+      ]
+    },
+    {
+      "id": "auth.status",
+      "cli_path": "auth status",
+      "method": "GET",
+      "endpoint": "/api/agent/v1/version/",
+      "permission": "authenticated",
+      "capabilities": ["agent.version"],
+      "aliases": [],
+      "examples": [
+        "asp auth status",
+        "asp auth status --output json"
+      ]
+    },
+    {
+      "id": "auth.logout",
+      "cli_path": "auth logout",
+      "method": "local",
+      "endpoint": null,
+      "permission": "local",
+      "capabilities": [],
+      "aliases": [],
+      "examples": [
+        "asp auth logout"
+      ]
+    },
+    {
+      "id": "config.list",
+      "cli_path": "config list",
+      "method": "local",
+      "endpoint": null,
+      "permission": "local",
+      "capabilities": [],
+      "aliases": [],
+      "examples": [
+        "asp config list",
+        "asp --output json config list"
+      ]
+    },
+    {
+      "id": "config.get",
+      "cli_path": "config get",
+      "method": "local",
+      "endpoint": null,
+      "permission": "local",
+      "capabilities": [],
+      "aliases": [],
+      "examples": [
+        "asp config get api_url"
+      ]
+    },
+    {
+      "id": "config.set",
+      "cli_path": "config set",
+      "method": "local",
+      "endpoint": null,
+      "permission": "local",
+      "capabilities": [],
+      "aliases": [],
+      "examples": [
+        "asp config set api_url https://asp.example.com"
+      ]
+    },
+    {
+      "id": "case.list",
+      "cli_path": "case list",
+      "method": "GET",
+      "endpoint": "/api/agent/v1/cases/",
+      "permission": "authenticated",
+      "capabilities": ["case.list"],
+      "aliases": ["list_cases"],
+      "examples": ["asp case list --status New --output json"]
+    },
+    {
+      "id": "case.show",
+      "cli_path": "case show",
+      "method": "GET",
+      "endpoint": "/api/agent/v1/cases/{case_id}/",
+      "permission": "authenticated",
+      "capabilities": ["case.show"],
+      "aliases": ["list_cases(case_id=...)"],
+      "examples": ["asp case show case_000001 --output json"]
+    },
+    {
+      "id": "case.update_ai",
+      "cli_path": "case update-ai",
+      "method": "PATCH",
+      "endpoint": "/api/agent/v1/cases/{case_id}/ai-analysis/",
+      "permission": "business_writer",
+      "capabilities": ["case.update_ai"],
+      "aliases": ["update_case"],
+      "examples": ["asp case update-ai case_000001 --summary-file summary.md --output json"]
+    },
+    {
+      "id": "alert.list",
+      "cli_path": "alert list",
+      "method": "GET",
+      "endpoint": "/api/agent/v1/alerts/",
+      "permission": "authenticated",
+      "capabilities": ["alert.list"],
+      "aliases": ["list_alerts"],
+      "examples": ["asp alert list --case-id case_000001 --output json"]
+    },
+    {
+      "id": "alert.show",
+      "cli_path": "alert show",
+      "method": "GET",
+      "endpoint": "/api/agent/v1/alerts/{alert_id}/",
+      "permission": "authenticated",
+      "capabilities": ["alert.show"],
+      "aliases": ["list_alerts(alert_id=...)"],
+      "examples": ["asp alert show alert_000001 --output json"]
+    },
+    {
+      "id": "artifact.list",
+      "cli_path": "artifact list",
+      "method": "GET",
+      "endpoint": "/api/agent/v1/artifacts/",
+      "permission": "authenticated",
+      "capabilities": ["artifact.list"],
+      "aliases": ["list_artifacts"],
+      "examples": ["asp artifact list --type \"IP Address\" --output json"]
+    },
+    {
+      "id": "artifact.show",
+      "cli_path": "artifact show",
+      "method": "GET",
+      "endpoint": "/api/agent/v1/artifacts/{artifact_id}/",
+      "permission": "authenticated",
+      "capabilities": ["artifact.show"],
+      "aliases": ["list_artifacts(artifact_id=...)"],
+      "examples": ["asp artifact show artifact_000001 --output json"]
+    },
+    {
+      "id": "knowledge.search",
+      "cli_path": "knowledge search",
+      "method": "GET",
+      "endpoint": "/api/agent/v1/knowledge/",
+      "permission": "authenticated",
+      "capabilities": ["knowledge.search"],
+      "aliases": ["search_knowledge"],
+      "examples": ["asp knowledge search phishing --output json"]
+    },
+    {
+      "id": "knowledge.show",
+      "cli_path": "knowledge show",
+      "method": "GET",
+      "endpoint": "/api/agent/v1/knowledge/{knowledge_id}/",
+      "permission": "authenticated",
+      "capabilities": ["knowledge.show"],
+      "aliases": [],
+      "examples": ["asp knowledge show knowledge_000001 --output json"]
+    },
+    {
+      "id": "knowledge.update",
+      "cli_path": "knowledge update",
+      "method": "PATCH",
+      "endpoint": "/api/agent/v1/knowledge/{knowledge_id}/",
+      "permission": "business_writer",
+      "capabilities": ["knowledge.update"],
+      "aliases": ["update_knowledge"],
+      "examples": ["asp knowledge update knowledge_000001 --body-file note.md --output json"]
+    },
+    {
+      "id": "comment.list",
+      "cli_path": "comment list",
+      "method": "GET",
+      "endpoint": "/api/agent/v1/comments/",
+      "permission": "authenticated",
+      "capabilities": ["comment.list"],
+      "aliases": [],
+      "examples": ["asp comment list case_000001 --output json"]
+    },
+    {
+      "id": "comment.add",
+      "cli_path": "comment add",
+      "method": "POST",
+      "endpoint": "/api/agent/v1/comments/",
+      "permission": "business_writer",
+      "capabilities": ["comment.add"],
+      "aliases": ["add_comment"],
+      "examples": ["asp comment add case_000001 --body-file note.md --output json"]
+    },
+    {
+      "id": "file.upload",
+      "cli_path": "file upload",
+      "method": "POST",
+      "endpoint": "/api/agent/v1/files/",
+      "permission": "authenticated",
+      "capabilities": ["file.upload"],
+      "aliases": [],
+      "examples": ["asp file upload evidence.txt --output json"]
+    },
+    {
+      "id": "file.info",
+      "cli_path": "file info",
+      "method": "GET",
+      "endpoint": "/api/agent/v1/files/{file_key}/",
+      "permission": "authenticated",
+      "capabilities": ["file.info"],
+      "aliases": ["get_file"],
+      "examples": ["asp file info 6f2c5d7e-31c6-4f48-9e3c-6d9b5f92c457 --output json"]
+    },
+    {
+      "id": "file.download",
+      "cli_path": "file download",
+      "method": "GET",
+      "endpoint": "/api/agent/v1/files/{file_key}/",
+      "permission": "authenticated",
+      "capabilities": ["file.info"],
+      "aliases": [],
+      "examples": ["asp file download 6f2c5d7e-31c6-4f48-9e3c-6d9b5f92c457 --output-path evidence.txt"]
+    },
+    {
+      "id": "file.read_text",
+      "cli_path": "file read-text",
+      "method": "GET",
+      "endpoint": "/api/agent/v1/files/{file_key}/read-text/",
+      "permission": "authenticated",
+      "capabilities": ["file.read_text"],
+      "aliases": [],
+      "examples": ["asp file read-text 6f2c5d7e-31c6-4f48-9e3c-6d9b5f92c457 --max-bytes 4096 --output json"]
+    },
+    {
+      "id": "enrichment.create",
+      "cli_path": "enrichment create",
+      "method": "POST",
+      "endpoint": "/api/agent/v1/enrichments/",
+      "permission": "business_writer",
+      "capabilities": ["enrichment.create"],
+      "aliases": ["create_enrichment"],
+      "examples": ["asp enrichment create case_000001 --name ti --data-file enrichment.json --output json"]
+    },
+    {
+      "id": "playbook.template.list",
+      "cli_path": "playbook template list",
+      "method": "GET",
+      "endpoint": "/api/agent/v1/playbooks/templates/",
+      "permission": "authenticated",
+      "capabilities": ["playbook.template.list"],
+      "aliases": ["list_playbook_templates"],
+      "examples": ["asp playbook template list --output json"]
+    },
+    {
+      "id": "playbook.list",
+      "cli_path": "playbook list",
+      "method": "GET",
+      "endpoint": "/api/agent/v1/playbooks/",
+      "permission": "authenticated",
+      "capabilities": ["playbook.list"],
+      "aliases": ["list_playbooks"],
+      "examples": ["asp playbook list --case-id case_000001 --output json"]
+    },
+    {
+      "id": "playbook.show",
+      "cli_path": "playbook show",
+      "method": "GET",
+      "endpoint": "/api/agent/v1/playbooks/{playbook_id}/",
+      "permission": "authenticated",
+      "capabilities": ["playbook.show"],
+      "aliases": ["list_playbooks(playbook_id=...)"],
+      "examples": ["asp playbook show playbook_000001 --output json"]
+    },
+    {
+      "id": "playbook.run",
+      "cli_path": "playbook run",
+      "method": "POST",
+      "endpoint": "/api/agent/v1/playbooks/run/",
+      "permission": "business_writer",
+      "capabilities": ["playbook.run"],
+      "aliases": ["execute_playbook"],
+      "examples": ["asp playbook run collect_case_context case_000001 --user-input-file prompt.md --output json"]
+    },
+    {
+      "id": "siem.schema",
+      "cli_path": "siem schema list|show",
+      "method": "GET",
+      "endpoint": "/api/agent/v1/siem/schema/",
+      "permission": "authenticated",
+      "capabilities": ["siem.schema"],
+      "aliases": ["siem_explore_schema"],
+      "examples": ["asp siem schema list --output json", "asp siem schema show logs-security --output json"]
+    },
+    {
+      "id": "siem.search.keyword",
+      "cli_path": "siem search keyword",
+      "method": "POST",
+      "endpoint": "/api/agent/v1/siem/search/keyword/",
+      "permission": "authenticated",
+      "capabilities": ["siem.search.keyword"],
+      "aliases": ["siem_keyword_search"],
+      "examples": ["asp siem search keyword 1.2.3.4 --from 2026-07-02T00:00:00Z --to 2026-07-02T01:00:00Z --output json"]
+    },
+    {
+      "id": "siem.query.adaptive",
+      "cli_path": "siem query adaptive",
+      "method": "POST",
+      "endpoint": "/api/agent/v1/siem/query/adaptive/",
+      "permission": "authenticated",
+      "capabilities": ["siem.query.adaptive"],
+      "aliases": ["siem_adaptive_query"],
+      "examples": ["asp siem query adaptive logs-security --from 2026-07-02T00:00:00Z --to 2026-07-02T01:00:00Z --filters-file filters.json --output json"]
+    },
+    {
+      "id": "siem.fields.discover",
+      "cli_path": "siem fields discover",
+      "method": "POST",
+      "endpoint": "/api/agent/v1/siem/fields/discover/",
+      "permission": "authenticated",
+      "capabilities": ["siem.fields.discover"],
+      "aliases": ["siem_discover_index_fields"],
+      "examples": ["asp siem fields discover logs-security ELK --from 2026-07-02T00:00:00Z --to 2026-07-02T01:00:00Z --output json"]
+    },
+    {
+      "id": "siem.query.spl",
+      "cli_path": "siem query spl",
+      "method": "POST",
+      "endpoint": "/api/agent/v1/siem/query/spl/",
+      "permission": "authenticated",
+      "capabilities": ["siem.query.spl"],
+      "aliases": ["siem_execute_spl"],
+      "examples": ["asp siem query spl \"index=main error\" --from 2026-07-02T00:00:00Z --to 2026-07-02T01:00:00Z --output json"]
+    },
+    {
+      "id": "siem.query.esql",
+      "cli_path": "siem query esql",
+      "method": "POST",
+      "endpoint": "/api/agent/v1/siem/query/esql/",
+      "permission": "authenticated",
+      "capabilities": ["siem.query.esql"],
+      "aliases": ["siem_execute_esql"],
+      "examples": ["asp siem query esql \"FROM logs-* | LIMIT 10\" --from 2026-07-02T00:00:00Z --to 2026-07-02T01:00:00Z --output json"]
+    },
+    {
+      "id": "ti.query",
+      "cli_path": "ti query",
+      "method": "POST",
+      "endpoint": "/api/agent/v1/threat-intel/query/",
+      "permission": "authenticated",
+      "capabilities": ["ti.query"],
+      "aliases": ["ti_query", "threat-intel query"],
+      "examples": ["asp ti query 1.2.3.4 --artifact-type \"IP Address\" --output json"]
+    },
+    {
+      "id": "cmdb.lookup",
+      "cli_path": "cmdb lookup",
+      "method": "POST",
+      "endpoint": "/api/agent/v1/cmdb/lookup/",
+      "permission": "authenticated",
+      "capabilities": ["cmdb.lookup"],
+      "aliases": ["cmdb_lookup"],
+      "examples": ["asp cmdb lookup \"IP Address\" 1.2.3.4 --output json"]
+    },
+    {
+      "id": "dev.stream.head",
+      "cli_path": "dev stream head",
+      "method": "GET",
+      "endpoint": "/api/agent/v1/dev/streams/head/",
+      "permission": "authenticated",
+      "capabilities": ["dev.stream.head"],
+      "aliases": ["read_stream_head"],
+      "examples": ["asp dev stream head custom-module-events -n 3 --output json"]
+    },
+    {
+      "id": "dev.stream.read",
+      "cli_path": "dev stream read",
+      "method": "GET",
+      "endpoint": "/api/agent/v1/dev/streams/message/",
+      "permission": "authenticated",
+      "capabilities": ["dev.stream.read"],
+      "aliases": ["read_stream_message_by_id"],
+      "examples": ["asp dev stream read custom-module-events 0-1 --output json"]
+    }
+  ]
+}

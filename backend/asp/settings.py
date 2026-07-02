@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     "apps.webhook",
     "apps.mcp",
     "apps.agentic",
+    "apps.agent_api",
 ]
 
 MIDDLEWARE = [
