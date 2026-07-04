@@ -19,10 +19,10 @@
     {
       "id": "auth.login",
       "cli_path": "auth login",
-      "method": "local",
-      "endpoint": null,
-      "permission": "local",
-      "capabilities": [],
+      "method": "GET",
+      "endpoint": "/api/agent/v1/version/",
+      "permission": "authenticated",
+      "capabilities": ["agent.version"],
       "aliases": [],
       "examples": [
         "asp auth login --api-url https://asp.example.com --api-key asp_xxx"

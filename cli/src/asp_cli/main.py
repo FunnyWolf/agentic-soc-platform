@@ -756,16 +756,33 @@ def runtime_options(ctx: typer.Context) -> RuntimeOptions:
 
 
 def _auth_login(runtime: RuntimeOptions, output: OutputFormat, api_url: str, api_key: str, local: bool) -> None:
+    client = AspClient(api_url=api_url, api_key=api_key, verbose=runtime.verbose, console=err_console)
+    payload = client.version()
+    server = payload.get("data", {})
     path = save_auth(api_url=api_url, api_key=api_key, local=local)
     data = {
         "scope": "local" if local else "global",
         "settings_path": str(path),
         "api_url": api_url.rstrip("/"),
         "api_key": redact_secret(api_key),
+        "server": server,
     }
     if output == OutputFormat.human:
-        console.print(key_value_table("ASP auth saved", list(data.items())))
-        console.print("Next: run [cyan]asp doctor[/cyan].")
+        user = server.get("user") or {}
+        console.print(
+            key_value_table(
+                "ASP auth verified and saved",
+                [
+                    ("Scope", data["scope"]),
+                    ("Settings path", data["settings_path"]),
+                    ("API URL", data["api_url"]),
+                    ("API key", data["api_key"]),
+                    ("User", user.get("username")),
+                    ("Role", user.get("role")),
+                    ("API version", server.get("api_version")),
+                ],
+            )
+        )
         return
     emit_runtime_success(runtime, output=output, operation="auth.login", data=data)
 

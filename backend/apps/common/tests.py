@@ -1,7 +1,11 @@
 from unittest.mock import patch
+from types import SimpleNamespace
+from uuid import uuid4
 
 from django.test import SimpleTestCase
+from django.utils import timezone
 
+from apps.common.cursor_pagination import decode_cursor, encode_cursor
 from apps.common.worker_runner import _run_once_or_raise
 
 
@@ -19,3 +23,15 @@ class WorkerRunnerTests(SimpleTestCase):
         self.assertTrue(result.processed)
         refresh.assert_called_once()
         self.assertEqual(calls, ["run_once"])
+
+
+class CursorPaginationTests(SimpleTestCase):
+    def test_cursor_round_trips_uuid_primary_key(self):
+        record_id = uuid4()
+        created_at = timezone.now()
+        cursor = encode_cursor(SimpleNamespace(id=record_id, created_at=created_at))
+
+        decoded_created_at, decoded_id = decode_cursor(cursor)
+
+        self.assertEqual(decoded_created_at, created_at)
+        self.assertEqual(decoded_id, str(record_id))

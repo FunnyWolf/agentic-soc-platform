@@ -18,6 +18,8 @@ asp doctor
 asp case list
 ```
 
+`asp auth login` verifies the API URL and API key against the ASP server before writing local settings.
+
 For automation and skills, prefer stable JSON output:
 
 ```powershell
