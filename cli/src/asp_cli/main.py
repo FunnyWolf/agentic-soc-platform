@@ -44,7 +44,7 @@ class RuntimeOptions:
     verbose: bool
 
 
-app = typer.Typer(no_args_is_help=True, help="ASP command line client.")
+app = typer.Typer(no_args_is_help=True, invoke_without_command=True, help="ASP command line client.")
 auth_app = typer.Typer(no_args_is_help=True, help="Authenticate and inspect the current ASP session.")
 config_app = typer.Typer(no_args_is_help=True, help="Read and write ASP CLI settings.")
 completion_app = typer.Typer(no_args_is_help=True, help="Show shell completion installation commands.")

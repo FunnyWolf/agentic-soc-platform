@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  id-token: write
   packages: write
 
 jobs:
@@ -116,3 +117,49 @@ jobs:
         with:
           body_path: dist/release-body.md
           files: dist/asp-compose-${{ needs.prepare.outputs.version }}.tar.gz
+
+  publish-cli:
+    name: Publish CLI to PyPI
+    runs-on: ubuntu-latest
+    needs:
+      - prepare
+      - release
+    environment:
+      name: pypi
+      url: https://pypi.org/p/asp-cli
+    defaults:
+      run:
+        working-directory: cli
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - name: Check CLI version matches release tag
+        run: |
+          python - <<'PY'
+          import tomllib
+          from pathlib import Path
+
+          release_version = "${{ needs.prepare.outputs.version }}"
+          pyproject = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
+          cli_version = pyproject["project"]["version"]
+          if cli_version != release_version:
+              raise SystemExit(
+                  f"cli/pyproject.toml version {cli_version!r} must match release tag version {release_version!r}"
+              )
+          PY
+      - name: Build CLI package
+        run: uv build
+      - name: Check package metadata
+        run: uvx twine check dist/*
+      - name: Publish CLI package
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: cli/dist
