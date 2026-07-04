@@ -21,7 +21,7 @@
     "antd-img-crop": "^4.30.0",
     "axios": "^1.17.0",
     "dayjs": "^1.11.21",
-    "lucide-react": "^1.21.0",
+    "lucide-react": "^1.23.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "react-router-dom": "^7.17.0",
