@@ -1,5 +1,5 @@
 import {Tabs} from 'antd'
-import {Bot, DatabaseZap, Network, Radar, SlidersHorizontal, Tags, UsersRound} from 'lucide-react'
+import {Bot, DatabaseSearch, Network, Radar, SlidersHorizontal, Tags, UsersRound} from 'lucide-react'
 import LDAPSettings from './LDAPSettings'
 import LLMProviderSettings from './LLMProviderSettings'
 import RuntimeSettings from './RuntimeSettings'
@@ -32,7 +32,7 @@ export default function SystemSettings() {
           },
           {
             key: 'siem',
-            label: <IconTabLabel icon={DatabaseZap}>SIEM</IconTabLabel>,
+            label: <IconTabLabel icon={DatabaseSearch}>SIEM</IconTabLabel>,
             children: <SIEMSettings />,
           },
           {

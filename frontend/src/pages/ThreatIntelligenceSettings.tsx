@@ -1,6 +1,6 @@
 import {useCallback, useEffect, useState} from 'react'
 import {Button, Card, Form, Input, InputNumber, message, Space, Switch, Tabs} from 'antd'
-import {DatabaseSearch, SatelliteDish} from 'lucide-react'
+import {ChartNetwork, SatelliteDish} from 'lucide-react'
 import client from '../api/client'
 
 interface AlienVaultOTXConfig {
@@ -207,7 +207,7 @@ export default function ThreatIntelligenceSettings() {
           {
             key: 'opencti',
             label: 'OpenCTI',
-            icon: <DatabaseSearch size={16} />,
+            icon: <ChartNetwork size={16} />,
             children: (
               <Card loading={loading}>
                 <Form form={openctiForm} layout="vertical" initialValues={initialOpenCTIValues()} style={{ maxWidth: 760 }}>
