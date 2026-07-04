@@ -52,7 +52,7 @@ from .utils import bool_param, list_param, parse_tags, parse_timezone_aware_date
 
 API_VERSION = "v1"
 MIN_CLI_VERSION = "0.1.0"
-SERVER_VERSION = "0.1.0"
+SERVER_VERSION = "0.5.0"
 FOUNDATION_CAPABILITIES = [
     "agent.version",
     "case.list",
