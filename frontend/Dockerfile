@@ -10,7 +10,7 @@ RUN pnpm install --frozen-lockfile
 COPY . .
 RUN pnpm build
 
-FROM nginx:1.29-alpine
+FROM nginx:1.31-alpine
 
 RUN apk add --no-cache openssl
 
