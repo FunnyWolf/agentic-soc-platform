@@ -1,5 +1,6 @@
 import {Tabs} from 'antd'
-import {Bot, DatabaseSearch, Network, Radar, SlidersHorizontal, Tags, UsersRound} from 'lucide-react'
+import {Bot, DatabaseSearch, FileSearch, Network, Radar, SlidersHorizontal, Tags, UsersRound} from 'lucide-react'
+import AuditLogsSettings from './AuditLogsSettings'
 import LDAPSettings from './LDAPSettings'
 import LLMProviderSettings from './LLMProviderSettings'
 import RuntimeSettings from './RuntimeSettings'
@@ -49,6 +50,11 @@ export default function SystemSettings() {
             key: 'tag-preview',
             label: <IconTabLabel icon={Tags}>Tags</IconTabLabel>,
             children: <TagPreviewSettings />,
+          },
+          {
+            key: 'audit-logs',
+            label: <IconTabLabel icon={FileSearch}>Audit Logs</IconTabLabel>,
+            children: <AuditLogsSettings />,
           },
         ]}
         style={{ flex: 1, minHeight: 0 }}

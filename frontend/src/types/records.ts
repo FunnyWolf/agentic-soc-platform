@@ -182,6 +182,8 @@ export interface ResourceConfig<RecordType = Record<string, unknown>> {
     fieldController?: FieldEditingController
   }) => ReactNode
   detailHeaderActions?: ComponentType<DetailHeaderActionProps<RecordType>>
+  showShare?: boolean
+  showActivity?: boolean
   basicSections: BasicSection<RecordType>[]
   tabs: RecordTab<RecordType>[]
 }

@@ -303,7 +303,7 @@ export default function TableFilterModal({
   const renderConditionValue = (condition: AdvancedFilterCondition, field: AdvancedFilterFieldConfig) => {
     if (condition.operator === 'is_empty' || condition.operator === 'is_not_empty') return null
     const multiple = ['is_one_of', 'is_not_any_of', 'contains_any', 'not_contains_any', 'contains_all'].includes(condition.operator)
-    const options = field.valueType === 'user' ? userOptions : field.options || []
+    const options = field.valueType === 'user' ? [...(field.options || []), ...userOptions] : field.options || []
 
     if (field.valueType === 'select' || field.valueType === 'multi-select') {
       return renderChoiceTags(condition, options, multiple)

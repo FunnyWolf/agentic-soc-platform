@@ -24,7 +24,9 @@ interface DataTableProps<RecordType extends Record<string, unknown> = Record<str
   onRowClick?: (record: RecordType, options?: { tabKey?: string }) => void
   onOpenResource?: (resourceKey: string, rowId: string | number, options?: OpenResourceOptions) => void
   searchPlaceholder?: string
-  actions?: React.ReactNode
+  searchPlacement?: 'start' | 'afterFilters'
+  filterActions?: React.ReactNode
+  actions?: React.ReactNode | ((context: { params: Record<string, string | number | boolean | undefined> }) => React.ReactNode)
   rowActions?: (record: RecordType, defaults: { deleteAction: React.ReactNode }) => React.ReactNode
   rowSelectionDisabled?: (record: RecordType) => boolean
   actionColumnWidth?: number
@@ -32,6 +34,7 @@ interface DataTableProps<RecordType extends Record<string, unknown> = Record<str
   fillParent?: boolean
   baseParams?: Record<string, string | number | boolean | undefined>
   refreshToken?: unknown
+  readOnly?: boolean
 }
 
 const PAGE_SIZE_OPTIONS = [20, 50, 100]
@@ -300,6 +303,8 @@ export default function DataTable<RecordType extends Record<string, unknown> = R
   onRowClick,
   onOpenResource,
   searchPlaceholder = 'Search...',
+  searchPlacement = 'start',
+  filterActions,
   actions,
   rowActions,
   rowSelectionDisabled,
@@ -308,6 +313,7 @@ export default function DataTable<RecordType extends Record<string, unknown> = R
   fillParent = false,
   baseParams,
   refreshToken,
+  readOnly = false,
 }: DataTableProps<RecordType>) {
   const resolvedTableKey = tableKey || endpoint
   const resolvedSavedFiltersKey = savedFiltersKey || resolvedTableKey
@@ -353,6 +359,8 @@ export default function DataTable<RecordType extends Record<string, unknown> = R
   )
   const primaryIdColumns = useMemo(() => new Set(primaryIdColumnKeys(normalizedColumns)), [normalizedColumns])
   const preferencesLoaded = loadedPreferenceKey === preferenceScopeKey
+  const showActionColumn = Boolean(rowActions) || !readOnly
+  const showRowSelection = !readOnly
 
   useEffect(() => {
     mountedRef.current = true
@@ -391,24 +399,28 @@ export default function DataTable<RecordType extends Record<string, unknown> = R
     }
   }, [initialColumnSettings, normalizedColumns, preferenceScopeKey, resolvedTableKey])
 
+  const tableParams = useMemo(() => {
+    const params: Record<string, string | number | boolean | undefined> = { ...stableBaseParams, page, page_size: pageSize }
+    if (search) params.search = search
+    if (ordering) params.ordering = ordering
+    for (const [key, value] of Object.entries(filterState.quick)) {
+      if (hasFilterValue(value)) params[key] = Array.isArray(value) ? value.join(',') : value
+    }
+    const activeAdvancedFilters = filterState.advanced
+      .filter(isActiveAdvancedFilter)
+      .map(({ connector, field, operator, value }) => ({ connector, field, operator, value }))
+    if (activeAdvancedFilters.length > 0) {
+      params.advanced_filters = JSON.stringify(activeAdvancedFilters)
+    }
+    return params
+  }, [filterState, ordering, page, pageSize, search, stableBaseParams])
+
   const fetchData = useCallback(async () => {
     const requestId = requestIdRef.current + 1
     requestIdRef.current = requestId
     setLoading(true)
     try {
-      const params: Record<string, string | number | boolean | undefined> = { ...stableBaseParams, page, page_size: pageSize }
-      if (search) params.search = search
-      if (ordering) params.ordering = ordering
-      for (const [key, value] of Object.entries(filterState.quick)) {
-        if (hasFilterValue(value)) params[key] = Array.isArray(value) ? value.join(',') : value
-      }
-      const activeAdvancedFilters = filterState.advanced
-        .filter(isActiveAdvancedFilter)
-        .map(({ connector, field, operator, value }) => ({ connector, field, operator, value }))
-      if (activeAdvancedFilters.length > 0) {
-        params.advanced_filters = JSON.stringify(activeAdvancedFilters)
-      }
-      const responseData = await fetchTableData(endpoint, params)
+      const responseData = await fetchTableData(endpoint, tableParams)
       if (!mountedRef.current || requestId !== requestIdRef.current) return
       const rows = responseData as { results?: RecordType[]; count?: number } | RecordType[]
       setData(Array.isArray(rows) ? rows : rows.results || [])
@@ -423,7 +435,7 @@ export default function DataTable<RecordType extends Record<string, unknown> = R
         setLoading(false)
       }
     }
-  }, [endpoint, filterState, ordering, page, pageSize, search, stableBaseParams])
+  }, [endpoint, tableParams])
 
   useEffect(() => {
     if (!preferencesLoaded) return
@@ -440,7 +452,7 @@ export default function DataTable<RecordType extends Record<string, unknown> = R
 
   const filterOptions = (filter: ResourceFilterConfig) => {
     const options = filter.valueType === 'user'
-      ? userOptions
+      ? [...(filter.options || []), ...userOptions]
       : filter.options || metadata?.choices?.[filter.key] || []
     const column = normalizedColumns.find((item) => String(item.key) === filter.key || String(item.dataIndex) === filter.key)
     const render = column?.render as ((value: unknown, record: RecordType, index: number) => React.ReactNode) | undefined
@@ -562,45 +574,44 @@ export default function DataTable<RecordType extends Record<string, unknown> = R
         }
       }) as ColumnsType<RecordType>
 
-    return [
-      ...visibleDataColumns,
-      {
-        key: '__actions',
-        title: 'Actions',
-        width: actionColumnWidth,
-        fixed: 'right',
-        align: 'center',
-        render: (_value, record) => {
-          const deleteAction = (
-            <Popconfirm
-              title="Delete record?"
-              description="This action cannot be undone."
-              okText="Delete"
-              okButtonProps={{ danger: true }}
-              onConfirm={(event) => {
-                event?.stopPropagation()
-                return handleDelete(record)
-              }}
-              onCancel={(event) => event?.stopPropagation()}
-            >
-              <Button
-                danger
-                size="small"
-                type="text"
-                icon={<DeleteOutlined />}
-                onClick={(event) => event.stopPropagation()}
-              />
-            </Popconfirm>
-          )
-          return rowActions ? rowActions(record, { deleteAction }) : (
-            <Space size={4} align="center" className="table-row-actions">
-              {deleteAction}
-            </Space>
-          )
-        },
+    const actionColumn = {
+      key: '__actions',
+      title: 'Actions',
+      width: actionColumnWidth,
+      fixed: 'right',
+      align: 'center',
+      render: (_value: unknown, record: RecordType) => {
+        const deleteAction = readOnly ? null : (
+          <Popconfirm
+            title="Delete record?"
+            description="This action cannot be undone."
+            okText="Delete"
+            okButtonProps={{ danger: true }}
+            onConfirm={(event) => {
+              event?.stopPropagation()
+              return handleDelete(record)
+            }}
+            onCancel={(event) => event?.stopPropagation()}
+          >
+            <Button
+              danger
+              size="small"
+              type="text"
+              icon={<DeleteOutlined />}
+              onClick={(event) => event.stopPropagation()}
+            />
+          </Popconfirm>
+        )
+        return rowActions ? rowActions(record, { deleteAction }) : (
+          <Space size={4} align="center" className="table-row-actions">
+            {deleteAction}
+          </Space>
+        )
       },
-    ] as ColumnsType<RecordType>
-  }, [actionColumnWidth, columnOrder, fixedLeftColumns, handleDelete, normalizedColumns, onOpenResource, onRowClick, primaryIdColumns, rowActions, visibleColumns])
+    }
+
+    return (showActionColumn ? [...visibleDataColumns, actionColumn] : visibleDataColumns) as ColumnsType<RecordType>
+  }, [actionColumnWidth, columnOrder, fixedLeftColumns, handleDelete, normalizedColumns, onOpenResource, onRowClick, primaryIdColumns, readOnly, rowActions, showActionColumn, visibleColumns])
 
   const tableScrollX = useMemo(() => {
     const normalizedColumnMap = new Map(normalizedColumns.map((column) => [String(column.key), column]))
@@ -611,8 +622,8 @@ export default function DataTable<RecordType extends Record<string, unknown> = R
       ))
       .reduce((total, column) => total + columnScrollWidth(column), 0)
 
-    return visibleDataWidth + actionColumnWidth + ROW_SELECTION_COLUMN_WIDTH
-  }, [actionColumnWidth, columnOrder, normalizedColumns, visibleColumns])
+    return visibleDataWidth + (showActionColumn ? actionColumnWidth : 0) + (showRowSelection ? ROW_SELECTION_COLUMN_WIDTH : 0)
+  }, [actionColumnWidth, columnOrder, normalizedColumns, showActionColumn, showRowSelection, visibleColumns])
 
   const orderedColumnSettings = useMemo(() => {
     const normalizedColumnMap = new Map(normalizedColumns.map((column) => [String(column.key), column]))
@@ -763,6 +774,24 @@ export default function DataTable<RecordType extends Record<string, unknown> = R
   const toolbarGap = dense ? 12 : 16
   const activeFilterCount = filterState.advanced.filter(isActiveAdvancedFilter).length
   const filterSummary = savedFilterName || (activeFilterCount > 0 ? `${activeFilterCount} filter(s)` : '')
+  const renderedActions = typeof actions === 'function' ? actions({ params: tableParams }) : actions
+  const searchControl = (
+    <Input.Search
+      placeholder={searchPlaceholder}
+      value={searchInput}
+      onChange={(event) => {
+        const value = event.target.value
+        setSearchInput(value)
+        if (!value) {
+          setSearch('')
+          setPage(1)
+        }
+      }}
+      onSearch={(value) => { setSearch(value); setPage(1) }}
+      style={{ width: 360 }}
+      allowClear
+    />
+  )
 
   useLayoutEffect(() => {
     const container = containerRef.current
@@ -794,21 +823,7 @@ export default function DataTable<RecordType extends Record<string, unknown> = R
     <div ref={containerRef} style={{ display: 'flex', flexDirection: 'column', height: fillParent ? '100%' : 'calc(100vh - 96px)', minHeight: 0, overflow: 'hidden' }}>
       <div ref={toolbarRef} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: toolbarGap, flexShrink: 0 }}>
         <Space wrap align="center">
-          <Input.Search
-            placeholder={searchPlaceholder}
-            value={searchInput}
-            onChange={(event) => {
-              const value = event.target.value
-              setSearchInput(value)
-              if (!value) {
-                setSearch('')
-                setPage(1)
-              }
-            }}
-            onSearch={(value) => { setSearch(value); setPage(1) }}
-            style={{ width: 360 }}
-            allowClear
-          />
+          {searchPlacement === 'start' && searchControl}
           {filters?.map((filter) => (
             filter.valueType === 'tag' ? (
               <Select
@@ -834,6 +849,8 @@ export default function DataTable<RecordType extends Record<string, unknown> = R
               />
             )
           ))}
+          {filterActions}
+          {searchPlacement === 'afterFilters' && searchControl}
           <Tooltip title="Clear search, filters, and sorting">
             <Button icon={<ClearOutlined />} disabled={!hasActiveConditions} onClick={clearAllConditions} />
           </Tooltip>
@@ -848,8 +865,8 @@ export default function DataTable<RecordType extends Record<string, unknown> = R
             </Popover>
           </Tooltip>
           <Button icon={<ReloadOutlined />} onClick={fetchData} />
-          {actions}
-          {selectedRowKeys.length > 0 && (
+          {renderedActions}
+          {showRowSelection && selectedRowKeys.length > 0 && (
             <>
               <Divider vertical style={{ alignSelf: 'center' }} />
               <Tooltip title="Clear selection">
@@ -892,7 +909,7 @@ export default function DataTable<RecordType extends Record<string, unknown> = R
         size={dense ? 'small' : 'middle'}
         tableLayout="fixed"
         scroll={{ x: tableScrollX, y: tableBodyHeight }}
-        rowSelection={{
+        rowSelection={showRowSelection ? {
           selectedRowKeys,
           fixed: true,
           getCheckboxProps: rowSelectionDisabled ? (record) => ({ disabled: rowSelectionDisabled(record) }) : undefined,
@@ -900,7 +917,7 @@ export default function DataTable<RecordType extends Record<string, unknown> = R
             setSelectedRowKeys(nextKeys)
             setSelectedRows(nextRows)
           },
-        }}
+        } : undefined}
         pagination={false}
         onChange={handleChange}
       />

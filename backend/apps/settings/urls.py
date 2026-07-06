@@ -1,6 +1,7 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
+from apps.audit.views import AdminAuditLogViewSet
 from .custom_views import (
     CustomDefinitionsModuleView,
     CustomDefinitionsPlaybookView,
@@ -26,6 +27,7 @@ from .views import (
 
 router = DefaultRouter()
 router.register("llm-providers", LLMProviderConfigViewSet, basename="llm-provider")
+router.register("audit-logs", AdminAuditLogViewSet, basename="settings-audit-log")
 
 urlpatterns = [
     path("settings/threat-intel/otx/", ThreatIntelAlienVaultOTXConfigView.as_view(), name="threat-intel-otx-config"),

@@ -379,12 +379,14 @@ export default function RecordDetailModal({ config, rowId, open, initialTabKey, 
   const modalHeight = 'calc(100dvh - 80px)'
   const showContentRail = contentTabs.length > 1
   const DetailHeaderActions = config.detailHeaderActions
+  const showShare = config.showShare !== false
+  const showActivity = config.showActivity !== false
   const toggleActivityDrawer = (drawer: ActivityDrawerKey) => {
     setActivityDrawer((current) => current === drawer ? null : drawer)
   }
   const shareUrl = useMemo(() => (
-    rowId === null || rowId === undefined ? null : buildRecordShareUrl(config.key, rowId)
-  ), [config.key, rowId])
+    !showShare || rowId === null || rowId === undefined ? null : buildRecordShareUrl(config.key, rowId)
+  ), [config.key, rowId, showShare])
   const copyShareUrl = useCallback(async () => {
     if (!shareUrl) {
       message.error('This record cannot be shared')
@@ -477,16 +479,18 @@ export default function RecordDetailModal({ config, rowId, open, initialTabKey, 
                   <Divider vertical style={{ height: 24, margin: '8px 4px', borderColor: token.colorBorderSecondary }} />
                 </>
               )}
-              <Tooltip title="Copy share link">
-                <Button
-                  type="text"
-                  size="large"
-                  style={headerActionButtonStyle}
-                  icon={<ShareAltOutlined />}
-                  disabled={!loadedCurrentRecord || !shareUrl || saving}
-                  onClick={copyShareUrl}
-                />
-              </Tooltip>
+              {showShare && (
+                <Tooltip title="Copy share link">
+                  <Button
+                    type="text"
+                    size="large"
+                    style={headerActionButtonStyle}
+                    icon={<ShareAltOutlined />}
+                    disabled={!loadedCurrentRecord || !shareUrl || saving}
+                    onClick={copyShareUrl}
+                  />
+                </Tooltip>
+              )}
               <Tooltip title="Refresh record">
                 <Button
                   type="text"
@@ -498,26 +502,30 @@ export default function RecordDetailModal({ config, rowId, open, initialTabKey, 
                   onClick={requestRefresh}
                 />
               </Tooltip>
-              <Tooltip title="Comments">
-                <Button
-                  type={activityDrawer === 'comments' ? 'primary' : 'text'}
-                  size="large"
-                  style={headerActionButtonStyle}
-                  icon={<MessageOutlined />}
-                  disabled={!objectId}
-                  onClick={() => toggleActivityDrawer('comments')}
-                />
-              </Tooltip>
-              <Tooltip title="Log">
-                <Button
-                  type={activityDrawer === 'log' ? 'primary' : 'text'}
-                  size="large"
-                  style={headerActionButtonStyle}
-                  icon={<HistoryOutlined />}
-                  disabled={!objectId}
-                  onClick={() => toggleActivityDrawer('log')}
-                />
-              </Tooltip>
+              {showActivity && (
+                <>
+                  <Tooltip title="Comments">
+                    <Button
+                      type={activityDrawer === 'comments' ? 'primary' : 'text'}
+                      size="large"
+                      style={headerActionButtonStyle}
+                      icon={<MessageOutlined />}
+                      disabled={!objectId}
+                      onClick={() => toggleActivityDrawer('comments')}
+                    />
+                  </Tooltip>
+                  <Tooltip title="Log">
+                    <Button
+                      type={activityDrawer === 'log' ? 'primary' : 'text'}
+                      size="large"
+                      style={headerActionButtonStyle}
+                      icon={<HistoryOutlined />}
+                      disabled={!objectId}
+                      onClick={() => toggleActivityDrawer('log')}
+                    />
+                  </Tooltip>
+                </>
+              )}
               <Button type="text" size="large" style={headerActionButtonStyle} icon={<CloseOutlined />} disabled={saving} onClick={requestClose} />
             </div>
           </div>
@@ -525,7 +533,7 @@ export default function RecordDetailModal({ config, rowId, open, initialTabKey, 
             <div style={{ flex: 1, minWidth: 0 }}>
               {loading ? <Spin style={{ margin: 32 }} /> : loadedCurrentRecord ? content?.render(loadedCurrentRecord, { onOpenResource, onChanged: markChanged }) : <Empty style={{ margin: 32 }} description="No record loaded" />}
             </div>
-            {activityDrawer && objectId && (
+            {showActivity && activityDrawer && objectId && (
               <div style={{ width: 420, borderLeft: dividerBorder, display: 'flex', flexDirection: 'column', background: '#0f0f0f', minHeight: 0 }}>
                 <div style={{ flex: 1, minHeight: 0, overflow: activityDrawer === 'comments' ? 'hidden' : 'auto', padding: 12, boxSizing: 'border-box' }}>
                   {activityDrawer === 'comments'
