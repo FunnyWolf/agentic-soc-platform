@@ -29,7 +29,7 @@ node_modules/
 
 # Local git worktrees
 .worktrees/
-#/asf-doc/
+/asf-doc/
 #/asp-marketplace/
 
 # OS

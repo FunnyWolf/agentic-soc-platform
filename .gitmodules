@@ -1,0 +1,3 @@
+[submodule "asp-doc"]
+	path = asp-doc
+	url = https://github.com/FunnyWolf/asp-doc.git

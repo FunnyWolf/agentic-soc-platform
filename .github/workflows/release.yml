@@ -15,47 +15,19 @@ jobs:
     name: Prepare release
     runs-on: ubuntu-latest
     outputs:
-      version: ${{ steps.version.outputs.version }}
-      backend_image: ${{ steps.images.outputs.backend_image }}
-      frontend_image: ${{ steps.images.outputs.frontend_image }}
-      release_doc_url: ${{ steps.release_docs.outputs.release_doc_url }}
+      version: ${{ steps.release.outputs.version }}
+      backend_image: ${{ steps.release.outputs.backend_image }}
+      frontend_image: ${{ steps.release.outputs.frontend_image }}
+      release_doc_url: ${{ steps.release.outputs.release_doc_url }}
     steps:
       - uses: actions/checkout@v4
-      - name: Resolve version
-        id: version
-        shell: bash
-        run: |
-          version="${GITHUB_REF_NAME#v}"
-          if [ -z "$version" ] || [ "$version" = "$GITHUB_REF_NAME" ]; then
-            echo "Tag must use v<version> format." >&2
-            exit 1
-          fi
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-      - name: Resolve image names
-        id: images
-        shell: bash
-        run: |
-          owner="${GITHUB_REPOSITORY_OWNER,,}"
-          repo="${GITHUB_REPOSITORY#*/}"
-          repo="${repo,,}"
-          echo "backend_image=ghcr.io/${owner}/${repo}/asp-backend:${{ steps.version.outputs.version }}" >> "$GITHUB_OUTPUT"
-          echo "frontend_image=ghcr.io/${owner}/${repo}/asp-frontend:${{ steps.version.outputs.version }}" >> "$GITHUB_OUTPUT"
-      - name: Resolve release docs URL
-        id: release_docs
-        run: |
-          python - <<'PY' >> "$GITHUB_OUTPUT"
-          import json
-          import os
-          from pathlib import Path
-
-          version = "${{ steps.version.outputs.version }}"
-          config = json.loads(Path("deploy/release-docs.json").read_text(encoding="utf-8"))
-          slug = config.get("releases", {}).get(version)
-          if not slug:
-              raise SystemExit(f"Missing asf-doc release mapping for version {version} in deploy/release-docs.json")
-          base_url = str(config["base_url"]).rstrip("/")
-          print(f"release_doc_url={base_url}/{slug}/")
-          PY
+        with:
+          submodules: true
+      - name: Check release manifest
+        run: python deploy/release_tool.py check --tag "$GITHUB_REF_NAME"
+      - name: Resolve release outputs
+        id: release
+        run: python deploy/release_tool.py show --format github-output >> "$GITHUB_OUTPUT"
 
   images:
     name: Build and push images

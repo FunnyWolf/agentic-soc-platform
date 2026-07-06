@@ -11,6 +11,18 @@ permissions:
   contents: read
 
 jobs:
+  release-consistency:
+    name: Release consistency
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - run: python deploy/release_tool.py check
+
   backend:
     name: Backend
     runs-on: ubuntu-latest
