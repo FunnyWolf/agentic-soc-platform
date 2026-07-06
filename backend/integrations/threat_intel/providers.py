@@ -108,15 +108,14 @@ class MockThreatIntelProvider(BaseThreatIntelProvider):
 class OpenCTIProvider(BaseThreatIntelProvider):
     name = OPENCTI_PROVIDER_NAME
 
-    def __init__(self, *, url=None, token=None, ssl_verify=None, proxy=None, timeout=None, client=None):
+    def __init__(self, *, url=None, token=None, ssl_verify=None, proxy=None, client=None):
         config = None
-        if any(value is None for value in (url, token, ssl_verify, proxy, timeout)):
+        if any(value is None for value in (url, token, ssl_verify, proxy)):
             config = get_opencti_config()
         self.url = (url if url is not None else config["url"]).rstrip("/")
         self.token = token if token is not None else config["token"]
         self.ssl_verify = ssl_verify if ssl_verify is not None else config["ssl_verify"]
         self.proxy = proxy if proxy is not None else config["proxy"]
-        self.timeout = int(float(timeout if timeout is not None else config["timeout_seconds"]))
         self.client = client
 
     def query(self, indicator, *, artifact_type):
@@ -150,7 +149,6 @@ class OpenCTIProvider(BaseThreatIntelProvider):
             ssl_verify=self.ssl_verify,
             proxies=proxies,
             perform_health_check=True,
-            requests_timeout=self.timeout,
             provider="AspOpenCTI/1.0",
         )
         return self.client
@@ -475,12 +473,11 @@ class OpenCTIProvider(BaseThreatIntelProvider):
 class AlienVaultOTXProvider(BaseThreatIntelProvider):
     name = OTX_PROVIDER_NAME
 
-    def __init__(self, *, api_key=None, base_url=None, proxy=None, timeout=None, http_client=None):
+    def __init__(self, *, api_key=None, base_url=None, proxy=None, http_client=None):
         config = get_otx_config()
         self.api_key = config["api_key"] if api_key is None else api_key
         self.base_url = (base_url or config["base_url"]).rstrip("/")
         self.proxy = config["proxy"] if proxy is None else proxy
-        self.timeout = config["timeout_seconds"] if timeout is None else timeout
         self.http_client = http_client
 
     def query(self, indicator, *, artifact_type):
@@ -558,13 +555,13 @@ class AlienVaultOTXProvider(BaseThreatIntelProvider):
         url = f"{self.base_url}{path}"
         try:
             if self.http_client is None:
-                client_kwargs = {"timeout": self.timeout}
+                client_kwargs = {}
                 if self.proxy:
                     client_kwargs["proxy"] = self.proxy
                 with httpx.Client(**client_kwargs) as client:
                     response = client.get(url, headers=headers)
             else:
-                response = self.http_client.get(url, headers=headers, timeout=self.timeout)
+                response = self.http_client.get(url, headers=headers)
             response.raise_for_status()
             return response.json()
         except httpx.HTTPStatusError as exc:

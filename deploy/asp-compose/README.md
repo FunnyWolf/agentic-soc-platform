@@ -61,6 +61,16 @@ certs/asp.key
 docker compose restart asp-frontend
 ```
 
+## Web API and upload limits
+
+Adjust the Web API process and upload size in `.env`:
+
+```text
+ASP_WEB_WORKERS=3
+ASP_WEB_TIMEOUT=210
+ASP_MAX_UPLOAD_SIZE=20m
+```
+
 ## Management UIs
 
 Redis Stack and RustFS provide their own management UIs. They are exposed directly with their official HTTP ports to avoid reverse proxy compatibility issues:

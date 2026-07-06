@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 from django.db.models import Q
@@ -10,6 +11,7 @@ from rest_framework.response import Response
 from apps.accounts.permissions import IsAdmin
 from apps.audit.models import AuditLog
 from apps.common.advanced_filters import AdvancedFilterBackend
+from apps.common.operation_timeout import OperationTimeoutError, run_with_operation_timeout
 from .models import (
     LdapConfig,
     LLMProviderConfig,
@@ -32,14 +34,13 @@ from .serializers import (
 from .services import test_alienvault_otx_config, test_elk_config, test_llm_provider, test_opencti_config, test_splunk_config
 
 LLM_AUDIT_FIELDS = ("name", "base_url", "model", "proxy", "tags", "enabled", "priority", "api_key")
-OTX_AUDIT_FIELDS = ("enabled", "api_key", "base_url", "proxy", "timeout_seconds")
-OPENCTI_AUDIT_FIELDS = ("enabled", "url", "token", "ssl_verify", "proxy", "timeout_seconds")
+OTX_AUDIT_FIELDS = ("enabled", "api_key", "base_url", "proxy")
+OPENCTI_AUDIT_FIELDS = ("enabled", "url", "token", "ssl_verify", "proxy")
 SPLUNK_AUDIT_FIELDS = ("host", "port", "username", "password", "scheme", "verify")
 ELK_AUDIT_FIELDS = (
     "host",
     "api_key",
     "verify_certs",
-    "request_timeout_seconds",
     "process_alert_from_index_enabled",
     "action_index",
     "action_poll_interval_seconds",
@@ -87,6 +88,18 @@ def _write_audit(instance, action, actor, *, changes=None, metadata=None):
         changes=changes or {},
         metadata=metadata or {},
     )
+
+
+def _run_config_test(operation, func, config):
+    try:
+        return run_with_operation_timeout(
+            operation,
+            func,
+            config,
+            timeout_seconds=settings.CONFIG_TEST_TIMEOUT_SECONDS,
+        )
+    except OperationTimeoutError as exc:
+        return {"success": False, "detail": str(exc), "response_preview": ""}
 
 
 def _config_from_instance(instance, values):
@@ -163,7 +176,7 @@ class LLMProviderConfigViewSet(viewsets.ModelViewSet):
     def test_unsaved(self, request):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        result = test_llm_provider(serializer.validated_data)
+        result = _run_config_test("settings.llm.test", test_llm_provider, serializer.validated_data)
         AuditLog.objects.create(
             content_type=ContentType.objects.get_for_model(LLMProviderConfig),
             object_id="unsaved",
@@ -178,7 +191,7 @@ class LLMProviderConfigViewSet(viewsets.ModelViewSet):
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data or {}, partial=True)
         serializer.is_valid(raise_exception=True)
-        result = test_llm_provider(_config_from_instance(instance, serializer.validated_data))
+        result = _run_config_test("settings.llm.test", test_llm_provider, _config_from_instance(instance, serializer.validated_data))
         _write_audit(instance, "test", request.user, metadata={"success": result["success"]})
         return Response(result, status=status.HTTP_200_OK)
 
@@ -238,7 +251,11 @@ class ThreatIntelAlienVaultOTXTestView(views.APIView):
         instance = ThreatIntelAlienVaultOTXConfig.get_current()
         serializer = ThreatIntelAlienVaultOTXConfigSerializer(instance, data=request.data or {}, partial=True)
         serializer.is_valid(raise_exception=True)
-        result = test_alienvault_otx_config(_otx_config_from_instance(instance, serializer.validated_data))
+        result = _run_config_test(
+            "settings.threat_intel.otx.test",
+            test_alienvault_otx_config,
+            _otx_config_from_instance(instance, serializer.validated_data),
+        )
         _write_audit(instance, "test", request.user, metadata={"success": result["success"]})
         return Response(result, status=status.HTTP_200_OK)
 
@@ -279,7 +296,11 @@ class ThreatIntelOpenCTITestView(views.APIView):
         instance = ThreatIntelOpenCTIConfig.get_current()
         serializer = ThreatIntelOpenCTIConfigSerializer(instance, data=request.data or {}, partial=True)
         serializer.is_valid(raise_exception=True)
-        result = test_opencti_config(_opencti_config_from_instance(instance, serializer.validated_data))
+        result = _run_config_test(
+            "settings.threat_intel.opencti.test",
+            test_opencti_config,
+            _opencti_config_from_instance(instance, serializer.validated_data),
+        )
         _write_audit(instance, "test", request.user, metadata={"success": result["success"]})
         return Response(result, status=status.HTTP_200_OK)
 
@@ -333,7 +354,7 @@ class SiemSplunkTestView(views.APIView):
         serializer.is_valid(raise_exception=True)
         config = _snapshot(instance, SPLUNK_AUDIT_FIELDS)
         config.update(serializer.validated_data)
-        result = test_splunk_config(config)
+        result = _run_config_test("settings.siem.splunk.test", test_splunk_config, config)
         _write_audit(instance, "test", request.user, metadata={"success": result["success"]})
         return Response(result, status=status.HTTP_200_OK)
 
@@ -369,7 +390,7 @@ class SiemElkTestView(views.APIView):
         serializer.is_valid(raise_exception=True)
         config = _snapshot(instance, ELK_AUDIT_FIELDS)
         config.update(serializer.validated_data)
-        result = test_elk_config(config)
+        result = _run_config_test("settings.siem.elk.test", test_elk_config, config)
         _write_audit(instance, "test", request.user, metadata={"success": result["success"]})
         return Response(result, status=status.HTTP_200_OK)
 
@@ -409,10 +430,16 @@ class LdapTestView(views.APIView):
         serializer.is_valid(raise_exception=True)
         config = _snapshot(instance, LDAP_AUDIT_FIELDS)
         config.update(serializer.validated_data)
-        result = test_ldap_config(
+        test_username = str(request.data.get("test_username") or "")
+        test_password = str(request.data.get("test_password") or "")
+        result = _run_config_test(
+            "settings.ldap.test",
+            lambda data: test_ldap_config(
+                data,
+                test_username=test_username,
+                test_password=test_password,
+            ),
             config,
-            test_username=str(request.data.get("test_username") or ""),
-            test_password=str(request.data.get("test_password") or ""),
         )
         _write_audit(instance, "test", request.user, metadata={"success": result["success"]})
         return Response(result, status=status.HTTP_200_OK)

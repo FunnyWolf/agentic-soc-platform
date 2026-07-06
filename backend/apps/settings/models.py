@@ -30,7 +30,6 @@ class ThreatIntelAlienVaultOTXConfig(models.Model):
     api_key = models.TextField(blank=True, default="")
     base_url = models.URLField(max_length=500, default="https://otx.alienvault.com/api/v1")
     proxy = models.CharField(max_length=500, blank=True, default="")
-    timeout_seconds = models.FloatField(default=10)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -53,7 +52,6 @@ class ThreatIntelOpenCTIConfig(models.Model):
     token = models.TextField(blank=True, default="")
     ssl_verify = models.BooleanField(default=False)
     proxy = models.CharField(max_length=500, blank=True, default="")
-    timeout_seconds = models.FloatField(default=30)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -97,7 +95,6 @@ class SiemElkConfig(models.Model):
     host = models.URLField(max_length=500, blank=True, default="")
     api_key = models.TextField(blank=True, default="")
     verify_certs = models.BooleanField(default=False)
-    request_timeout_seconds = models.PositiveIntegerField(default=30)
     process_alert_from_index_enabled = models.BooleanField(default=False)
     action_index = models.CharField(max_length=255, blank=True, default="siem-alert")
     action_poll_interval_seconds = models.PositiveIntegerField(default=60)

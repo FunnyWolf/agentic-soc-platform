@@ -1,5 +1,5 @@
 import {useCallback, useEffect, useState} from 'react'
-import {Button, Card, Form, Input, InputNumber, Space, Switch, Tabs} from 'antd'
+import {Button, Card, Form, Input, Space, Switch, Tabs} from 'antd'
 import {message} from '../utils/appMessage'
 import {ChartNetwork, SatelliteDish} from 'lucide-react'
 import client from '../api/client'
@@ -10,7 +10,6 @@ interface AlienVaultOTXConfig {
   api_key_configured: boolean
   base_url: string
   proxy: string
-  timeout_seconds: number
   updated_at?: string
 }
 
@@ -21,7 +20,6 @@ interface OpenCTIConfig {
   token_configured: boolean
   ssl_verify: boolean
   proxy: string
-  timeout_seconds: number
   updated_at?: string
 }
 
@@ -38,7 +36,6 @@ function initialOTXValues(): AlienVaultOTXConfig {
     api_key_configured: false,
     base_url: 'https://otx.alienvault.com/api/v1',
     proxy: '',
-    timeout_seconds: 10,
   }
 }
 
@@ -50,7 +47,6 @@ function initialOpenCTIValues(): OpenCTIConfig {
     token_configured: false,
     ssl_verify: false,
     proxy: '',
-    timeout_seconds: 30,
   }
 }
 
@@ -194,9 +190,6 @@ export default function ThreatIntelligenceSettings() {
                   <Form.Item name="proxy" label="Proxy">
                     <Input placeholder="http://127.0.0.1:7890" />
                   </Form.Item>
-                  <Form.Item name="timeout_seconds" label="Timeout Seconds" rules={[{ required: true }]}>
-                    <InputNumber min={1} max={300} style={{ width: 180 }} />
-                  </Form.Item>
                   <Space>
                     <Button onClick={testOTXConfig} loading={testingProvider === 'otx'}>Test</Button>
                     <Button type="primary" onClick={saveOTXConfig} loading={savingProvider === 'otx'}>Save</Button>
@@ -226,9 +219,6 @@ export default function ThreatIntelligenceSettings() {
                   </Form.Item>
                   <Form.Item name="proxy" label="Proxy">
                     <Input placeholder="http://127.0.0.1:7890" />
-                  </Form.Item>
-                  <Form.Item name="timeout_seconds" label="Timeout Seconds" rules={[{ required: true }]}>
-                    <InputNumber min={1} max={300} style={{ width: 180 }} />
                   </Form.Item>
                   <Space>
                     <Button onClick={testOpenCTIConfig} loading={testingProvider === 'opencti'}>Test</Button>

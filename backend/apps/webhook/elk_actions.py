@@ -11,7 +11,7 @@ from integrations.siem.clients import get_elk_client
 
 logger = logging.getLogger(__name__)
 
-ELK_CLIENT_CONFIG_FIELDS = ("host", "api_key", "verify_certs", "request_timeout_seconds")
+ELK_CLIENT_CONFIG_FIELDS = ("host", "api_key", "verify_certs")
 
 
 @dataclass

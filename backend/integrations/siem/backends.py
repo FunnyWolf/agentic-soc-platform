@@ -131,7 +131,7 @@ class ELKQueryBackend:
 
         all_fields = [f for f in field_types if not f.startswith("_")]
         query: dict = {"bool": {"must": [build_time_range_clause("@timestamp", time_start, time_end)]}}
-        response = cls._search(index_name, query, size=doc_limit, request_timeout=60)
+        response = cls._search(index_name, query, size=doc_limit)
         hits = response.get("hits", {}).get("hits", [])
 
         field_values: dict[str, list] = {}

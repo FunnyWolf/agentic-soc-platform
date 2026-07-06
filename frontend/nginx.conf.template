@@ -8,6 +8,7 @@ server {
     listen 443 ssl;
     http2 on;
     server_name _;
+    client_max_body_size ${ASP_MAX_UPLOAD_SIZE};
     access_log /var/log/nginx/access.log asp_main;
     access_log /var/log/asp/nginx/access.log asp_main;
     error_log /var/log/nginx/error.log warn;
@@ -37,6 +38,9 @@ server {
 
     location /api/ {
         proxy_pass http://asp-web:8000;
+        proxy_connect_timeout ${ASP_NGINX_PROXY_TIMEOUT};
+        proxy_send_timeout ${ASP_NGINX_PROXY_TIMEOUT};
+        proxy_read_timeout ${ASP_NGINX_PROXY_TIMEOUT};
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -46,6 +50,9 @@ server {
 
     location /admin/ {
         proxy_pass http://asp-web:8000;
+        proxy_connect_timeout ${ASP_NGINX_PROXY_TIMEOUT};
+        proxy_send_timeout ${ASP_NGINX_PROXY_TIMEOUT};
+        proxy_read_timeout ${ASP_NGINX_PROXY_TIMEOUT};
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;

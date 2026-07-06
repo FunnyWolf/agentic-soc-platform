@@ -44,7 +44,17 @@ services:
   asp-web:
     <<: *asp-backend
     restart: unless-stopped
-    command: ["gunicorn", "asp.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3"]
+    command:
+      - gunicorn
+      - asp.wsgi:application
+      - --bind
+      - 0.0.0.0:8000
+      - --workers
+      - "${ASP_WEB_WORKERS:-3}"
+      - --timeout
+      - "${ASP_WEB_TIMEOUT:-210}"
+      - --graceful-timeout
+      - "60"
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:8000/api/health/ >/dev/null"]
       interval: 30s

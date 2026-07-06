@@ -21,7 +21,6 @@ interface ElkConfig {
   api_key: string
   api_key_configured: boolean
   verify_certs: boolean
-  request_timeout_seconds: number
   process_alert_from_index_enabled: boolean
   action_index: string
   action_poll_interval_seconds: number
@@ -53,7 +52,6 @@ function elkInitialValues(): ElkConfig {
     api_key: '',
     api_key_configured: false,
     verify_certs: false,
-    request_timeout_seconds: 30,
     process_alert_from_index_enabled: false,
     action_index: 'siem-alert',
     action_poll_interval_seconds: 60,
@@ -250,11 +248,6 @@ function ElkSettings() {
           <Input.Password autoComplete="new-password" />
         </Form.Item>
         <Row gutter={16}>
-          <Col span={12}>
-            <Form.Item name="request_timeout_seconds" label="Request Timeout Seconds" rules={[{ required: true }]}>
-              <InputNumber min={1} max={300} style={{ width: '100%' }} />
-            </Form.Item>
-          </Col>
           <Col span={12}>
             <Form.Item name="verify_certs" label="Verify Certs" valuePropName="checked">
               <Switch />

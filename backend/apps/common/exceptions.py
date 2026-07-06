@@ -4,6 +4,8 @@ from uuid import uuid4
 
 from rest_framework.views import exception_handler
 
+from apps.common.operation_timeout import OperationTimeoutError
+
 logger = logging.getLogger(__name__)
 
 SENSITIVE_KEYS = {
@@ -98,7 +100,9 @@ def custom_exception_handler(exc, context):
         logger.exception("Unhandled API exception: %s", event_json, extra={"api_error": event})
         return None
 
-    if response.status_code >= 500:
+    if isinstance(exc, OperationTimeoutError):
+        logger.warning("API request timed out: %s", event_json, extra={"api_error": event})
+    elif response.status_code >= 500:
         logger.exception("API server error: %s", event_json, extra={"api_error": event})
     elif response.status_code >= 400:
         logger.warning("API request failed: %s", event_json, extra={"api_error": event})

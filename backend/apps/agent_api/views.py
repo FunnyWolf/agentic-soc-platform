@@ -19,6 +19,7 @@ from apps.cases.models import Case
 from apps.comments.models import Comment
 from apps.comments.services import create_record_comment
 from apps.common.cursor_pagination import paginate_created_at_cursor
+from apps.common.operation_timeout import run_with_operation_timeout
 from apps.common.redis_stream import RedisStreamClient
 from apps.enrichments.models import Enrichment, EnrichmentProvider
 from apps.knowledge.models import Knowledge
@@ -463,7 +464,8 @@ class SIEMKeywordSearchView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        result = siem_service.keyword_search(KeywordSearchInput(**request.data))
+        input_data = KeywordSearchInput(**request.data)
+        result = run_with_operation_timeout("siem.search.keyword", siem_service.keyword_search, input_data)
         return agent_response(request, operation="siem.search.keyword", data=_dump(result))
 
 
@@ -471,7 +473,8 @@ class SIEMAdaptiveQueryView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        result = siem_service.execute_adaptive_query(AdaptiveQueryInput(**request.data))
+        input_data = AdaptiveQueryInput(**request.data)
+        result = run_with_operation_timeout("siem.query.adaptive", siem_service.execute_adaptive_query, input_data)
         return agent_response(request, operation="siem.query.adaptive", data=_dump(result))
 
 
@@ -479,7 +482,8 @@ class SIEMDiscoverFieldsView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        result = siem_service.discover_index_fields(DiscoverIndexFieldsInput(**request.data))
+        input_data = DiscoverIndexFieldsInput(**request.data)
+        result = run_with_operation_timeout("siem.fields.discover", siem_service.discover_index_fields, input_data)
         return agent_response(request, operation="siem.fields.discover", data=_dump(result))
 
 
@@ -487,7 +491,8 @@ class SIEMSPLQueryView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        result = siem_service.execute_spl(SPLQueryInput(**request.data))
+        input_data = SPLQueryInput(**request.data)
+        result = run_with_operation_timeout("siem.query.spl", siem_service.execute_spl, input_data)
         return agent_response(request, operation="siem.query.spl", data=_dump(result))
 
 
@@ -495,7 +500,8 @@ class SIEMESQLQueryView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        result = siem_service.execute_esql(ESQLQueryInput(**request.data))
+        input_data = ESQLQueryInput(**request.data)
+        result = run_with_operation_timeout("siem.query.esql", siem_service.execute_esql, input_data)
         return agent_response(request, operation="siem.query.esql", data=_dump(result))
 
 
@@ -503,11 +509,16 @@ class ThreatIntelQueryView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
+        indicator = request.data.get("indicator")
+        artifact_type = request.data.get("artifact_type", "Unknown")
+        provider = request.data.get("provider")
         try:
-            result = query_indicator(
-                request.data.get("indicator"),
-                artifact_type=request.data.get("artifact_type", "Unknown"),
-                provider=request.data.get("provider"),
+            result = run_with_operation_timeout(
+                "threat_intel.query",
+                query_indicator,
+                indicator,
+                artifact_type=artifact_type,
+                provider=provider,
             )
         except ValueError as exc:
             raise ValidationError({"detail": str(exc)}) from exc
@@ -518,11 +529,16 @@ class CMDBLookupView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
+        artifact_type = request.data.get("artifact_type")
+        artifact_value = request.data.get("artifact_value")
+        provider = request.data.get("provider")
         try:
-            result = lookup_artifact_context(
-                request.data.get("artifact_type"),
-                request.data.get("artifact_value"),
-                provider=request.data.get("provider"),
+            result = run_with_operation_timeout(
+                "cmdb.lookup",
+                lookup_artifact_context,
+                artifact_type,
+                artifact_value,
+                provider=provider,
             )
         except ValueError as exc:
             raise ValidationError({"detail": str(exc)}) from exc

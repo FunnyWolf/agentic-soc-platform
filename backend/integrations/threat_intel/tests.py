@@ -88,7 +88,6 @@ class OpenCTIProviderTests(SimpleTestCase):
             token="token",
             ssl_verify=False,
             proxy="",
-            timeout=30,
             client=FakeOpenCTIClient(),
         )
 
@@ -111,7 +110,6 @@ class OpenCTIProviderTests(SimpleTestCase):
             token="token",
             ssl_verify=False,
             proxy="",
-            timeout=30,
             client=FakeOpenCTIClient(),
         )
 

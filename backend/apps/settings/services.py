@@ -33,10 +33,9 @@ def test_llm_provider(config):
         "temperature": 0,
         "max_tokens": 8,
     }
-    client_kwargs = {"timeout": 20, "trust_env": False}
+    client_kwargs = {"trust_env": False}
     if proxy:
         client_kwargs["proxy"] = proxy
-
     try:
         with httpx.Client(**client_kwargs) as client:
             response = client.post(_chat_completions_url(base_url), headers=headers, json=payload)
@@ -70,7 +69,6 @@ def test_alienvault_otx_config(config):
     api_key = (config.get("api_key") or "").strip()
     base_url = (config.get("base_url") or "").strip().rstrip("/")
     proxy = (config.get("proxy") or "").strip()
-    timeout = float(config.get("timeout_seconds") or 10)
 
     if not api_key:
         return {
@@ -79,14 +77,13 @@ def test_alienvault_otx_config(config):
             "response_preview": "",
         }
 
-    client_kwargs = {"timeout": timeout, "trust_env": False}
-    if proxy:
-        client_kwargs["proxy"] = proxy
-
     headers = {
         "accept": "application/json",
         "X-OTX-API-KEY": api_key,
     }
+    client_kwargs = {"trust_env": False}
+    if proxy:
+        client_kwargs["proxy"] = proxy
     try:
         with httpx.Client(**client_kwargs) as client:
             response = client.get(f"{base_url}/user/me", headers=headers)
@@ -113,7 +110,6 @@ def test_opencti_config(config):
     token = (config.get("token") or "").strip()
     url = (config.get("url") or "").strip().rstrip("/")
     proxy = (config.get("proxy") or "").strip()
-    timeout = int(float(config.get("timeout_seconds") or 30))
     ssl_verify = bool(config.get("ssl_verify"))
 
     if not url:
@@ -138,7 +134,6 @@ def test_opencti_config(config):
             ssl_verify=ssl_verify,
             proxies=proxies,
             perform_health_check=True,
-            requests_timeout=timeout,
             provider="AspOpenCTITest/1.0",
         )
         indicators = client.indicator.list(first=1)
@@ -208,7 +203,6 @@ def test_elk_config(config):
             (config.get("host") or "").rstrip("/"),
             api_key=api_key,
             verify_certs=bool(config.get("verify_certs")),
-            request_timeout=int(config.get("request_timeout_seconds") or 30),
         )
         info = client.info()
         return {

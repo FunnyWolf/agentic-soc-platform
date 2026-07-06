@@ -86,7 +86,6 @@ class ThreatIntelAlienVaultOTXConfigSerializer(serializers.ModelSerializer):
             "api_key_configured",
             "base_url",
             "proxy",
-            "timeout_seconds",
             "updated_at",
         )
         read_only_fields = ("api_key_configured", "updated_at")
@@ -103,11 +102,6 @@ class ThreatIntelAlienVaultOTXConfigSerializer(serializers.ModelSerializer):
         if proxy and not proxy.startswith(("http://", "https://", "socks4://", "socks5://")):
             raise serializers.ValidationError("Proxy must start with http://, https://, socks4://, or socks5://.")
         return proxy
-
-    def validate_timeout_seconds(self, value):
-        if value <= 0:
-            raise serializers.ValidationError("Timeout must be greater than 0.")
-        return value
 
     def validate(self, attrs):
         attrs = super().validate(attrs)
@@ -137,7 +131,6 @@ class ThreatIntelOpenCTIConfigSerializer(serializers.ModelSerializer):
             "token_configured",
             "ssl_verify",
             "proxy",
-            "timeout_seconds",
             "updated_at",
         )
         read_only_fields = ("token_configured", "updated_at")
@@ -155,11 +148,6 @@ class ThreatIntelOpenCTIConfigSerializer(serializers.ModelSerializer):
         if proxy and not proxy.startswith(("http://", "https://", "socks4://", "socks5://")):
             raise serializers.ValidationError("Proxy must start with http://, https://, socks4://, or socks5://.")
         return proxy
-
-    def validate_timeout_seconds(self, value):
-        if value <= 0:
-            raise serializers.ValidationError("Timeout must be greater than 0.")
-        return value
 
     def validate(self, attrs):
         attrs = super().validate(attrs)
@@ -240,7 +228,6 @@ class SiemElkConfigSerializer(serializers.ModelSerializer):
             "api_key",
             "api_key_configured",
             "verify_certs",
-            "request_timeout_seconds",
             "process_alert_from_index_enabled",
             "action_index",
             "action_poll_interval_seconds",
@@ -258,11 +245,6 @@ class SiemElkConfigSerializer(serializers.ModelSerializer):
 
     def get_api_key_configured(self, obj):
         return bool(obj.api_key)
-
-    def validate_request_timeout_seconds(self, value):
-        if value <= 0:
-            raise serializers.ValidationError("Request timeout must be greater than 0.")
-        return value
 
     def validate_action_poll_interval_seconds(self, value):
         if value is None:

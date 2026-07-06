@@ -61,6 +61,16 @@ certs/asp.key
 docker compose restart asp-frontend
 ```
 
+## Web API 与上传限制
+
+`.env` 中可以调整 Web API 进程和上传大小：
+
+```text
+ASP_WEB_WORKERS=3
+ASP_WEB_TIMEOUT=210
+ASP_MAX_UPLOAD_SIZE=20m
+```
+
 ## 管理界面
 
 Redis Stack 和 RustFS 自带管理界面。发布包直接暴露它们的官方 HTTP 管理端口，避免反向代理带来的静态资源或 WebSocket 兼容问题：

@@ -14,9 +14,20 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 CUSTOM_DIR = BASE_DIR / "custom"
 
+
+def _env_int(name, default, *, minimum=1):
+    try:
+        value = int(os.environ.get(name, default))
+    except (TypeError, ValueError):
+        value = default
+    return max(minimum, value)
+
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "dev-secret-key-change-in-prod-32-byte-minimum")
 DEBUG = os.environ.get("DJANGO_DEBUG", "false").lower() == "true"
 ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "*").split(",")
+ASP_WEB_TIMEOUT = _env_int("ASP_WEB_TIMEOUT", 210)
+SYNC_OPERATION_TIMEOUT_SECONDS = max(1, ASP_WEB_TIMEOUT - 30)
+CONFIG_TEST_TIMEOUT_SECONDS = 10
 
 INSTALLED_APPS = [
     "django.contrib.auth",

@@ -28,7 +28,6 @@ def get_otx_config():
         "api_key": config.api_key,
         "base_url": config.base_url.rstrip("/"),
         "proxy": config.proxy,
-        "timeout_seconds": config.timeout_seconds,
     }
 
 
@@ -43,7 +42,6 @@ def get_opencti_config():
         "token": config.token,
         "ssl_verify": config.ssl_verify,
         "proxy": config.proxy,
-        "timeout_seconds": config.timeout_seconds,
     }
 
 
@@ -71,7 +69,6 @@ def get_elk_config():
         "host": config.host.rstrip("/"),
         "api_key": config.api_key,
         "verify_certs": config.verify_certs,
-        "request_timeout_seconds": config.request_timeout_seconds,
         "process_alert_from_index_enabled": config.process_alert_from_index_enabled,
         "action_index": config.action_index,
         "action_poll_interval_seconds": config.action_poll_interval_seconds,

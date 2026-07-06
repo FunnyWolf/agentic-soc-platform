@@ -56,7 +56,6 @@ class ThreatIntelAlienVaultOTXServiceTests(SimpleTestCase):
                 "api_key": "wrong-key",
                 "base_url": "https://otx.alienvault.com/api/v1",
                 "proxy": "",
-                "timeout_seconds": 10,
             }
         )
 
@@ -90,7 +89,6 @@ class ThreatIntelOpenCTIServiceTests(SimpleTestCase):
                 "token": "secret-token",
                 "ssl_verify": False,
                 "proxy": "",
-                "timeout_seconds": 30,
             }
         )
 
@@ -106,7 +104,6 @@ class ThreatIntelOpenCTIServiceTests(SimpleTestCase):
                 "token": "",
                 "ssl_verify": False,
                 "proxy": "",
-                "timeout_seconds": 30,
             }
         )
 
