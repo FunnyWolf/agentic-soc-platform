@@ -29,6 +29,7 @@ services:
     volumes:
       - static-files:/usr/share/nginx/backend-static:ro
       - ./certs:/etc/nginx/certs
+      - ./logs/nginx:/var/log/asp/nginx
     depends_on:
       asp-web:
         condition: service_healthy

@@ -93,9 +93,11 @@ ASP_RUSTFS_CONSOLE_PORT=9001
 
 ## 日志
 
-后端进程日志会挂载到 `./logs`：
+Nginx 和后端进程日志会挂载到 `./logs`：
 
 ```text
+logs/nginx/access.log
+logs/nginx/error.log
 logs/django.log
 logs/asgi.log
 logs/agentic-module-worker.log

@@ -93,9 +93,11 @@ After changing only script or YAML definitions, use **System Settings > Runtime 
 
 ## Logs
 
-Backend process logs are mounted to `./logs`:
+Nginx and backend process logs are mounted to `./logs`:
 
 ```text
+logs/nginx/access.log
+logs/nginx/error.log
 logs/django.log
 logs/asgi.log
 logs/agentic-module-worker.log

@@ -1,5 +1,6 @@
 import json
 import logging
+from uuid import uuid4
 
 from rest_framework.views import exception_handler
 
@@ -50,6 +51,10 @@ def _query_params(request):
     return _redact({key: values if len(values) != 1 else values[0] for key, values in request.GET.lists()})
 
 
+def _request_id(request):
+    return request.headers.get("X-Request-ID") or f"req_{uuid4().hex}"
+
+
 def _user_context(request):
     user = getattr(request, "user", None)
     if not user or not getattr(user, "is_authenticated", False):
@@ -71,6 +76,7 @@ def _event(exc, context, response=None):
     request = context.get("request")
     response_data = _serializable(getattr(response, "data", None)) if response is not None else None
     return {
+        "request_id": _request_id(request) if request is not None else "",
         "method": getattr(request, "method", ""),
         "path": getattr(request, "path", ""),
         "query_params": _query_params(request) if request is not None else {},
