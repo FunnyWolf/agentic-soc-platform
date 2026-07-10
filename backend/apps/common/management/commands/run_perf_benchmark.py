@@ -8,7 +8,7 @@ from types import SimpleNamespace
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 from django.db import connection, reset_queries
-from django.db.models import CharField, Count, IntegerField, Min, OuterRef, Q, Subquery, Value
+from django.db.models import CharField, Count, DateTimeField, IntegerField, Min, OuterRef, Q, Subquery, Value
 from django.db.models.functions import Cast, Coalesce, Concat
 from django.utils import timezone
 
@@ -18,6 +18,7 @@ from apps.audit.models import AuditLog
 from apps.cases.models import Case
 from apps.common.cursor_pagination import paginate_created_at_cursor
 from apps.dashboard.views import build_dashboard_overview
+from apps.playbooks.models import Playbook
 
 
 HOT_SEARCH_TOKEN = "perf-hot-auth"
@@ -158,11 +159,39 @@ class Command(BaseCommand):
             }
 
     def scenarios(self, *, page_size, deep_offset):
-        def case_queryset():
+        def case_queryset(*, with_count_order=False):
+            if with_count_order:
+                return Case.objects.select_related("assignee").annotate(
+                    alert_count=Count("alerts", distinct=True),
+                    playbook_count=Count("playbooks", distinct=True),
+                    first_alert_seen_time=Min("alerts__first_seen_time"),
+                ).order_by("-created_at")
+            alert_count = (
+                Alert.objects
+                .filter(case_id=OuterRef("pk"))
+                .order_by()
+                .values("case_id")
+                .annotate(count=Count("id"))
+                .values("count")[:1]
+            )
+            playbook_count = (
+                Playbook.objects
+                .filter(case_id=OuterRef("pk"))
+                .order_by()
+                .values("case_id")
+                .annotate(count=Count("id"))
+                .values("count")[:1]
+            )
+            first_alert_seen_time = (
+                Alert.objects
+                .filter(case_id=OuterRef("pk"), first_seen_time__isnull=False)
+                .order_by("first_seen_time")
+                .values("first_seen_time")[:1]
+            )
             return Case.objects.select_related("assignee").annotate(
-                alert_count=Count("alerts", distinct=True),
-                playbook_count=Count("playbooks", distinct=True),
-                first_alert_seen_time=Min("alerts__first_seen_time"),
+                alert_count=Coalesce(Subquery(alert_count, output_field=IntegerField()), Value(0)),
+                playbook_count=Coalesce(Subquery(playbook_count, output_field=IntegerField()), Value(0)),
+                first_alert_seen_time=Subquery(first_alert_seen_time, output_field=DateTimeField()),
             ).order_by("-created_at")
 
         def alert_queryset(*, with_artifact_count=False):
@@ -210,7 +239,7 @@ class Command(BaseCommand):
             ("cases.default_page", lambda: list_count(case_queryset())),
             ("cases.deep_page", lambda: list_count(case_queryset()[deep_offset:deep_offset + page_size])),
             ("cases.filter_status_severity", lambda: list_count(case_queryset().filter(status__in=["New", "In Progress"], severity__in=["High", "Critical"]))),
-            ("cases.order_alert_count", lambda: list_count(case_queryset().order_by("-alert_count", "-created_at"))),
+            ("cases.order_alert_count", lambda: list_count(case_queryset(with_count_order=True).order_by("-alert_count", "-created_at"))),
             ("cases.search_hot", lambda: list_count(case_queryset().filter(Q(case_id__icontains=HOT_SEARCH_TOKEN) | Q(title__icontains=HOT_SEARCH_TOKEN) | Q(description__icontains=HOT_SEARCH_TOKEN) | Q(summary__icontains=HOT_SEARCH_TOKEN) | Q(correlation_uid__icontains=HOT_SEARCH_TOKEN)))),
             ("cases.search_rare", lambda: list_count(case_queryset().filter(Q(title__icontains=RARE_SEARCH_TOKEN) | Q(description__icontains=RARE_SEARCH_TOKEN)))),
             ("alerts.default_page", lambda: list_count(alert_queryset())),

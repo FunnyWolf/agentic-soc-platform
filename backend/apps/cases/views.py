@@ -1,21 +1,20 @@
-from django.db.models import Count, Min
+from django.db.models import Count, DateTimeField, IntegerField, Min, OuterRef, Subquery, Value
+from django.db.models.functions import Coalesce
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets, permissions
 from rest_framework.filters import OrderingFilter, SearchFilter
 
 from apps.accounts.permissions import IsBusinessWriterOrReadOnly
+from apps.alerts.models import Alert
 from apps.audit.mixins import AuditActorMixin
 from apps.common.advanced_filters import AdvancedFilterBackend
+from apps.playbooks.models import Playbook
 from .models import Case
 from .serializers import CaseListSerializer, CaseSerializer
 
 
 class CaseViewSet(AuditActorMixin, viewsets.ModelViewSet):
-    queryset = Case.objects.select_related("assignee").annotate(
-        alert_count=Count("alerts", distinct=True),
-        playbook_count=Count("playbooks", distinct=True),
-        first_alert_seen_time=Min("alerts__first_seen_time"),
-    ).order_by("-created_at")
+    queryset = Case.objects.select_related("assignee").order_by("-created_at")
     serializer_class = CaseSerializer
     permission_classes = [permissions.IsAuthenticated, IsBusinessWriterOrReadOnly]
     lookup_field = "id"
@@ -71,8 +70,49 @@ class CaseViewSet(AuditActorMixin, viewsets.ModelViewSet):
         "correlation_uid": "text",
     }
 
+    def is_ordering_by_relation_count(self):
+        raw_ordering = self.request.query_params.get("ordering", "")
+        ordering_fields = {field.strip().lstrip("-") for field in raw_ordering.split(",")}
+        return bool(ordering_fields & {"alert_count", "playbook_count"})
+
+    def annotate_list_metrics(self, queryset):
+        if self.is_ordering_by_relation_count():
+            return queryset.annotate(
+                alert_count=Count("alerts", distinct=True),
+                playbook_count=Count("playbooks", distinct=True),
+                first_alert_seen_time=Min("alerts__first_seen_time"),
+            )
+
+        alert_count = (
+            Alert.objects
+            .filter(case_id=OuterRef("pk"))
+            .order_by()
+            .values("case_id")
+            .annotate(count=Count("id"))
+            .values("count")[:1]
+        )
+        playbook_count = (
+            Playbook.objects
+            .filter(case_id=OuterRef("pk"))
+            .order_by()
+            .values("case_id")
+            .annotate(count=Count("id"))
+            .values("count")[:1]
+        )
+        first_alert_seen_time = (
+            Alert.objects
+            .filter(case_id=OuterRef("pk"), first_seen_time__isnull=False)
+            .order_by("first_seen_time")
+            .values("first_seen_time")[:1]
+        )
+        return queryset.annotate(
+            alert_count=Coalesce(Subquery(alert_count, output_field=IntegerField()), Value(0)),
+            playbook_count=Coalesce(Subquery(playbook_count, output_field=IntegerField()), Value(0)),
+            first_alert_seen_time=Subquery(first_alert_seen_time, output_field=DateTimeField()),
+        )
+
     def get_queryset(self):
-        queryset = super().get_queryset()
+        queryset = self.annotate_list_metrics(super().get_queryset())
         if self.action == "list":
             return queryset.defer("investigation_report_ai_json")
         return queryset
