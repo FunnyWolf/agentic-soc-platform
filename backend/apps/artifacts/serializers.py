@@ -1,23 +1,38 @@
 from rest_framework import serializers
 
-from apps.enrichments.models import Enrichment
 from .models import Artifact
 
 
-class ArtifactSerializer(serializers.ModelSerializer):
-    alert_count = serializers.SerializerMethodField()
-    enrichment_count = serializers.SerializerMethodField()
-
-    def get_alert_count(self, obj):
-        annotated_value = getattr(obj, "alert_count", None)
-        if annotated_value is not None:
-            return annotated_value
-        return obj.alerts.count()
-
-    def get_enrichment_count(self, obj):
-        return Enrichment.objects.filter(artifact=obj).count()
-
+class ArtifactDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Artifact
-        fields = "__all__"
+        fields = (
+            "id",
+            "artifact_id",
+            "name",
+            "type",
+            "role",
+            "value",
+            "created_at",
+            "updated_at",
+        )
         read_only_fields = ("id", "artifact_id", "created_at", "updated_at")
+
+
+class ArtifactListSerializer(ArtifactDetailSerializer):
+    alert_count = serializers.IntegerField(read_only=True, default=0)
+    enrichment_count = serializers.IntegerField(read_only=True, default=0)
+
+    class Meta(ArtifactDetailSerializer.Meta):
+        fields = (
+            "id",
+            "artifact_id",
+            "name",
+            "type",
+            "role",
+            "value",
+            "alert_count",
+            "enrichment_count",
+            "created_at",
+            "updated_at",
+        )
