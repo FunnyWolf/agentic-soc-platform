@@ -73,20 +73,11 @@ def severity_weight(value):
     return SEVERITY_WEIGHTS.get(value or "", 0)
 
 
-def non_negative_duration_seconds(start, end):
-    if not start or not end:
-        return None
-    seconds = int((end - start).total_seconds())
-    return seconds if seconds >= 0 else None
-
-
-def mean_duration(values):
-    valid_values = [value for value in values if value is not None]
-    if not valid_values:
-        return {"seconds": None, "sample_count": 0}
+def mean_duration_result(row):
+    seconds, sample_count = row or (None, 0)
     return {
-        "seconds": round(sum(valid_values) / len(valid_values)),
-        "sample_count": len(valid_values),
+        "seconds": int(seconds) if seconds is not None and sample_count else None,
+        "sample_count": sample_count or 0,
     }
 
 
@@ -300,33 +291,53 @@ def build_alert_trend(window, start, generated_at):
 
 
 def build_mean_times(start):
-    mttd_values = []
-    cases_for_detection = Case.objects.filter(created_at__gte=start).annotate(
-        first_alert_seen_time=Min("alerts__first_seen_time")
-    ).values("created_at", "first_alert_seen_time")
-    for case in cases_for_detection:
-        mttd_values.append(non_negative_duration_seconds(case["first_alert_seen_time"], case["created_at"]))
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT ROUND(EXTRACT(EPOCH FROM AVG(created_at - first_alert_seen_time)))::int, COUNT(*)::int
+            FROM (
+                SELECT cases.id, cases.created_at, MIN(alerts.first_seen_time) AS first_alert_seen_time
+                FROM cases
+                LEFT JOIN alerts ON alerts.case_id = cases.id
+                WHERE cases.created_at >= %s
+                GROUP BY cases.id, cases.created_at
+            ) AS detected_cases
+            WHERE first_alert_seen_time IS NOT NULL
+              AND created_at >= first_alert_seen_time
+            """,
+            [start],
+        )
+        mttd = mean_duration_result(cursor.fetchone())
 
-    mtta_values = []
-    cases_for_acknowledgement = Case.objects.filter(
-        acknowledged_time__gte=start,
-        acknowledged_time__isnull=False,
-    ).values("created_at", "acknowledged_time")
-    for case in cases_for_acknowledgement:
-        mtta_values.append(non_negative_duration_seconds(case["created_at"], case["acknowledged_time"]))
+        cursor.execute(
+            """
+            SELECT ROUND(EXTRACT(EPOCH FROM AVG(acknowledged_time - created_at)))::int, COUNT(*)::int
+            FROM cases
+            WHERE acknowledged_time >= %s
+              AND acknowledged_time IS NOT NULL
+              AND acknowledged_time >= created_at
+            """,
+            [start],
+        )
+        mtta = mean_duration_result(cursor.fetchone())
 
-    mttr_values = []
-    cases_for_resolution = Case.objects.filter(
-        closed_time__gte=start,
-        closed_time__isnull=False,
-    ).values("acknowledged_time", "closed_time")
-    for case in cases_for_resolution:
-        mttr_values.append(non_negative_duration_seconds(case["acknowledged_time"], case["closed_time"]))
+        cursor.execute(
+            """
+            SELECT ROUND(EXTRACT(EPOCH FROM AVG(closed_time - acknowledged_time)))::int, COUNT(*)::int
+            FROM cases
+            WHERE closed_time >= %s
+              AND closed_time IS NOT NULL
+              AND acknowledged_time IS NOT NULL
+              AND closed_time >= acknowledged_time
+            """,
+            [start],
+        )
+        mttr = mean_duration_result(cursor.fetchone())
 
     return {
-        "mttd": mean_duration(mttd_values),
-        "mtta": mean_duration(mtta_values),
-        "mttr": mean_duration(mttr_values),
+        "mttd": mttd,
+        "mtta": mtta,
+        "mttr": mttr,
     }
 
 
