@@ -39,6 +39,7 @@ from apps.cases.models import (
     CaseStatus,
     CaseVerdict,
 )
+from apps.common.readable_ids import sync_readable_id_sequence
 from apps.enrichments.models import Enrichment, EnrichmentProvider, EnrichmentType
 from apps.knowledge.models import Knowledge, KnowledgeSource
 from apps.playbooks.models import Playbook, PlaybookJobStatus
@@ -372,8 +373,24 @@ class Command(BaseCommand):
             user_ids=user_ids,
             batch_size=batch_size,
         )
+        self.sync_readable_id_sequences(readable_offsets, scale)
 
         self.stdout.write(self.style.SUCCESS(f"Generated performance data for run {run_id}."))
+
+    def sync_readable_id_sequences(self, readable_offsets, scale):
+        sequence_targets = {
+            "case": scale.cases,
+            "alert": scale.alerts,
+            "artifact": scale.artifacts,
+            "enrichment": scale.enrichments,
+            "knowledge": min(scale.knowledge, scale.cases),
+            "playbook": scale.playbooks,
+        }
+        for prefix, count in sequence_targets.items():
+            if count <= 0:
+                continue
+            sync_readable_id_sequence(prefix, readable_offsets[prefix] + count - 1)
+        self.stdout.write("Synchronized readable ID sequences.")
 
     def ensure_perf_users(self, now):
         User = get_user_model()

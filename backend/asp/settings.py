@@ -112,7 +112,7 @@ DATABASES = {
         "PASSWORD": os.environ.get("POSTGRES_PASSWORD", ""),
         "HOST": os.environ.get("POSTGRES_HOST", "localhost"),
         "PORT": os.environ.get("POSTGRES_PORT", "5432"),
-        "CONN_MAX_AGE": _env_int("POSTGRES_CONN_MAX_AGE", 60, minimum=0),
+        "CONN_MAX_AGE": _env_int("POSTGRES_CONN_MAX_AGE", 0, minimum=0),
         "CONN_HEALTH_CHECKS": _env_bool("POSTGRES_CONN_HEALTH_CHECKS", True),
     }
 }
