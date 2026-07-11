@@ -85,7 +85,7 @@ jobs:
           - \`${{ needs.prepare.outputs.frontend_image }}\`
           EOF
       - name: Create release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           body_path: dist/release-body.md
           files: dist/asp-compose-${{ needs.prepare.outputs.version }}.tar.gz
