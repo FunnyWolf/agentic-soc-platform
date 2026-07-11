@@ -1,6 +1,6 @@
 [project]
 name = "asp-cli"
-version = "0.5.0"
+version = "0.5.1"
 description = "Command line client for Agentic SOC Platform"
 readme = "README.md"
 requires-python = ">=3.11"

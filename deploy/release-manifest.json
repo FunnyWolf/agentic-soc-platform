@@ -1,8 +1,8 @@
 {
-  "version": "0.5.0",
-  "title": "Fire and Blood",
-  "previousVersion": "0.4.1",
-  "releaseDocSlug": "0_5_0_Fire_and_Blood",
+  "version": "0.5.1",
+  "title": "Growing Strong",
+  "previousVersion": "0.5.0",
+  "releaseDocSlug": "0_5_1_Growing_Strong",
   "releaseDocsBaseUrl": "https://asp.viperrtp.com/release",
   "surfaces": [
     "cli_version",
