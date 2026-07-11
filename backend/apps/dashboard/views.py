@@ -11,7 +11,6 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.alerts.models import Alert, AlertStatus, AlertTactic
-from apps.artifacts.models import Artifact
 from apps.cases.models import Case, CaseStatus
 from apps.enrichments.models import Enrichment
 from apps.knowledge.models import Knowledge, KnowledgeSource
@@ -90,6 +89,39 @@ def alert_event_queryset(start):
             output_field=DateTimeField(),
         )
     ).filter(event_time__gte=start)
+
+
+def alert_window_summary_counts(start):
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT
+                COUNT(*)::int,
+                COUNT(*) FILTER (WHERE severity = ANY(%s))::int
+            FROM alerts
+            WHERE COALESCE(last_seen_time, first_seen_time, created_at) >= %s
+            """,
+            [list(IMPORTANT_LEVELS), start],
+        )
+        total_alerts, critical_high_alerts = cursor.fetchone()
+    return {
+        "total_alerts": total_alerts,
+        "critical_high_alerts": critical_high_alerts,
+    }
+
+
+def count_window_artifacts(start):
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT COUNT(DISTINCT alerts_artifacts.artifact_id)::int
+            FROM alerts_artifacts
+            JOIN alerts ON alerts.id = alerts_artifacts.alert_id
+            WHERE COALESCE(alerts.last_seen_time, alerts.first_seen_time, alerts.created_at) >= %s
+            """,
+            [start],
+        )
+        return cursor.fetchone()[0]
 
 
 def case_workload_queryset(start):
@@ -461,19 +493,21 @@ def build_dashboard_overview(window):
     completed_playbooks = successful_playbooks + failed_playbooks
 
     total_cases = window_cases.count()
+    alert_summary_counts = alert_window_summary_counts(start)
+    total_artifacts = count_window_artifacts(start)
     cases_with_enrichments = window_cases.filter(enrichments__isnull=False).distinct().count()
     cases_with_playbooks = window_cases.filter(playbooks__isnull=False).distinct().count()
 
     summary = {
         "active_risk_index": build_active_risk_index(open_cases, window_alerts, window_playbooks),
         "total_cases": total_cases,
-        "total_alerts": window_alerts.count(),
-        "total_artifacts": Artifact.objects.filter(alerts__in=window_alerts).distinct().count(),
+        "total_alerts": alert_summary_counts["total_alerts"],
+        "total_artifacts": total_artifacts,
         "total_enrichments": Enrichment.objects.filter(created_at__gte=start).count(),
         "total_knowledge": Knowledge.objects.filter(created_at__gte=start).count(),
         "open_cases": open_cases.count(),
         "open_critical_cases": open_cases.filter(severity="Critical").count(),
-        "critical_high_alerts": window_alerts.filter(severity__in=IMPORTANT_LEVELS).count(),
+        "critical_high_alerts": alert_summary_counts["critical_high_alerts"],
         "running_playbooks": playbook_status_counts.get(PlaybookJobStatus.RUNNING, 0),
         "failed_playbooks": failed_playbooks,
         "automation_success_rate": percentage(successful_playbooks, completed_playbooks),
@@ -483,7 +517,7 @@ def build_dashboard_overview(window):
         "enrichment_coverage": percentage(cases_with_enrichments, total_cases),
         "playbook_coverage": percentage(cases_with_playbooks, total_cases),
         "knowledge_records": Knowledge.objects.filter(created_at__gte=start, source=KnowledgeSource.CASE).count(),
-        "artifact_records": summary["total_artifacts"],
+        "artifact_records": total_artifacts,
         "enrichment_records": summary["total_enrichments"],
     }
 
