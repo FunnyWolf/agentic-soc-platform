@@ -1,17 +1,11 @@
 from django.utils import timezone
 from rest_framework import serializers
 
-from apps.alerts.serializers import AlertSerializer
-from apps.enrichments.models import Enrichment
 from apps.inbox.notifications import notify_case_assignment
 from .models import Case, CaseStatus
 
 
-class CaseSerializer(serializers.ModelSerializer):
-    alerts = AlertSerializer(many=True, read_only=True)
-    alert_count = serializers.IntegerField(read_only=True, default=0)
-    playbook_count = serializers.IntegerField(read_only=True, default=0)
-    enrichment_count = serializers.SerializerMethodField()
+class CaseDetailSerializer(serializers.ModelSerializer):
     assignee_name = serializers.SerializerMethodField()
     first_alert_seen_time = serializers.SerializerMethodField()
     detection_time_seconds = serializers.SerializerMethodField()
@@ -25,9 +19,6 @@ class CaseSerializer(serializers.ModelSerializer):
 
     def get_assignee_name(self, obj):
         return self._get_user_name(obj.assignee)
-
-    def get_enrichment_count(self, obj):
-        return Enrichment.objects.filter(case=obj).count()
 
     def _duration_seconds(self, start, end):
         if not start or not end:
@@ -87,11 +78,77 @@ class CaseSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Case
-        fields = "__all__"
+        fields = (
+            "id",
+            "case_id",
+            "title",
+            "severity",
+            "impact",
+            "priority",
+            "confidence",
+            "description",
+            "category",
+            "tags",
+            "status",
+            "verdict",
+            "summary",
+            "assignee",
+            "assignee_name",
+            "acknowledged_time",
+            "closed_time",
+            "correlation_uid",
+            "severity_ai",
+            "confidence_ai",
+            "impact_ai",
+            "priority_ai",
+            "verdict_ai",
+            "first_alert_seen_time",
+            "detection_time_seconds",
+            "acknowledgement_time_seconds",
+            "response_time_seconds",
+            "created_at",
+            "updated_at",
+        )
         read_only_fields = ("id", "case_id", "created_at", "updated_at")
 
 
-class CaseListSerializer(CaseSerializer):
-    class Meta(CaseSerializer.Meta):
-        exclude = ("investigation_report_ai_json",)
-        fields = None
+class CaseListSerializer(CaseDetailSerializer):
+    alert_count = serializers.IntegerField(read_only=True, default=0)
+    playbook_count = serializers.IntegerField(read_only=True, default=0)
+    enrichment_count = serializers.IntegerField(read_only=True, default=0)
+
+    class Meta(CaseDetailSerializer.Meta):
+        fields = (
+            "id",
+            "case_id",
+            "title",
+            "severity",
+            "impact",
+            "priority",
+            "confidence",
+            "description",
+            "category",
+            "tags",
+            "status",
+            "verdict",
+            "summary",
+            "assignee",
+            "assignee_name",
+            "acknowledged_time",
+            "closed_time",
+            "correlation_uid",
+            "severity_ai",
+            "confidence_ai",
+            "impact_ai",
+            "priority_ai",
+            "verdict_ai",
+            "alert_count",
+            "playbook_count",
+            "enrichment_count",
+            "first_alert_seen_time",
+            "detection_time_seconds",
+            "acknowledgement_time_seconds",
+            "response_time_seconds",
+            "created_at",
+            "updated_at",
+        )

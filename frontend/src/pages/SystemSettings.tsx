@@ -1,9 +1,11 @@
 import {Tabs} from 'antd'
-import {Bot, DatabaseZap, Network, Radar, SlidersHorizontal, UsersRound} from 'lucide-react'
-import AgenticRuntimeSettings from './AgenticRuntimeSettings'
+import {Bot, DatabaseSearch, FileSearch, Network, Radar, SlidersHorizontal, Tags, UsersRound} from 'lucide-react'
+import AuditLogsSettings from './AuditLogsSettings'
 import LDAPSettings from './LDAPSettings'
 import LLMProviderSettings from './LLMProviderSettings'
+import RuntimeSettings from './RuntimeSettings'
 import SIEMSettings from './SIEMSettings'
+import TagPreviewSettings from './TagPreviewSettings'
 import ThreatIntelligenceSettings from './ThreatIntelligenceSettings'
 import UserManagement from './UserManagement'
 import IconTabLabel from '../components/IconTabLabel'
@@ -31,7 +33,7 @@ export default function SystemSettings() {
           },
           {
             key: 'siem',
-            label: <IconTabLabel icon={DatabaseZap}>SIEM</IconTabLabel>,
+            label: <IconTabLabel icon={DatabaseSearch}>SIEM</IconTabLabel>,
             children: <SIEMSettings />,
           },
           {
@@ -40,9 +42,19 @@ export default function SystemSettings() {
             children: <LDAPSettings />,
           },
           {
-            key: 'agentic-runtime',
+            key: 'runtime',
             label: <IconTabLabel icon={SlidersHorizontal}>Runtime</IconTabLabel>,
-            children: <AgenticRuntimeSettings />,
+            children: <RuntimeSettings />,
+          },
+          {
+            key: 'tag-preview',
+            label: <IconTabLabel icon={Tags}>Tags</IconTabLabel>,
+            children: <TagPreviewSettings />,
+          },
+          {
+            key: 'audit-logs',
+            label: <IconTabLabel icon={FileSearch}>Audit Logs</IconTabLabel>,
+            children: <AuditLogsSettings />,
           },
         ]}
         style={{ flex: 1, minHeight: 0 }}

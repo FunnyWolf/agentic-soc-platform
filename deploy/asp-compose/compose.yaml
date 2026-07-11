@@ -3,7 +3,6 @@ x-asp-backend: &asp-backend
   env_file:
     - .env
   environment:
-    ASP_CUSTOM_DIR: /app/custom
     PYTHONPATH: /opt/asp/custom-packages:/app/custom
   volumes:
     - ./custom:/app/custom
@@ -30,13 +29,14 @@ services:
     volumes:
       - static-files:/usr/share/nginx/backend-static:ro
       - ./certs:/etc/nginx/certs
+      - ./logs/nginx:/var/log/asp/nginx
     depends_on:
       asp-web:
         condition: service_healthy
       asp-asgi:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-check-certificate -qO- https://localhost/ >/dev/null"]
+      test: ["CMD-SHELL", "wget --no-check-certificate -qO- https://127.0.0.1/ >/dev/null"]
       interval: 30s
       timeout: 5s
       retries: 5
@@ -44,7 +44,27 @@ services:
   asp-web:
     <<: *asp-backend
     restart: unless-stopped
-    command: ["gunicorn", "asp.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3"]
+    command:
+      - gunicorn
+      - asp.wsgi:application
+      - --bind
+      - 0.0.0.0:8000
+      - --worker-class
+      - gthread
+      - --workers
+      - "${ASP_WEB_WORKERS:-3}"
+      - --threads
+      - "${ASP_WEB_THREADS:-4}"
+      - --timeout
+      - "${ASP_WEB_TIMEOUT:-210}"
+      - --graceful-timeout
+      - "60"
+      - --keep-alive
+      - "${ASP_WEB_KEEPALIVE:-5}"
+      - --max-requests
+      - "${ASP_WEB_MAX_REQUESTS:-1000}"
+      - --max-requests-jitter
+      - "${ASP_WEB_MAX_REQUESTS_JITTER:-100}"
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:8000/api/health/ >/dev/null"]
       interval: 30s
@@ -95,6 +115,25 @@ services:
   postgres:
     image: postgres:17
     restart: unless-stopped
+    shm_size: "1gb"
+    command:
+      - postgres
+      - -c
+      - max_connections=${POSTGRES_MAX_CONNECTIONS:-150}
+      - -c
+      - shared_buffers=${POSTGRES_SHARED_BUFFERS:-512MB}
+      - -c
+      - effective_cache_size=${POSTGRES_EFFECTIVE_CACHE_SIZE:-2GB}
+      - -c
+      - work_mem=${POSTGRES_WORK_MEM:-8MB}
+      - -c
+      - maintenance_work_mem=${POSTGRES_MAINTENANCE_WORK_MEM:-256MB}
+      - -c
+      - checkpoint_completion_target=${POSTGRES_CHECKPOINT_COMPLETION_TARGET:-0.9}
+      - -c
+      - random_page_cost=${POSTGRES_RANDOM_PAGE_COST:-1.1}
+      - -c
+      - log_min_duration_statement=${POSTGRES_LOG_MIN_DURATION_STATEMENT:-1000}
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}

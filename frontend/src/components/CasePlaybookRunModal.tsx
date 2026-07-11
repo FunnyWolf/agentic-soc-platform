@@ -1,8 +1,10 @@
 import {type CSSProperties, useCallback, useEffect, useMemo, useRef, useState} from 'react'
-import {Alert, Button, Empty, Input, message, Modal, Space, Table, Tag, theme, Tooltip, Typography} from 'antd'
+import {Alert, Button, Empty, Input, Modal, Space, Table, Tag, theme, Tooltip, Typography} from 'antd'
+import {message} from '../utils/appMessage'
 import {ReloadOutlined, SearchOutlined, ThunderboltOutlined} from '@ant-design/icons'
 import type {ColumnsType} from 'antd/es/table'
 import client from '../api/client'
+import OverflowTags from './OverflowTags'
 import {comfortableTagProps} from '../utils/tagStyles'
 
 type RecordRow = Record<string, unknown>
@@ -55,18 +57,7 @@ function normalizeTags(tags: unknown) {
 }
 
 function PlaybookTags({ tags }: { tags: unknown }) {
-  const normalizedTags = normalizeTags(tags)
-  if (!normalizedTags.length) return <Typography.Text type="secondary">—</Typography.Text>
-
-  return (
-    <Space size={[4, 4]} wrap>
-      {normalizedTags.map((tag) => (
-        <Tag {...comfortableTagProps} key={tag} color={PLAYBOOK_TAG_COLORS[tag] || 'blue'} style={{ marginInlineEnd: 0 }}>
-          {tag}
-        </Tag>
-      ))}
-    </Space>
-  )
+  return <OverflowTags items={normalizeTags(tags)} getColor={(tag) => PLAYBOOK_TAG_COLORS[tag] || 'blue'} />
 }
 
 function CasePlaybookRunModal({ open, caseId, onClose, onSubmitted }: CasePlaybookRunModalProps) {
@@ -235,7 +226,7 @@ function CasePlaybookRunModal({ open, caseId, onClose, onSubmitted }: CasePlaybo
             <Alert
               type="error"
               showIcon
-              message={loadError}
+              title={loadError}
               style={{ marginBottom: 12 }}
               action={<Button size="small" icon={<ReloadOutlined />} onClick={loadDefinitions}>Retry</Button>}
             />

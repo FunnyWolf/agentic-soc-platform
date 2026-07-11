@@ -160,4 +160,3 @@ def test_ldap_config(config, *, test_username="", test_password=""):
         return {"success": True, "detail": "LDAP bind succeeded.", "response_preview": ""}
     except LDAPException as exc:
         return {"success": False, "detail": f"LDAP bind failed: {exc}", "response_preview": ""}
-

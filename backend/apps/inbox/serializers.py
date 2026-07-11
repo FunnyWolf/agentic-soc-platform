@@ -8,7 +8,7 @@ from apps.attachments.serializers import AttachmentSerializer
 from apps.comments.models import Comment
 from apps.common.serializers import ContentTypeField
 from .models import InboxMessage, InboxMessageRecipient
-from .services import create_inbox_message, label_for_content_object
+from .services import create_inbox_message, resolve_resource_identity
 
 User = get_user_model()
 
@@ -120,7 +120,14 @@ class InboxMessageSerializer(serializers.ModelSerializer):
         ]
 
     def get_resource_label(self, obj):
-        return label_for_content_object(obj.content_object, fallback=obj.resource_label or obj.object_id)
+        identity = resolve_resource_identity(
+            content_object=obj.content_object,
+            content_type=obj.content_type,
+            object_id=obj.object_id,
+            resource_key=obj.resource_key,
+            resource_label=obj.resource_label,
+        )
+        return identity["resource_label"]
 
     def get_parent_author_name(self, obj):
         if not obj.parent or not obj.parent.sender:
@@ -230,8 +237,20 @@ class InboxReplySerializer(serializers.Serializer):
 
 
 def mark_message_read(message, user):
-    InboxMessageRecipient.objects.filter(
+    read_at = timezone.now()
+    updated = InboxMessageRecipient.objects.filter(
         message=message,
         user=user,
         read_at__isnull=True,
-    ).update(read_at=timezone.now())
+    ).update(read_at=read_at)
+    if updated:
+        from django.db import transaction
+        from apps.realtime.events import broadcast_inbox_message_read
+
+        transaction.on_commit(
+            lambda message_id=message.id, user_id=user.id, timestamp=read_at: broadcast_inbox_message_read(
+                message_id,
+                user_id,
+                timestamp,
+            )
+        )

@@ -1,5 +1,6 @@
-import {useCallback, useMemo, useState} from 'react'
-import {Alert, Button, Input, List, message, Popconfirm, Space, Tooltip} from 'antd'
+import {useCallback, useEffect, useMemo, useState} from 'react'
+import {Alert, Button, Input, List, Popconfirm, Space, Tooltip} from 'antd'
+import {message} from '../utils/appMessage'
 import {MessageOutlined, ReloadOutlined, SearchOutlined} from '@ant-design/icons'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
@@ -10,6 +11,7 @@ import MessageAttachments from './MessageAttachments'
 import MessageComposer from './MessageComposer'
 import UserAvatar from './UserAvatar'
 import {tabularNumbersStyle, typography} from '../utils/typography'
+import {useRealtime} from '../realtimeContext'
 
 dayjs.extend(relativeTime)
 
@@ -121,6 +123,7 @@ export default function DiscussionThread({ contentType, objectId }: DiscussionTh
   const [replyTo, setReplyTo] = useState<RecordComment | null>(null)
   const [hoveredCommentId, setHoveredCommentId] = useState<number | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
+  const {reconnectToken, subscribe, subscribeToComments} = useRealtime()
 
   const fetchCommentPage = useCallback((cursor?: string | null) => {
     return fetchComments(contentType, objectId, { cursor, pageSize: 20 })
@@ -128,6 +131,7 @@ export default function DiscussionThread({ contentType, objectId }: DiscussionTh
 
   const {
     items: comments,
+    setItems: setComments,
     loadingInitial,
     loadingMore,
     hasMore,
@@ -140,6 +144,36 @@ export default function DiscussionThread({ contentType, objectId }: DiscussionTh
     errorMessage: 'Failed to load comments',
   })
 
+  useEffect(() => {
+    return subscribeToComments(contentType, objectId)
+  }, [contentType, objectId, subscribeToComments])
+
+  useEffect(() => {
+    return subscribe((event) => {
+      if (event.type === 'comment.created') {
+        if (event.payload.content_type !== contentType || event.payload.object_id !== objectId) return
+        const nextComment = event.payload.comment
+        setComments((current) => {
+          if (current.some((comment) => comment.id === nextComment.id)) {
+            return current.map((comment) => comment.id === nextComment.id ? nextComment : comment)
+          }
+          return [...current, nextComment]
+        })
+        return
+      }
+      if (event.type === 'comment.deleted') {
+        if (event.payload.content_type !== contentType || event.payload.object_id !== objectId) return
+        setComments((current) => current.filter((comment) => comment.id !== event.payload.comment_id))
+        setReplyTo((current) => current?.id === event.payload.comment_id ? null : current)
+      }
+    })
+  }, [contentType, objectId, setComments, subscribe])
+
+  useEffect(() => {
+    if (reconnectToken === 0) return
+    refreshComments()
+  }, [reconnectToken, refreshComments])
+
   const filteredComments = useMemo(() => {
     if (!search.trim()) return comments
     const keyword = search.toLowerCase()
@@ -149,7 +183,7 @@ export default function DiscussionThread({ contentType, objectId }: DiscussionTh
   const submit = async (input: { body: string; mentionedIds: number[]; attachments: { id: number }[] }) => {
     setActionLoading(true)
     try {
-      await createComment({
+      const createdComment = await createComment({
         content_type: contentType,
         object_id: objectId,
         body: input.body,
@@ -158,7 +192,7 @@ export default function DiscussionThread({ contentType, objectId }: DiscussionTh
         attachment_ids: input.attachments.map((attachment) => attachment.id),
       })
       setReplyTo(null)
-      await refreshComments()
+      setComments((current) => current.some((comment) => comment.id === createdComment.id) ? current : [...current, createdComment])
       message.success('Comment added')
     } catch {
       message.error('Failed to add comment')
@@ -172,7 +206,7 @@ export default function DiscussionThread({ contentType, objectId }: DiscussionTh
     try {
       await deleteComment(comment.id)
       setReplyTo(null)
-      await refreshComments()
+      setComments((current) => current.filter((item) => item.id !== comment.id))
       message.success('Comment deleted')
     } catch {
       message.error('Failed to delete comment')

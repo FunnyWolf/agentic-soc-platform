@@ -1,4 +1,5 @@
 from django.contrib.contenttypes.models import ContentType
+from django.db import transaction
 from rest_framework import viewsets, permissions
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
@@ -36,4 +37,17 @@ class CommentViewSet(viewsets.ModelViewSet):
     def perform_destroy(self, instance):
         if instance.author_id != self.request.user.id:
             raise PermissionDenied("You can only delete your own comments.")
+        comment_id = instance.id
+        content_type = instance.content_type.model
+        object_id = instance.object_id
+        actor_id = self.request.user.id
         instance.delete()
+        transaction.on_commit(
+            lambda: _broadcast_comment_deleted(comment_id, content_type, object_id, actor_id=actor_id)
+        )
+
+
+def _broadcast_comment_deleted(comment_id, content_type, object_id, *, actor_id):
+    from apps.realtime.events import broadcast_comment_deleted
+
+    broadcast_comment_deleted(comment_id, content_type, object_id, actor_id=actor_id)

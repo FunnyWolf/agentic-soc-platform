@@ -222,6 +222,10 @@ class Alert(BaseModel):
     class Meta:
         db_table = "alerts"
         ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["-created_at", "-id"], name="alert_created_id_idx"),
+            models.Index(fields=["-first_seen_time", "-id"], name="alert_first_seen_id_idx"),
+        ]
 
     def __str__(self):
         return self.title or str(self.id)

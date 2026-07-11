@@ -1,9 +1,14 @@
+from datetime import timedelta
 from unittest.mock import patch
 
-from django.test import SimpleTestCase, override_settings
+from django.test import SimpleTestCase, TestCase
 from django.urls import Resolver404, resolve
+from django.utils import timezone
 from rest_framework.test import APIClient
 
+from apps.settings.models import RuntimeConfig, SiemElkConfig
+from apps.settings.runtime_config import get_elk_config, invalidate
+from apps.webhook.elk_actions import ELKActionProcessor
 from apps.webhook.schemas import WebhookResult
 from apps.webhook.service import (
     WebhookRedisError,
@@ -26,9 +31,35 @@ class FailingRedisClient:
         raise RuntimeError("redis unavailable")
 
 
-class WebhookServiceTests(SimpleTestCase):
-    @override_settings(WEBHOOK_REDIS_STREAM_MAXLEN=123)
+class FakeElkClient:
+    def __init__(self):
+        self.searches = []
+
+    def search(self, **kwargs):
+        self.searches.append(kwargs)
+        return {
+            "hits": {
+                "hits": [
+                    {
+                        "_source": {
+                            "rule": {"name": "rule-without-hits"},
+                            "context": {"hits": []},
+                        }
+                    }
+                ]
+            }
+        }
+
+
+class WebhookServiceTests(TestCase):
+    def set_stream_maxlen(self, value):
+        config = RuntimeConfig.get_current()
+        config.stream_maxlen = value
+        config.save(update_fields=["stream_maxlen", "updated_at"])
+        invalidate("runtime")
+
     def test_handle_splunk_webhook_writes_result_to_search_stream(self):
+        self.set_stream_maxlen(123)
         redis_client = FakeRedisClient()
 
         result = handle_splunk_webhook(
@@ -49,8 +80,8 @@ class WebhookServiceTests(SimpleTestCase):
         with self.assertRaisesMessage(ValueError, "search_name is required."):
             handle_splunk_webhook({"search_name": " ", "result": {}}, redis_client=FakeRedisClient())
 
-    @override_settings(WEBHOOK_REDIS_STREAM_MAXLEN=456)
     def test_handle_kibana_webhook_writes_normalized_sources(self):
+        self.set_stream_maxlen(456)
         redis_client = FakeRedisClient()
 
         result = handle_kibana_webhook(
@@ -98,6 +129,30 @@ class WebhookServiceTests(SimpleTestCase):
                 {"rule": {"name": "rule"}, "context": {"hits": [{"_source": {"event": "login"}}]}},
                 redis_client=FailingRedisClient(),
             )
+
+
+class ELKActionProcessorTests(TestCase):
+    def test_process_once_refreshes_config_cached_before_settings_change(self):
+        config = SiemElkConfig.get_current()
+        config.host = "https://elk.example.com:9200"
+        config.api_key = "test-api-key"
+        config.process_alert_from_index_enabled = False
+        config.save()
+        invalidate("elk")
+
+        elk_client = FakeElkClient()
+        processor = ELKActionProcessor(elk_client=elk_client, interval_seconds=60)
+        self.assertFalse(get_elk_config()["process_alert_from_index_enabled"])
+
+        config.process_alert_from_index_enabled = True
+        config.save(update_fields=["process_alert_from_index_enabled", "updated_at"])
+
+        end_time = timezone.now()
+        result = processor.process_once(start_time=end_time - timedelta(seconds=60), end_time=end_time)
+
+        self.assertEqual(result.actions, 1)
+        self.assertEqual(result.skipped, 1)
+        self.assertEqual(len(elk_client.searches), 1)
 
 
 class WebhookAPITests(SimpleTestCase):

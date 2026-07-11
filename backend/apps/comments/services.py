@@ -2,11 +2,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 
 from apps.inbox.models import InboxMessage
-from apps.inbox.services import (
-    create_inbox_message,
-    label_for_content_object,
-    resource_key_for_content_type,
-)
+from apps.inbox.services import create_inbox_message
 from .models import Comment
 
 
@@ -57,11 +53,17 @@ def create_record_comment(
                 recipients=recipients,
                 body=comment.body,
                 attachments=attachment_items,
+                content_object=content_object,
                 content_type=comment.content_type,
                 object_id=comment.object_id,
-                resource_key=resource_key_for_content_type(comment.content_type),
-                resource_label=label_for_content_object(content_object, fallback=comment.object_id),
                 metadata={"source": "comment", "comment_id": comment.id},
             )
+        transaction.on_commit(lambda comment_id=comment.id: _broadcast_comment_created(comment_id))
 
     return comment
+
+
+def _broadcast_comment_created(comment_id):
+    from apps.realtime.events import broadcast_comment_created
+
+    broadcast_comment_created(comment_id)

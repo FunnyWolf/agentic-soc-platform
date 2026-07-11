@@ -1,8 +1,6 @@
-from django.contrib import admin
 from django.urls import path, include
 
 urlpatterns = [
-    path("admin/", admin.site.urls),
     path("api/", include("apps.accounts.urls")),
     path("api/", include("apps.settings.urls")),
     path("api/", include("apps.common.urls")),
@@ -17,5 +15,7 @@ urlpatterns = [
     path("api/", include("apps.attachments.urls")),
     path("api/", include("apps.audit.urls")),
     path("api/", include("apps.inbox.urls")),
+    path("api/", include("apps.preferences.urls")),
     path("api/", include("apps.webhook.urls")),
+    path("api/agent/v1/", include("apps.agent_api.urls")),
 ]

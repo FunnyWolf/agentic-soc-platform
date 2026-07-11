@@ -16,17 +16,19 @@ const themeConfig: ThemeConfig = {
 export const severityColors: Record<string, string> = {
   Critical: '#ff4d4f',
   High: '#fa541c',
-  Medium: '#fadb14',
-  Low: '#52c41a',
-  Informational: '#13c2c2',
+  Medium: '#faad14',
+  Low: '#13c2c2',
+  Info: '#1677ff',
+  Informational: '#1677ff',
 }
 
 export const severityTagColors: Record<string, string> = {
   Critical: 'red',
   High: 'volcano',
   Medium: 'gold',
-  Low: 'green',
-  Informational: 'cyan',
+  Low: 'cyan',
+  Info: 'blue',
+  Informational: 'blue',
 }
 
 export default themeConfig

@@ -1,0 +1,48 @@
+name: Document
+description: Request a documentation fix, update, or new guide.
+title: "[Document]: "
+labels:
+  - documentation
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve the documentation. Please describe what is missing, unclear, or incorrect.
+  - type: textarea
+    id: issue
+    attributes:
+      label: Documentation issue
+      description: What is missing, outdated, incorrect, or confusing?
+      placeholder: Describe the documentation problem.
+    validations:
+      required: true
+  - type: input
+    id: page
+    attributes:
+      label: Page or section
+      description: Link to the affected page or name the section.
+      placeholder: https://... or docs/...
+  - type: textarea
+    id: suggested-change
+    attributes:
+      label: Suggested change
+      description: What should be added or changed?
+      placeholder: Describe the expected documentation update.
+    validations:
+      required: true
+  - type: dropdown
+    id: audience
+    attributes:
+      label: Audience
+      description: Who is most affected by this documentation issue?
+      options:
+        - New users
+        - Operators
+        - Developers
+        - CLI / Plugin users
+        - Other
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional context
+      description: Examples, screenshots, related issues, or references.

@@ -1,5 +1,6 @@
 import axios from 'axios'
 import {useAuthStore} from '../stores/auth'
+import {buildLoginRedirectPath, getCurrentAuthRedirectPath} from '../utils/authRedirect'
 
 const client = axios.create({ baseURL: '/api' })
 
@@ -14,7 +15,7 @@ client.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       useAuthStore.getState().logout()
-      window.location.href = '/login'
+      window.location.href = buildLoginRedirectPath(getCurrentAuthRedirectPath())
     }
     return Promise.reject(error)
   },

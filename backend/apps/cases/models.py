@@ -115,6 +115,9 @@ class Case(BaseModel):
     class Meta:
         db_table = "cases"
         ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["-created_at", "-id"], name="case_created_id_idx"),
+        ]
 
     def __str__(self):
         return self.title or str(self.id)

@@ -1,6 +1,7 @@
 import {useMemo, useState} from 'react'
 import type {UploadProps} from 'antd'
-import {Alert, Button, Mentions, message, Tooltip, Upload} from 'antd'
+import {Alert, Button, Mentions, Tooltip, Upload} from 'antd'
+import {message} from '../utils/appMessage'
 import {PaperClipOutlined, SendOutlined} from '@ant-design/icons'
 import {type Attachment, uploadAttachment} from '../api/attachments'
 import {fetchMentionUsers, type MentionUser} from '../api/comments'
@@ -111,7 +112,7 @@ export default function MessageComposer({
         })
       }}
     >
-      {mentionUsersError && <Alert type="warning" message={mentionUsersError} showIcon />}
+      {mentionUsersError && <Alert type="warning" title={mentionUsersError} showIcon />}
       <div
         style={{
           position: 'relative',

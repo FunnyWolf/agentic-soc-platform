@@ -1,6 +1,6 @@
 from django.utils import timezone
 
-from apps.agentic.analysis.service import run_case_analysis
+from apps.agentic.analysis.analysis import run_case_analysis
 from apps.agentic.models import AgenticJobStatus, CaseAnalysisJob
 from apps.agentic.services.cases import (
     complete_case_analysis_job,
@@ -53,7 +53,6 @@ def run_case_analysis_once():
         complete_case_analysis_job(
             running_job,
             result_json=result.analysis_record,
-            case_ai_updates={},
         )
     except Exception as exc:
         fail_case_analysis_job(running_job, str(exc))

@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand
 
-from apps.agentic.runtime.module_engine import run_all_modules_once
+from apps.agentic.runtime.module import run_all_modules_once
 from apps.common.worker_runner import SLEEP_WHEN_IDLE, add_worker_arguments, run_worker
 
 DEFAULT_INTERVAL_SECONDS = 3.0

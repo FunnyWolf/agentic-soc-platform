@@ -1,8 +1,10 @@
 [project]
 name = "asp"
-version = "0.1.0"
+version = "0.5.0"
 requires-python = ">=3.14"
 dependencies = [
+    "channels>=4.3.2",
+    "channels-redis>=4.3.0",
     "django>=6.0.6",
     "djangorestframework==3.17.1",
     "djangorestframework-simplejwt==5.5.1",
@@ -22,8 +24,9 @@ dependencies = [
     "splunk-sdk==2.1.1",
     "pyyaml==6.0.3",
     "python-dateutil==2.9.0",
-    "mcp[cli]==1.28.0",
     "gunicorn==26.0.0",
+    "uvicorn==0.49.0",
+    "pycti>=7.260701.0",
 ]
 
 [[tool.uv.index]]

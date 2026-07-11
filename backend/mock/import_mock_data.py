@@ -420,11 +420,15 @@ def create_alerts(cases, artifacts, batch_id):
     ]
 
     alerts = []
+    case_alert_counts = {}
     for index, spec in enumerate(specs, start=1):
         case_key, title, severity, confidence, impact, disposition, action, product_category, analytic_type, artifact_values, tactic, technique = spec
         timeline = cases[case_key]
         case = timeline["case"]
-        first_seen = timeline["first_seen"] + minutes(index * 3)
+        case_alert_counts[case_key] = case_alert_counts.get(case_key, 0) + 1
+        case_alert_index = case_alert_counts[case_key]
+        detection_window = timeline["detected_at"] - timeline["first_seen"]
+        first_seen = timeline["first_seen"] + min(minutes((case_alert_index - 1) * 3), detection_window)
         last_seen = min(first_seen + minutes(35), timeline["detected_at"])
         alert = Alert.objects.create(
             **alert_payload(

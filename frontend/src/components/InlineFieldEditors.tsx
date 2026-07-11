@@ -26,6 +26,10 @@ interface SelectEditorProps extends InlineEditorProps<string | string[] | null> 
   onStart?: () => void
 }
 
+interface InlineDateTimeEditorProps extends InlineEditorProps<string | null> {
+  placeholder?: string
+}
+
 interface InlineTagChoiceEditorProps extends InlineEditorProps<string> {
   options?: ChoiceOption[]
   renderTag: (value: string, selected?: boolean) => ReactNode
@@ -175,13 +179,14 @@ export function InlineTextAreaEditor({ value, disabled, autoFocus = true, onChan
   )
 }
 
-export function InlineDateTimeEditor({ value, disabled, autoFocus = true, onChange, onComplete, onCancel }: InlineEditorProps<string | null>) {
+export function InlineDateTimeEditor({ value, disabled, autoFocus = true, placeholder, onChange, onComplete, onCancel }: InlineDateTimeEditorProps) {
   return (
     <DatePicker
       autoFocus={autoFocus}
       variant="underlined"
       showTime
       allowClear
+      placeholder={placeholder}
       value={datePickerValue(value)}
       disabled={disabled}
       onChange={(next) => onChange(next ? next.toISOString() : null)}
@@ -390,10 +395,9 @@ export function InlineUserEditor({ value, disabled, options = [], allowClear = t
 
   return (
     <Select
-      showSearch
+      showSearch={{ optionFilterProp: 'label' }}
       allowClear={allowClear}
       variant="borderless"
-      optionFilterProp="label"
       value={typeof value === 'string' ? value : null}
       disabled={disabled}
       options={options}

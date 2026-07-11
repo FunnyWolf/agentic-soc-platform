@@ -1,5 +1,6 @@
 import {useCallback, useEffect, useMemo, useRef, useState} from 'react'
-import {Empty, message, Spin, theme} from 'antd'
+import {Empty, Spin, theme} from 'antd'
+import {message} from '../utils/appMessage'
 import client from '../api/client'
 import type {EditableFieldConfig, FieldEditingController, OpenResourceOptions} from '../types/records'
 import DetailDraftActionBar from './DetailDraftActionBar'

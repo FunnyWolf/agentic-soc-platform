@@ -49,8 +49,15 @@ def _worker_label(worker_name):
     return worker_name if worker_name.endswith("worker") else f"{worker_name} worker"
 
 
+def _refresh_runtime_config_cache():
+    from apps.settings.runtime_config import invalidate
+
+    invalidate()
+
+
 def _run_once_or_raise(worker_label, run_once):
     try:
+        _refresh_runtime_config_cache()
         return _coerce_result(run_once())
     except CommandError:
         raise
@@ -95,7 +102,7 @@ def run_worker(
     try:
         while True:
             try:
-                result = _coerce_result(run_once())
+                result = _run_once_or_raise(worker_label, run_once)
                 if result.message:
                     command.stdout.write(result.message)
                 if _should_sleep(result, sleep_policy):

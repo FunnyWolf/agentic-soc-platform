@@ -305,6 +305,9 @@ class Artifact(BaseModel):
     class Meta:
         db_table = "artifacts"
         ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["-created_at", "-id"], name="artifact_created_id_idx"),
+        ]
 
     def save(self, *args, **kwargs):
         return save_with_readable_id(self, "artifact_id", "artifact", *args, **kwargs)

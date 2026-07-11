@@ -28,7 +28,20 @@ def get_otx_config():
         "api_key": config.api_key,
         "base_url": config.base_url.rstrip("/"),
         "proxy": config.proxy,
-        "timeout_seconds": config.timeout_seconds,
+    }
+
+
+@lru_cache(maxsize=1)
+def get_opencti_config():
+    from .models import ThreatIntelOpenCTIConfig
+
+    config = ThreatIntelOpenCTIConfig.get_current()
+    return {
+        "enabled": config.enabled,
+        "url": config.url.rstrip("/"),
+        "token": config.token,
+        "ssl_verify": config.ssl_verify,
+        "proxy": config.proxy,
     }
 
 
@@ -56,7 +69,6 @@ def get_elk_config():
         "host": config.host.rstrip("/"),
         "api_key": config.api_key,
         "verify_certs": config.verify_certs,
-        "request_timeout_seconds": config.request_timeout_seconds,
         "process_alert_from_index_enabled": config.process_alert_from_index_enabled,
         "action_index": config.action_index,
         "action_poll_interval_seconds": config.action_poll_interval_seconds,
@@ -81,10 +93,10 @@ def get_ldap_config():
 
 
 @lru_cache(maxsize=1)
-def get_agentic_runtime_config():
-    from .models import AgenticRuntimeConfig
+def get_runtime_config():
+    from .models import RuntimeConfig
 
-    config = AgenticRuntimeConfig.get_current()
+    config = RuntimeConfig.get_current()
     return {
         "prompt_language": config.prompt_language,
         "stream_maxlen": config.stream_maxlen,
@@ -92,22 +104,12 @@ def get_agentic_runtime_config():
 
 
 def get_prompt_language():
-    from django.conf import settings
-
-    override = getattr(settings, "AGENTIC_PROMPT_LANGUAGE", None)
-    if override:
-        return str(override).strip().lower()
-    return get_agentic_runtime_config()["prompt_language"]
+    return get_runtime_config()["prompt_language"]
 
 
 def get_stream_maxlen():
-    from django.conf import settings
-
-    override = getattr(settings, "WEBHOOK_REDIS_STREAM_MAXLEN", None)
-    if override is not None:
-        return int(override)
     try:
-        return get_agentic_runtime_config()["stream_maxlen"]
+        return get_runtime_config()["stream_maxlen"]
     except Exception as exc:
         if exc.__class__.__name__ == "DatabaseOperationForbidden":
             return 10000
@@ -119,11 +121,13 @@ def invalidate(group=None):
         get_llm_configs.cache_clear()
     if group in {None, "threat_intel", "otx"}:
         get_otx_config.cache_clear()
+    if group in {None, "threat_intel", "opencti"}:
+        get_opencti_config.cache_clear()
     if group in {None, "siem", "splunk"}:
         get_splunk_config.cache_clear()
     if group in {None, "siem", "elk"}:
         get_elk_config.cache_clear()
     if group in {None, "ldap"}:
         get_ldap_config.cache_clear()
-    if group in {None, "agentic_runtime"}:
-        get_agentic_runtime_config.cache_clear()
+    if group in {None, "runtime"}:
+        get_runtime_config.cache_clear()

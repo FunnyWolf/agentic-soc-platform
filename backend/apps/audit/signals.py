@@ -1,5 +1,6 @@
 from django.contrib.contenttypes.models import ContentType
-from django.db.models.signals import m2m_changed, post_save, post_delete, pre_save
+from django.core.exceptions import ObjectDoesNotExist
+from django.db.models.signals import m2m_changed, post_delete, post_save, pre_delete, pre_save
 from django.dispatch import receiver
 
 from apps.common.models import BaseModel
@@ -30,6 +31,13 @@ def relation_fields(sender):
     return RELATION_FK_FIELDS.get(sender._meta.model_name, {})
 
 
+def relation_parent(instance, field_name):
+    try:
+        return getattr(instance, field_name, None)
+    except ObjectDoesNotExist:
+        return None
+
+
 def changed_fields(sender, before, after):
     changes = {}
     ignored_fields = {"created_at", "updated_at"}
@@ -56,8 +64,9 @@ def write_fk_relation_events(sender, before, after, created=False):
 
 
 def write_delete_relation_events(sender, instance):
+    parents = getattr(instance, "_audit_delete_relation_parents", {})
     for field_name, relation in relation_fields(sender).items():
-        parent = getattr(instance, field_name, None)
+        parent = parents.get(field_name) or relation_parent(instance, field_name)
         if parent:
             write_relation_event(parent, "deleted", relation, instance)
 
@@ -68,6 +77,18 @@ def capture_previous_state(sender, instance, **kwargs):
         instance._audit_previous = None
         return
     instance._audit_previous = sender.objects.filter(pk=instance.pk).first()
+
+
+@receiver(pre_delete)
+def capture_delete_relation_parents(sender, instance, **kwargs):
+    if not audit_model(sender):
+        return
+    parents = {}
+    for field_name in relation_fields(sender):
+        parent = relation_parent(instance, field_name)
+        if parent is not None:
+            parents[field_name] = parent
+    instance._audit_delete_relation_parents = parents
 
 @receiver(post_save)
 def log_save(sender, instance, created, **kwargs):

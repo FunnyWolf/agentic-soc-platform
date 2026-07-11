@@ -1,6 +1,6 @@
 import {type ClipboardEvent, useState} from 'react'
 import axios from 'axios'
-import {message} from 'antd'
+import {message} from '../utils/appMessage'
 import type {PreviewType} from '@uiw/react-md-editor'
 import MDEditor from '@uiw/react-md-editor'
 import client from '../api/client'

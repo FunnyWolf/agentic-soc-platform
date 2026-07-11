@@ -75,7 +75,7 @@ export default function AlertBasicView({ record, onOpenResource }: AlertBasicVie
       <Section title="Correlation">
         <Descriptions.Item label="Rule ID">{mono(stringValue(record, 'rule_id'))}</Descriptions.Item>
         <Descriptions.Item label="Rule Name">{stringValue(record, 'rule_name')}</Descriptions.Item>
-        <Descriptions.Item label="Correlation UID">{mono(stringValue(record, 'correlation_uid'))}</Descriptions.Item>
+        <Descriptions.Item label="Correlation UID" span="filled">{mono(stringValue(record, 'correlation_uid'))}</Descriptions.Item>
       </Section>
 
       <Section title="MITRE ATT&CK and ATLAS">
@@ -86,10 +86,10 @@ export default function AlertBasicView({ record, onOpenResource }: AlertBasicVie
       </Section>
 
       <Section title="Status & Disposition & Action & Remediation">
-        <Descriptions.Item label="Status">{statusTag(String(value(record, 'status') || ''))}</Descriptions.Item>
-        <Descriptions.Item label="Status Detail" span={4}>{block(stringValue(record, 'status_detail'))}</Descriptions.Item>
         <Descriptions.Item label="Disposition">{alertDispositionTag(String(value(record, 'disposition') || ''))}</Descriptions.Item>
         <Descriptions.Item label="Action">{alertActionTag(String(value(record, 'action') || ''))}</Descriptions.Item>
+        <Descriptions.Item label="Status" span="filled">{statusTag(String(value(record, 'status') || ''))}</Descriptions.Item>
+        <Descriptions.Item label="Status Detail" span={4}>{block(stringValue(record, 'status_detail'))}</Descriptions.Item>
         <Descriptions.Item label="Remediation" span={4}>{block(stringValue(record, 'remediation'))}</Descriptions.Item>
       </Section>
 
@@ -106,7 +106,7 @@ export default function AlertBasicView({ record, onOpenResource }: AlertBasicVie
       <Section title="Analytic & Policy">
         <Descriptions.Item label="Analytic Name">{stringValue(record, 'analytic_name')}</Descriptions.Item>
         <Descriptions.Item label="Analytic Type">{alertAnalyticTypeTag(String(value(record, 'analytic_type') || ''))}</Descriptions.Item>
-        <Descriptions.Item label="Analytic State">{choiceTag(String(value(record, 'analytic_state') || ''), 'green')}</Descriptions.Item>
+        <Descriptions.Item label="Analytic State" span="filled">{choiceTag(String(value(record, 'analytic_state') || ''), 'green')}</Descriptions.Item>
         <Descriptions.Item label="Analytic Description" span={4}>{block(stringValue(record, 'analytic_desc'))}</Descriptions.Item>
         <Descriptions.Item label="Policy Name">{stringValue(record, 'policy_name')}</Descriptions.Item>
         <Descriptions.Item label="Policy Type">{choiceTag(String(value(record, 'policy_type') || ''), 'volcano')}</Descriptions.Item>

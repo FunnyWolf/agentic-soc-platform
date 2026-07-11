@@ -18,6 +18,15 @@ def query_indicator(indicator, *, artifact_type, provider=None):
     else:
         providers = active_providers
 
+    if not providers:
+        return TIQueryOutput(
+            indicator=indicator,
+            indicator_type="unknown",
+            results=[],
+            aggregated_risk_level=None,
+            errors=["No enabled threat intelligence providers are configured."],
+        )
+
     results = []
     errors = []
     for provider_name, provider_instance in providers.items():

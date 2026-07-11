@@ -14,7 +14,6 @@ class BasePlaybook:
     DESC = ""
     TAGS = []
     PROMPT_SLUG = ""
-    REQUIRED_PROMPTS = []
     SCRIPT_PATH = None
 
     def __init__(self, *, playbook_run=None):

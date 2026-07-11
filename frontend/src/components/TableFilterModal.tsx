@@ -1,13 +1,16 @@
 import {useEffect, useMemo, useState} from 'react'
-import {Button, DatePicker, Divider, Dropdown, Empty, Input, InputNumber, message, Modal, Select, Space, Tag, Typography} from 'antd'
+import {App as AntApp, Button, DatePicker, Divider, Dropdown, Empty, Input, InputNumber, Modal, Select, Space, Tag, Typography} from 'antd'
 import {ClearOutlined, CloseOutlined, PlusOutlined, SaveOutlined, SearchOutlined} from '@ant-design/icons'
 import dayjs from 'dayjs'
 import type {AdvancedFilterCondition, AdvancedFilterFieldConfig, ChoiceOption, ResourceMetadata, SavedTableFilter, TableFilterState} from '../types/records'
 import client from '../api/client'
+import {createSavedTableFilter, deleteSavedTableFilter, fetchSavedTableFilters, updateSavedTableFilter} from '../api/preferences'
 import {comfortableCheckableTagGroupProps, comfortableTagProps} from '../utils/tagStyles'
 
 const { RangePicker } = DatePicker
-export const TABLE_FILTER_MODAL_WIDTH = 1208
+export const TABLE_FILTER_MODAL_WIDTH = 1300
+const CURRENT_FILTER_PANEL_WIDTH = 900
+const SAVED_FILTER_PANEL_WIDTH = 340
 
 interface TableFilterModalProps {
   open: boolean
@@ -72,10 +75,6 @@ const operatorOptions = {
   ],
 }
 
-function storageKey(tableKey: string) {
-  return `asp:${tableKey}:savedFilters`
-}
-
 function fieldIcon(field: AdvancedFilterFieldConfig) {
   if (field.valueType === 'date') return '∑'
   if (field.valueType === 'number') return '#'
@@ -125,9 +124,12 @@ export default function TableFilterModal({
   onChange,
   onClose,
 }: TableFilterModalProps) {
+  const { message } = AntApp.useApp()
   const [savedFilters, setSavedFilters] = useState<SavedTableFilter[]>([])
+  const [savedFiltersLoading, setSavedFiltersLoading] = useState(false)
   const [saveName, setSaveName] = useState('')
-  const [loadedSavedFilterId, setLoadedSavedFilterId] = useState<string | null>(null)
+  const [saveVisibility, setSaveVisibility] = useState<SavedTableFilter['visibility']>('private')
+  const [loadedSavedFilterId, setLoadedSavedFilterId] = useState<number | null>(null)
   const [userOptions, setUserOptions] = useState<ChoiceOption[]>([])
   const [draftAdvanced, setDraftAdvanced] = useState<AdvancedFilterCondition[]>(value.advanced)
 
@@ -135,13 +137,16 @@ export default function TableFilterModal({
     if (!visible) return
     setDraftAdvanced(value.advanced)
     setSaveName('')
+    setSaveVisibility('private')
     setLoadedSavedFilterId(null)
-    try {
-      setSavedFilters(JSON.parse(localStorage.getItem(storageKey(savedFiltersKey)) || '[]') as SavedTableFilter[])
-    } catch {
-      localStorage.removeItem(storageKey(savedFiltersKey))
-      setSavedFilters([])
-    }
+    setSavedFiltersLoading(true)
+    fetchSavedTableFilters(savedFiltersKey)
+      .then(setSavedFilters)
+      .catch(() => {
+        setSavedFilters([])
+        message.error('Failed to load saved filters')
+      })
+      .finally(() => setSavedFiltersLoading(false))
   }
 
   const fields = useMemo<AdvancedFilterFieldConfig[]>(() => {
@@ -185,6 +190,7 @@ export default function TableFilterModal({
     setDraftAdvanced([])
     setLoadedSavedFilterId(null)
     setSaveName('')
+    setSaveVisibility('private')
   }
   const applyFilters = () => {
     const loadedFilter = loadedSavedFilterId
@@ -196,46 +202,73 @@ export default function TableFilterModal({
     onChange({ ...value, advanced: draftAdvanced })
     onSavedFilterNameChange?.(loadedFilterStillMatches ? loadedFilter?.name || '' : '')
   }
-  const saveAsFilter = () => {
+  const saveAsFilter = async () => {
     const trimmedName = saveName.trim()
     if (!trimmedName) {
       message.warning('Please enter a filter name')
       return
     }
-    const next = [
-      ...savedFilters,
-      { id: `${Date.now()}`, name: trimmedName, state: savedStateFrom(draftAdvanced) },
-    ]
-    setSavedFilters(next)
-    localStorage.setItem(storageKey(savedFiltersKey), JSON.stringify(next))
-    message.success('Filter saved')
-    setLoadedSavedFilterId(null)
-    setSaveName('')
+    try {
+      const created = await createSavedTableFilter({
+        table_key: savedFiltersKey,
+        name: trimmedName,
+        state: savedStateFrom(draftAdvanced),
+        visibility: saveVisibility,
+      })
+      setSavedFilters((previous) => [created, ...previous])
+      message.success('Filter saved')
+      setLoadedSavedFilterId(null)
+      setSaveName('')
+      setSaveVisibility('private')
+    } catch {
+      message.error('Failed to save filter')
+    }
   }
-  const updateLoadedFilter = () => {
+  const updateLoadedFilter = async () => {
     if (!loadedSavedFilterId) return
+    const loadedFilter = savedFilters.find((item) => item.id === loadedSavedFilterId)
+    if (!loadedFilter?.can_edit) {
+      message.warning('You can only update filters you own')
+      return
+    }
     const trimmedName = saveName.trim()
     if (!trimmedName) {
       message.warning('Please enter a filter name')
       return
     }
-    const next = savedFilters.map((item) => (
-      item.id === loadedSavedFilterId
-        ? { ...item, name: trimmedName, state: savedStateFrom(draftAdvanced) }
-        : item
-    ))
-    setSavedFilters(next)
-    localStorage.setItem(storageKey(savedFiltersKey), JSON.stringify(next))
-    message.success('Filter updated')
+    try {
+      const updated = await updateSavedTableFilter(loadedSavedFilterId, {
+        name: trimmedName,
+        state: savedStateFrom(draftAdvanced),
+        visibility: saveVisibility,
+      })
+      setSavedFilters((previous) => previous.map((item) => item.id === updated.id ? updated : item))
+      message.success('Filter updated')
+    } catch {
+      message.error('Failed to update filter')
+    }
   }
-  const deleteSavedFilter = (id: string) => {
-    const next = savedFilters.filter((item) => item.id !== id)
-    setSavedFilters(next)
-    localStorage.setItem(storageKey(savedFiltersKey), JSON.stringify(next))
+  const deleteSavedFilter = async (item: SavedTableFilter) => {
+    if (!item.can_edit) {
+      message.warning('You can only delete filters you own')
+      return
+    }
+    try {
+      await deleteSavedTableFilter(item.id)
+      setSavedFilters((previous) => previous.filter((saved) => saved.id !== item.id))
+      if (loadedSavedFilterId === item.id) {
+        setLoadedSavedFilterId(null)
+        setSaveName('')
+        setSaveVisibility('private')
+      }
+    } catch {
+      message.error('Failed to delete filter')
+    }
   }
   const loadSavedFilter = (item: SavedTableFilter) => {
     setDraftAdvanced(item.state.advanced)
     setSaveName(item.name)
+    setSaveVisibility(item.visibility)
     setLoadedSavedFilterId(item.id)
   }
 
@@ -270,7 +303,7 @@ export default function TableFilterModal({
   const renderConditionValue = (condition: AdvancedFilterCondition, field: AdvancedFilterFieldConfig) => {
     if (condition.operator === 'is_empty' || condition.operator === 'is_not_empty') return null
     const multiple = ['is_one_of', 'is_not_any_of', 'contains_any', 'not_contains_any', 'contains_all'].includes(condition.operator)
-    const options = field.valueType === 'user' ? userOptions : field.options || []
+    const options = field.valueType === 'user' ? [...(field.options || []), ...userOptions] : field.options || []
 
     if (field.valueType === 'select' || field.valueType === 'multi-select') {
       return renderChoiceTags(condition, options, multiple)
@@ -363,8 +396,8 @@ export default function TableFilterModal({
   }
 
   const currentFilterPanel = (
-    <Space direction="vertical" size={18} style={{ width: '100%', height: '100%' }}>
-      <Space direction="vertical" style={{ width: '100%' }} size={16}>
+    <Space vertical size={18} style={{ width: '100%', height: '100%' }}>
+      <Space vertical style={{ width: '100%' }} size={16}>
         {draftAdvanced.map((condition, index) => {
           const selectedField = fields.find((field) => field.key === condition.field) || fields[0]
           if (!selectedField) return null
@@ -421,7 +454,13 @@ export default function TableFilterModal({
             <Button icon={<PlusOutlined />}>Add filter</Button>
           </Dropdown>
           <Input placeholder="Filter name" value={saveName} onChange={(event) => setSaveName(event.target.value)} style={{ width: 240, flexShrink: 0 }} />
-          {loadedSavedFilterId && <Button icon={<SaveOutlined />} onClick={updateLoadedFilter} style={{ flexShrink: 0 }}>Update</Button>}
+          <Select
+           value={saveVisibility}
+           style={{ width: 112, flexShrink: 0 }}
+           options={[{ label: 'Private', value: 'private' }, { label: 'Shared', value: 'shared' }]}
+           onChange={(next: SavedTableFilter['visibility']) => setSaveVisibility(next)}
+          />
+          {loadedSavedFilterId && <Button icon={<SaveOutlined />} disabled={!savedFilters.find((item) => item.id === loadedSavedFilterId)?.can_edit} onClick={updateLoadedFilter} style={{ flexShrink: 0 }}>Update</Button>}
           <Button icon={<SaveOutlined />} onClick={saveAsFilter} style={{ flexShrink: 0 }}>Save as</Button>
           <Button icon={<ClearOutlined />} onClick={clearFilters} style={{ flexShrink: 0 }}>Clear</Button>
           <Button type="primary" icon={<SearchOutlined />} onClick={applyFilters} style={{ flexShrink: 0 }}>Search</Button>
@@ -430,8 +469,10 @@ export default function TableFilterModal({
     </Space>
   )
 
-  const savedPanel = savedFilters.length ? (
-    <Space direction="vertical" size={8} style={{ width: '100%' }}>
+  const savedPanel = savedFiltersLoading ? (
+    <Empty description="Loading saved filters..." />
+  ) : savedFilters.length ? (
+    <Space vertical size={8} style={{ width: '100%' }}>
       {savedFilters.map((item) => (
         <div
           key={item.id}
@@ -445,14 +486,22 @@ export default function TableFilterModal({
           <Typography.Text strong ellipsis style={{ display: 'block', maxWidth: '100%' }}>
             {item.name}
           </Typography.Text>
+          <Typography.Text type="secondary" ellipsis style={{ display: 'block', maxWidth: '100%', fontSize: 12 }}>
+           {item.visibility === 'shared' ? `Shared by ${item.owner_username}` : 'Private'}
+          </Typography.Text>
           <div style={{ display: 'grid', gridTemplateColumns: 'auto max-content', alignItems: 'center', gap: 8, marginTop: 6 }}>
-            <Tag {...comfortableTagProps} color="blue" style={{ marginInlineEnd: 0, width: 'fit-content', maxWidth: '100%' }}>
-              {conditionSummary(item.state)}
-            </Tag>
-            <Space size={4} wrap={false}>
-              <Button size="small" type="link" onClick={() => loadSavedFilter(item)}>Load</Button>
-              <Button size="small" type="link" danger onClick={() => deleteSavedFilter(item.id)}>Delete</Button>
-            </Space>
+           <Space size={4} wrap>
+             <Tag {...comfortableTagProps} color="blue" style={{ marginInlineEnd: 0, width: 'fit-content', maxWidth: '100%' }}>
+               {conditionSummary(item.state)}
+             </Tag>
+             <Tag {...comfortableTagProps} color={item.visibility === 'shared' ? 'green' : 'default'} style={{ marginInlineEnd: 0 }}>
+               {item.visibility}
+             </Tag>
+           </Space>
+           <Space size={4} wrap={false}>
+             <Button size="small" type="link" onClick={() => loadSavedFilter(item)}>Load</Button>
+             <Button size="small" type="link" danger disabled={!item.can_edit} onClick={() => deleteSavedFilter(item)}>Delete</Button>
+           </Space>
           </div>
         </div>
       ))}
@@ -470,7 +519,7 @@ export default function TableFilterModal({
       afterOpenChange={handleAfterOpenChange}
       destroyOnHidden
     >
-      <div style={{ display: 'grid', gridTemplateColumns: '820px 320px', gap: 20, minHeight: 420 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: `${CURRENT_FILTER_PANEL_WIDTH}px ${SAVED_FILTER_PANEL_WIDTH}px`, gap: 20, minHeight: 420 }}>
         <section style={{ minWidth: 0, display: 'flex', flexDirection: 'column' }}>
           <Typography.Title level={5} style={{ marginTop: 0 }}>Current filters</Typography.Title>
           {currentFilterPanel}

@@ -1,5 +1,6 @@
 import {useCallback, useEffect, useState} from 'react'
-import {Button, Card, Col, Form, Input, message, Row, Space, Switch} from 'antd'
+import {Button, Card, Col, Form, Input, Row, Space, Switch} from 'antd'
+import {message} from '../utils/appMessage'
 import client from '../api/client'
 
 interface LDAPConfig {

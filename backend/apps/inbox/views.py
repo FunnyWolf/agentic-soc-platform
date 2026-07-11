@@ -1,3 +1,4 @@
+from django.db import transaction
 from django.db.models import Prefetch, Q
 from django.utils import timezone
 from rest_framework import permissions, status, viewsets
@@ -75,7 +76,15 @@ class InboxMessageViewSet(viewsets.ModelViewSet):
             raise PermissionDenied("Viewer users cannot delete messages.")
         if instance.kind != InboxMessage.KIND_USER or instance.sender_id != self.request.user.id:
             raise PermissionDenied("You can only delete your own user messages.")
+        user_ids = set(instance.recipients.values_list("id", flat=True))
+        if instance.sender_id:
+            user_ids.add(instance.sender_id)
+        message_id = instance.id
+        actor_id = self.request.user.id
         instance.delete()
+        transaction.on_commit(
+            lambda: _broadcast_inbox_message_deleted(message_id, list(user_ids), actor_id=actor_id)
+        )
 
     @action(detail=False, methods=["get"], url_path="unread-count")
     def unread_count(self, request):
@@ -96,10 +105,21 @@ class InboxMessageViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["post"], url_path="mark-all-read")
     def mark_all_read(self, request):
+        message_ids = list(
+            InboxMessageRecipient.objects.filter(
+                user=request.user,
+                read_at__isnull=True,
+            ).values_list("message_id", flat=True)
+        )
+        read_at = timezone.now()
         updated = InboxMessageRecipient.objects.filter(
             user=request.user,
             read_at__isnull=True,
-        ).update(read_at=timezone.now())
+        ).update(read_at=read_at)
+        if updated:
+            transaction.on_commit(
+                lambda: _broadcast_inbox_all_read(request.user.id, message_ids, read_at)
+            )
         return Response({"updated": updated})
 
     @action(detail=True, methods=["post"])
@@ -112,3 +132,15 @@ class InboxMessageViewSet(viewsets.ModelViewSet):
         message = serializer.save()
         output = InboxMessageSerializer(message, context=self.get_serializer_context())
         return Response(output.data, status=status.HTTP_201_CREATED)
+
+
+def _broadcast_inbox_message_deleted(message_id, user_ids, *, actor_id):
+    from apps.realtime.events import broadcast_inbox_message_deleted
+
+    broadcast_inbox_message_deleted(message_id, user_ids, actor_id=actor_id)
+
+
+def _broadcast_inbox_all_read(user_id, message_ids, read_at):
+    from apps.realtime.events import broadcast_inbox_all_read
+
+    broadcast_inbox_all_read(user_id, message_ids, read_at)

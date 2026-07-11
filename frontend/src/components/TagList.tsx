@@ -1,3 +1,4 @@
+import {Fragment} from 'react'
 import {choiceTag} from '../utils/recordDisplay'
 
 interface TagListProps {
@@ -10,7 +11,11 @@ export default function TagList({ items, color = 'blue' }: TagListProps) {
 
   return (
     <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 4 }}>
-      {items.map((item) => choiceTag(String(item), color))}
+      {items.map((item, index) => (
+        <Fragment key={`${String(item)}-${index}`}>
+          {choiceTag(String(item), color)}
+        </Fragment>
+      ))}
     </span>
   )
 }

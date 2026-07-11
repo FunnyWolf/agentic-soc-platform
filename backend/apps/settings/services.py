@@ -1,4 +1,5 @@
 import httpx
+from pycti import OpenCTIApiClient
 
 
 def _chat_completions_url(base_url):
@@ -32,10 +33,9 @@ def test_llm_provider(config):
         "temperature": 0,
         "max_tokens": 8,
     }
-    client_kwargs = {"timeout": 20, "trust_env": False}
+    client_kwargs = {"trust_env": False}
     if proxy:
         client_kwargs["proxy"] = proxy
-
     try:
         with httpx.Client(**client_kwargs) as client:
             response = client.post(_chat_completions_url(base_url), headers=headers, json=payload)
@@ -69,7 +69,6 @@ def test_alienvault_otx_config(config):
     api_key = (config.get("api_key") or "").strip()
     base_url = (config.get("base_url") or "").strip().rstrip("/")
     proxy = (config.get("proxy") or "").strip()
-    timeout = float(config.get("timeout_seconds") or 10)
 
     if not api_key:
         return {
@@ -78,21 +77,20 @@ def test_alienvault_otx_config(config):
             "response_preview": "",
         }
 
-    client_kwargs = {"timeout": timeout, "trust_env": False}
-    if proxy:
-        client_kwargs["proxy"] = proxy
-
     headers = {
         "accept": "application/json",
         "X-OTX-API-KEY": api_key,
     }
+    client_kwargs = {"trust_env": False}
+    if proxy:
+        client_kwargs["proxy"] = proxy
     try:
         with httpx.Client(**client_kwargs) as client:
-            response = client.get(f"{base_url}/indicators/IPv4/8.8.8.8/general", headers=headers)
+            response = client.get(f"{base_url}/user/me", headers=headers)
         if response.is_success:
             return {
                 "success": True,
-                "detail": "AlienVault OTX responded successfully.",
+                "detail": "AlienVault OTX authentication succeeded.",
                 "response_preview": response.text[:500],
             }
         return {
@@ -104,6 +102,67 @@ def test_alienvault_otx_config(config):
         return {
             "success": False,
             "detail": _redact(exc, [api_key]),
+            "response_preview": "",
+        }
+
+
+def test_opencti_config(config):
+    token = (config.get("token") or "").strip()
+    url = (config.get("url") or "").strip().rstrip("/")
+    proxy = (config.get("proxy") or "").strip()
+    ssl_verify = bool(config.get("ssl_verify"))
+
+    if not url:
+        return {
+            "success": False,
+            "detail": "OpenCTI URL is not configured.",
+            "response_preview": "",
+        }
+    if not token:
+        return {
+            "success": False,
+            "detail": "OpenCTI API token is not configured.",
+            "response_preview": "",
+        }
+
+    proxies = {"http": proxy, "https": proxy} if proxy else None
+    try:
+        client = OpenCTIApiClient(
+            url,
+            token,
+            log_level="error",
+            ssl_verify=ssl_verify,
+            proxies=proxies,
+            perform_health_check=True,
+            provider="AspOpenCTITest/1.0",
+        )
+        indicators = client.indicator.list(first=1)
+        observables = client.stix_cyber_observable.list(first=1)
+        preview = {
+            "indicator_sample_count": len(indicators or []),
+            "observable_sample_count": len(observables or []),
+        }
+        if indicators:
+            preview["indicator_sample"] = {
+                "id": indicators[0].get("id"),
+                "name": indicators[0].get("name"),
+                "entity_type": indicators[0].get("entity_type"),
+            }
+        if observables:
+            preview["observable_sample"] = {
+                "id": observables[0].get("id"),
+                "value": observables[0].get("observable_value") or observables[0].get("value"),
+                "entity_type": observables[0].get("entity_type"),
+            }
+        return {
+            "success": True,
+            "detail": "OpenCTI responded successfully.",
+            "response_preview": str(preview)[:500],
+        }
+    except Exception as exc:
+        return {
+            "success": False,
+            "detail": _redact(exc, [token]),
             "response_preview": "",
         }
 
@@ -144,7 +203,6 @@ def test_elk_config(config):
             (config.get("host") or "").rstrip("/"),
             api_key=api_key,
             verify_certs=bool(config.get("verify_certs")),
-            request_timeout=int(config.get("request_timeout_seconds") or 30),
         )
         info = client.info()
         return {
