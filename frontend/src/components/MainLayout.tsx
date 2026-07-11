@@ -7,7 +7,7 @@ import {
     MenuUnfoldOutlined,
     UserOutlined,
 } from '@ant-design/icons'
-import {BookOpenText, BrainCircuit, BriefcaseBusiness, Fingerprint, LayoutDashboard, Settings, Siren, WandSparkles} from 'lucide-react'
+import {BookOpenText, BrainCircuit, BriefcaseBusiness, Fingerprint, LayoutDashboard, Puzzle, Settings, Siren, WandSparkles} from 'lucide-react'
 import {useAuthStore} from '../stores/auth'
 import {getResourceConfig} from '../config/resources'
 import type {ResourceConfig} from '../types/records'
@@ -28,6 +28,7 @@ const breadcrumbMap: Record<string, string> = {
   enrichments: 'Enrichments',
   playbooks: 'Playbooks',
   knowledge: 'Knowledge',
+  custom: 'Custom',
   dashboard: 'Dashboard',
   system: 'Setting',
 }
@@ -63,7 +64,7 @@ export default function MainLayout() {
   }, [location.pathname])
 
   const selectedKey = (() => {
-    const allKeys = ['/dashboard', '/cases', '/alerts', '/artifacts', '/enrichments', '/playbooks', '/knowledge', '/system']
+    const allKeys = ['/dashboard', '/cases', '/alerts', '/artifacts', '/enrichments', '/playbooks', '/knowledge', '/custom', '/system']
     if (allKeys.includes(location.pathname)) return location.pathname
     return '/' + (location.pathname.split('/').filter(Boolean)[0] || 'cases')
   })()
@@ -77,6 +78,7 @@ export default function MainLayout() {
     { key: '/enrichments', icon: <WandSparkles {...lucideIconProps} />, label: 'Enrichments' },
     { key: '/playbooks', icon: <BrainCircuit {...lucideIconProps} />, label: 'Playbooks' },
     { key: '/knowledge', icon: <BookOpenText {...lucideIconProps} />, label: 'Knowledge' },
+    hasPermission(user, 'admin') ? { key: '/custom', icon: <Puzzle {...lucideIconProps} />, label: 'Custom' } : null,
     hasPermission(user, 'admin') ? { key: '/system', icon: <Settings {...lucideIconProps} />, label: 'Setting' } : null,
   ].filter((item): item is NonNullable<typeof item> => Boolean(item))
 

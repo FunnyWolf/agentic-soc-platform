@@ -1,6 +1,7 @@
 import {useCallback, useEffect, useMemo, useRef, useState} from 'react'
-import {Button, Divider, Empty, message, Modal, Spin, theme, Tooltip} from 'antd'
-import {CloseOutlined, FileTextOutlined, HistoryOutlined, MenuFoldOutlined, MenuUnfoldOutlined, MessageOutlined, ReloadOutlined} from '@ant-design/icons'
+import {Button, Divider, Empty, Modal, Spin, theme, Tooltip} from 'antd'
+import {message} from '../utils/appMessage'
+import {CloseOutlined, FileTextOutlined, HistoryOutlined, MenuFoldOutlined, MenuUnfoldOutlined, MessageOutlined, ReloadOutlined, ShareAltOutlined} from '@ant-design/icons'
 import client from '../api/client'
 import type {FieldEditingController, OpenResourceOptions, ResourceConfig} from '../types/records'
 import AuditTimeline from './AuditTimeline'
@@ -10,6 +11,7 @@ import RecordBasicView from './RecordBasicView'
 import RecordTimestampSummary from './RecordTimestampSummary'
 import {editableValuesEqual, normalizeEditableDraftValue, normalizeEditableSaveValue} from './fieldEditing'
 import {typography} from '../utils/typography'
+import {buildRecordShareUrl} from '../utils/recordShare'
 
 interface RecordDetailModalProps {
   config: ResourceConfig
@@ -143,6 +145,12 @@ export default function RecordDetailModal({ config, rowId, open, initialTabKey, 
         if (status === 404) {
           clearFieldEditing()
           message.warning('Record not found or has been deleted')
+          onClose()
+          return
+        }
+        if (status === 403) {
+          clearFieldEditing()
+          message.error('You do not have permission to view this record')
           onClose()
           return
         }
@@ -371,9 +379,30 @@ export default function RecordDetailModal({ config, rowId, open, initialTabKey, 
   const modalHeight = 'calc(100dvh - 80px)'
   const showContentRail = contentTabs.length > 1
   const DetailHeaderActions = config.detailHeaderActions
+  const showShare = config.showShare !== false
+  const showActivity = config.showActivity !== false
   const toggleActivityDrawer = (drawer: ActivityDrawerKey) => {
     setActivityDrawer((current) => current === drawer ? null : drawer)
   }
+  const shareUrl = useMemo(() => (
+    !showShare || rowId === null || rowId === undefined ? null : buildRecordShareUrl(config.key, rowId)
+  ), [config.key, rowId, showShare])
+  const copyShareUrl = useCallback(async () => {
+    if (!shareUrl) {
+      message.error('This record cannot be shared')
+      return
+    }
+    if (!navigator.clipboard?.writeText) {
+      message.error('Clipboard is not available')
+      return
+    }
+    try {
+      await navigator.clipboard.writeText(shareUrl)
+      message.success('Share link copied')
+    } catch {
+      message.error('Failed to copy share link')
+    }
+  }, [shareUrl])
 
   return (
     <Modal
@@ -450,6 +479,18 @@ export default function RecordDetailModal({ config, rowId, open, initialTabKey, 
                   <Divider vertical style={{ height: 24, margin: '8px 4px', borderColor: token.colorBorderSecondary }} />
                 </>
               )}
+              {showShare && (
+                <Tooltip title="Copy share link">
+                  <Button
+                    type="text"
+                    size="large"
+                    style={headerActionButtonStyle}
+                    icon={<ShareAltOutlined />}
+                    disabled={!loadedCurrentRecord || !shareUrl || saving}
+                    onClick={copyShareUrl}
+                  />
+                </Tooltip>
+              )}
               <Tooltip title="Refresh record">
                 <Button
                   type="text"
@@ -461,26 +502,30 @@ export default function RecordDetailModal({ config, rowId, open, initialTabKey, 
                   onClick={requestRefresh}
                 />
               </Tooltip>
-              <Tooltip title="Comments">
-                <Button
-                  type={activityDrawer === 'comments' ? 'primary' : 'text'}
-                  size="large"
-                  style={headerActionButtonStyle}
-                  icon={<MessageOutlined />}
-                  disabled={!objectId}
-                  onClick={() => toggleActivityDrawer('comments')}
-                />
-              </Tooltip>
-              <Tooltip title="Log">
-                <Button
-                  type={activityDrawer === 'log' ? 'primary' : 'text'}
-                  size="large"
-                  style={headerActionButtonStyle}
-                  icon={<HistoryOutlined />}
-                  disabled={!objectId}
-                  onClick={() => toggleActivityDrawer('log')}
-                />
-              </Tooltip>
+              {showActivity && (
+                <>
+                  <Tooltip title="Comments">
+                    <Button
+                      type={activityDrawer === 'comments' ? 'primary' : 'text'}
+                      size="large"
+                      style={headerActionButtonStyle}
+                      icon={<MessageOutlined />}
+                      disabled={!objectId}
+                      onClick={() => toggleActivityDrawer('comments')}
+                    />
+                  </Tooltip>
+                  <Tooltip title="Log">
+                    <Button
+                      type={activityDrawer === 'log' ? 'primary' : 'text'}
+                      size="large"
+                      style={headerActionButtonStyle}
+                      icon={<HistoryOutlined />}
+                      disabled={!objectId}
+                      onClick={() => toggleActivityDrawer('log')}
+                    />
+                  </Tooltip>
+                </>
+              )}
               <Button type="text" size="large" style={headerActionButtonStyle} icon={<CloseOutlined />} disabled={saving} onClick={requestClose} />
             </div>
           </div>
@@ -488,7 +533,7 @@ export default function RecordDetailModal({ config, rowId, open, initialTabKey, 
             <div style={{ flex: 1, minWidth: 0 }}>
               {loading ? <Spin style={{ margin: 32 }} /> : loadedCurrentRecord ? content?.render(loadedCurrentRecord, { onOpenResource, onChanged: markChanged }) : <Empty style={{ margin: 32 }} description="No record loaded" />}
             </div>
-            {activityDrawer && objectId && (
+            {showActivity && activityDrawer && objectId && (
               <div style={{ width: 420, borderLeft: dividerBorder, display: 'flex', flexDirection: 'column', background: '#0f0f0f', minHeight: 0 }}>
                 <div style={{ flex: 1, minHeight: 0, overflow: activityDrawer === 'comments' ? 'hidden' : 'auto', padding: 12, boxSizing: 'border-box' }}>
                   {activityDrawer === 'comments'

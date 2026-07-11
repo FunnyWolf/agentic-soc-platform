@@ -46,7 +46,7 @@ Launch LLM investigation, knowledge extraction, threat intelligence enrichment, 
 
 ### Deep Harness Agent Integration
 
-Expose ASP capabilities to Claude Code / Codex / OpenCode and other Harness Agents through plugins and MCP, enabling agents to operate Cases, search logs, query threat intelligence, and write modules and playbooks directly.
+Expose ASP capabilities to Claude Code / Codex / OpenCode and other Harness Agents through the CLI and plugins, enabling agents to operate Cases, search logs, query threat intelligence, and write modules and playbooks directly.
 
 ![Deep Harness Agent Integration](img/img_6.png)
 

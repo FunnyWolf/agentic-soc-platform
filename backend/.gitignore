@@ -18,7 +18,6 @@ log/*
 # Environment
 .env
 .env.local
-mcp-live-check.local.json
 
 # IDE
 .idea/

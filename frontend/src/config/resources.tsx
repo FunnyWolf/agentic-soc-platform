@@ -14,10 +14,10 @@ import {BookOpenText, BrainCircuit, BriefcaseBusiness, Fingerprint, Siren, WandS
 import AlertBasicView from '../components/AlertBasicView'
 import ArtifactBasicView from '../components/ArtifactBasicView'
 import CaseBasicView from '../components/CaseBasicView'
+import CaseInvestigationView from '../components/CaseInvestigationView'
 import CaseKnowledgeView from '../components/CaseKnowledgeView'
 import CasePlaybookAction from '../components/CasePlaybookRunModal'
 import EnrichmentBasicView from '../components/EnrichmentBasicView'
-import InvestigationReportView from '../components/InvestigationReportView'
 import KnowledgeBasicView from '../components/KnowledgeBasicView'
 import OverflowTags from '../components/OverflowTags'
 import PlaybookBasicView from '../components/PlaybookBasicView'
@@ -256,7 +256,7 @@ const emptyTabs = {
             key: 'investigation',
             label: 'Investigation',
             icon: <FileTextOutlined/>,
-            render: (record: RecordRow) => <InvestigationReportView value={record.investigation_report_ai_json}/>,
+            render: (record: RecordRow) => <CaseInvestigationView caseId={String(record.id || '')}/>,
         },
     ],
     alert: [
@@ -413,14 +413,12 @@ export const resourceConfigs: Record<string, ResourceConfig<RecordRow>> = {
             column('alerts_link', 'Alerts', L132, {
                 dataIndex: 'alert_count',
                 defaultVisible: true,
-                sorter: true,
                 openRecordTab: 'alerts',
                 render: viewRelatedLabel,
             }),
             column('playbooks_link', 'Playbooks', L132, {
                 dataIndex: 'playbook_count',
                 defaultVisible: true,
-                sorter: true,
                 openRecordTab: 'playbooks',
                 render: viewRelatedLabel,
             }),
@@ -585,7 +583,6 @@ export const resourceConfigs: Record<string, ResourceConfig<RecordRow>> = {
             column('artifacts_link', 'Artifacts', L132, {
                 dataIndex: 'artifact_count',
                 defaultVisible: true,
-                sorter: true,
                 openRecordTab: 'artifacts',
                 render: viewRelatedLabel,
             }),
@@ -703,7 +700,6 @@ export const resourceConfigs: Record<string, ResourceConfig<RecordRow>> = {
             column('alerts_link', 'Alerts', L160, {
                 dataIndex: 'alert_count',
                 defaultVisible: true,
-                sorter: true,
                 openRecordTab: 'alerts',
                 render: viewRelatedLabel,
             }),

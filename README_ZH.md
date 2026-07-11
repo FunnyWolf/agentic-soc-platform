@@ -46,7 +46,7 @@ Module 流式消费 SIEM / Webhook 告警,提取 IOC、关联聚合并生成 Cas
 
 ### Harness Agent 深度进入安全运营
 
-通过插件和 MCP 连接向 ClaudeCode / Codex / OpenCode 等 Harness Agent 暴露 ASP 能力,让 Agent 能直接操作 Case、搜索日志、查询威胁情报、编写模块和剧本.
+通过 CLI 和插件向 ClaudeCode / Codex / OpenCode 等 Harness Agent 暴露 ASP 能力,让 Agent 能直接操作 Case、搜索日志、查询威胁情报、编写模块和剧本.
 
 ![Harness Agent 深度进入安全运营](img/img_6.png)
 

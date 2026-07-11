@@ -4,7 +4,6 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     UV_LINK_MODE=copy \
     DJANGO_SETTINGS_MODULE=asp.settings \
-    ASP_CUSTOM_DIR=/app/custom \
     PYTHONPATH=/opt/asp/custom-packages:/app/custom
 
 WORKDIR /app

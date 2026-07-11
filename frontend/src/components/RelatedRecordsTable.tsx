@@ -1,5 +1,5 @@
 import {type ReactNode, useCallback, useEffect, useMemo, useState} from 'react'
-import {message} from 'antd'
+import {message} from '../utils/appMessage'
 import DataTable from './DataTable'
 import {fetchResourceMetadata} from '../api/metadata'
 import type {AdvancedFilterFieldConfig, MetadataResponse, OpenResourceOptions, ResourceColumn, ResourceFilterConfig} from '../types/records'

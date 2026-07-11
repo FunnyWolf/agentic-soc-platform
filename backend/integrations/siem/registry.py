@@ -57,7 +57,16 @@ def scan_registry_configs():
         except Exception as exc:
             errors.append({"path": str(yaml_file), "error": f"{type(exc).__name__}: {exc}"})
             continue
-        indices.append({"name": index_info.name, "backend": index_info.backend, "path": str(yaml_file)})
+        fields = [field.model_dump() for field in index_info.fields]
+        indices.append({
+            "name": index_info.name,
+            "backend": index_info.backend,
+            "description": index_info.description,
+            "path": str(yaml_file),
+            "field_count": len(fields),
+            "key_field_count": sum(1 for field in index_info.fields if field.is_key_field),
+            "fields": fields,
+        })
     return indices, errors
 
 

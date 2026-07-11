@@ -1,6 +1,7 @@
 import {useEffect, useState} from 'react'
 import {ExperimentOutlined} from '@ant-design/icons'
-import {Form, Input, message, Modal, Select, theme} from 'antd'
+import {Form, Input, Modal, Select, theme} from 'antd'
+import {message} from '../utils/appMessage'
 import client from '../api/client'
 import {fetchResourceMetadata} from '../api/metadata'
 import type {ChoiceOption} from '../types/records'

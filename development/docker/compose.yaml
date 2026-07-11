@@ -3,6 +3,7 @@ services:
     image: postgres:17
     container_name: asp-dev-postgres
     restart: unless-stopped
+    shm_size: "1gb"
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-asp}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}

@@ -72,9 +72,9 @@ def get_elk_field_types(index_name: str) -> dict[str, str]:
     field_types: dict[str, str] = {}
     try:
         mapping_resp = client.indices.get_mapping(index=index_name)
-    except Exception as E:
+    except Exception as exc:
         logger.warning(f"Failed to get ELK field types for {index_name}")
-        logger.exception(E)
+        logger.exception(exc)
         return field_types
     for _, index_mapping in mapping_resp.items():
         properties = index_mapping.get("mappings", {}).get("properties", {})

@@ -3,7 +3,7 @@ import json
 from django.db import transaction
 from langchain_core.messages import HumanMessage, SystemMessage
 
-from apps.agentic.analysis.serializers import serialize_case_for_investigation
+from apps.agentic.analysis.profiles import serialize_case_for_investigation
 from apps.agentic.runtime.base import BasePlaybook
 from integrations.llm.llmapi import LLMAPI
 
@@ -13,7 +13,6 @@ class Playbook(BasePlaybook):
     DESC = "Generate a concise analyst-facing summary for the linked Case."
     TAGS = ["Custom", "LLM", "Case"]
     PROMPT_SLUG = "case_summary"
-    REQUIRED_PROMPTS = ["System"]
 
     def run(self):
         if self.case is None:

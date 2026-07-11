@@ -1,5 +1,6 @@
 import type {UploadProps} from 'antd'
-import {message, Upload} from 'antd'
+import {Upload} from 'antd'
+import {message} from '../utils/appMessage'
 import {CameraOutlined} from '@ant-design/icons'
 import ImgCrop from 'antd-img-crop'
 import client from '../api/client'

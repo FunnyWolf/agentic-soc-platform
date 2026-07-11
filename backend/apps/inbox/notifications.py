@@ -28,6 +28,12 @@ def _truncate(value, limit=MAX_REMARK_LENGTH):
     return f"{text[:limit].rstrip()}..."
 
 
+def _string_id(value):
+    if value is None:
+        return None
+    return str(value)
+
+
 def _wants_notification(user, field_name):
     return bool(
         user
@@ -60,9 +66,9 @@ def notify_playbook_completion(playbook):
             metadata={
                 "source": "playbook_completion",
                 "playbook_id": playbook.playbook_id,
-                "playbook_pk": playbook.pk,
+                "playbook_pk": _string_id(playbook.pk),
                 "case_id": getattr(case, "case_id", ""),
-                "case_pk": getattr(case, "pk", None),
+                "case_pk": _string_id(getattr(case, "pk", None)),
                 "status": playbook.job_status,
             },
         )
@@ -98,7 +104,7 @@ def notify_case_assignment(case, *, previous_assignee_id=None, actor=None):
             metadata={
                 "source": "case_assignment",
                 "case_id": case.case_id,
-                "case_pk": case.pk,
+                "case_pk": _string_id(case.pk),
                 "actor_id": getattr(actor, "pk", None),
                 "previous_assignee_id": previous_assignee_id,
                 "assignee_id": assignee_id,

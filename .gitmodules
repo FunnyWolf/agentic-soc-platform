@@ -1,0 +1,6 @@
+[submodule "asp-doc"]
+	path = asp-doc
+	url = https://github.com/FunnyWolf/asp-doc.git
+[submodule "asp-marketplace"]
+	path = asp-marketplace
+	url = https://github.com/FunnyWolf/asp-marketplace.git

@@ -32,7 +32,6 @@ def get_elk_client():
         _require_setting("ELK host", config["host"]),
         api_key=_require_setting("ELK API key", config["api_key"]),
         verify_certs=config["verify_certs"],
-        request_timeout=config["request_timeout_seconds"],
     )
 
 

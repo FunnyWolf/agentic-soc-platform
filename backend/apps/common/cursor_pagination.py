@@ -34,7 +34,7 @@ def cursor_page_size(request, *, default=DEFAULT_CURSOR_PAGE_SIZE, maximum=MAX_C
 def encode_cursor(record):
     payload = {
         "created_at": record.created_at.isoformat(),
-        "id": record.id,
+        "id": str(record.id),
     }
     raw_value = json.dumps(payload, separators=(",", ":")).encode("utf-8")
     return base64.urlsafe_b64encode(raw_value).decode("ascii").rstrip("=")
@@ -45,11 +45,13 @@ def decode_cursor(cursor):
         padded = cursor + ("=" * (-len(cursor) % 4))
         payload = json.loads(base64.urlsafe_b64decode(padded.encode("ascii")).decode("utf-8"))
         created_at = parse_datetime(str(payload.get("created_at", "")))
-        record_id = int(payload.get("id"))
+        record_id = str(payload.get("id") or "")
     except (TypeError, ValueError, json.JSONDecodeError, UnicodeDecodeError, binascii.Error, AttributeError):
         raise ValidationError({"cursor": "Invalid cursor."})
 
     if created_at is None:
+        raise ValidationError({"cursor": "Invalid cursor."})
+    if not record_id:
         raise ValidationError({"cursor": "Invalid cursor."})
     if timezone.is_naive(created_at):
         created_at = timezone.make_aware(created_at)

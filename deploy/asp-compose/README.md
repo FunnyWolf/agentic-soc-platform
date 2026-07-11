@@ -1,5 +1,7 @@
 # ASP Docker Compose Deployment
 
+Chinese version: [README.zh.md](README.zh.md)
+
 This package deploys ASP on a single host with Docker Compose.
 
 ## First deployment
@@ -59,6 +61,16 @@ certs/asp.key
 docker compose restart asp-frontend
 ```
 
+## Web API and upload limits
+
+Adjust the Web API process and upload size in `.env`:
+
+```text
+ASP_WEB_WORKERS=3
+ASP_WEB_TIMEOUT=210
+ASP_MAX_UPLOAD_SIZE=20m
+```
+
 ## Management UIs
 
 Redis Stack and RustFS provide their own management UIs. They are exposed directly with their official HTTP ports to avoid reverse proxy compatibility issues:
@@ -91,9 +103,11 @@ After changing only script or YAML definitions, use **System Settings > Runtime 
 
 ## Logs
 
-Backend process logs are mounted to `./logs`:
+Nginx and backend process logs are mounted to `./logs`:
 
 ```text
+logs/nginx/access.log
+logs/nginx/error.log
 logs/django.log
 logs/asgi.log
 logs/agentic-module-worker.log
@@ -104,10 +118,114 @@ logs/elk-action-worker.log
 
 Container stdout and stderr are still available through `docker compose logs`.
 
+## Operations
+
+Check service status and run deployment diagnostics:
+
+```bash
+docker compose ps
+./scripts/doctor.sh
+```
+
+Restart all services:
+
+```bash
+docker compose restart
+```
+
+Restart only the Web/API entrypoints:
+
+```bash
+docker compose restart asp-frontend asp-web asp-asgi
+```
+
+The reverse proxy must forward `/ws/` to the ASGI service.
+
+Restart only background workers:
+
+```bash
+docker compose restart asp-worker-module asp-worker-case-analysis asp-worker-playbook asp-worker-elk-action
+```
+
+After changing `.env`, `compose.yaml`, or port mappings, run:
+
+```bash
+docker compose up -d
+```
+
+Stop containers while keeping Docker volumes:
+
+```bash
+docker compose stop
+```
+
+Do not run `docker compose down -v` in production unless you explicitly want to delete PostgreSQL, Redis, and RustFS Docker volumes.
+
+## Backup & Restore
+
+Run backups and restores from a deployment directory named `asp-compose`, so Docker Compose volume names stay unchanged.
+
+Full stopped backup:
+
+```bash
+BACKUP_DIR="$PWD/backups/asp-full-$(date +%Y%m%d%H%M%S)"
+mkdir -p "$BACKUP_DIR"
+docker compose stop
+tar -czf "$BACKUP_DIR/files.tar.gz" --exclude='./backups' .env .env.example compose.yaml scripts custom certs logs
+docker run --rm \
+  -v asp-compose_postgres-data:/volumes/postgres-data:ro \
+  -v asp-compose_redis-data:/volumes/redis-data:ro \
+  -v asp-compose_rustfs-data:/volumes/rustfs-data:ro \
+  -v asp-compose_custom-python-packages:/volumes/custom-python-packages:ro \
+  -v asp-compose_static-files:/volumes/static-files:ro \
+  -v "$BACKUP_DIR:/backup" \
+  alpine sh -lc 'cd /volumes && tar -czf /backup/volumes.tar.gz postgres-data redis-data rustfs-data custom-python-packages static-files'
+docker compose up -d
+./scripts/doctor.sh
+```
+
+Full restore:
+
+```bash
+BACKUP_DIR=/path/to/asp-full-backup
+tar -xzf "$BACKUP_DIR/files.tar.gz" -C .
+docker compose down --remove-orphans
+docker run --rm \
+  -v asp-compose_postgres-data:/volumes/postgres-data \
+  -v asp-compose_redis-data:/volumes/redis-data \
+  -v asp-compose_rustfs-data:/volumes/rustfs-data \
+  -v asp-compose_custom-python-packages:/volumes/custom-python-packages \
+  -v asp-compose_static-files:/volumes/static-files \
+  -v "$BACKUP_DIR:/backup" \
+  alpine sh -lc '
+    for dir in postgres-data redis-data rustfs-data custom-python-packages static-files; do
+      rm -rf "/volumes/$dir"/* "/volumes/$dir"/.[!.]* "/volumes/$dir"/..?*
+    done
+    tar -xzf /backup/volumes.tar.gz -C /volumes
+  '
+docker compose up -d
+./scripts/doctor.sh
+```
+
+Do not change the `asp-compose` directory name before restoring.
+
 ## Upgrade
 
-Back up PostgreSQL, RustFS data, `.env`, and `custom/`, then replace this package or update image tags and run:
+Before upgrading, complete a full stopped backup.
+
+Edit `.env` and update image tags to the target version:
+
+```text
+ASP_BACKEND_IMAGE=ghcr.io/funnywolf/agentic-soc-platform/asp-backend:<version>
+ASP_FRONTEND_IMAGE=ghcr.io/funnywolf/agentic-soc-platform/asp-frontend:<version>
+```
+
+Run the upgrade:
 
 ```bash
 ./scripts/upgrade.sh
 ```
+
+`upgrade.sh` pulls images, runs database migrations, starts services, and executes `./scripts/doctor.sh`.
+
+Only replace `compose.yaml`, `scripts/`, and `.env.example` when the release notes explicitly require package file updates. Keep the existing `.env`, `custom/`, `certs/`, and Docker named volumes.

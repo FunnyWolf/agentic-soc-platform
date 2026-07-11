@@ -166,7 +166,6 @@ class EnrichmentProvider(models.TextChoices):
     TRIAGE = "Triage"
     CAPE = "CAPE"
     MANUAL = "MANUAL"
-    MCP = "MCP"
 
 
 class Enrichment(BaseModel):

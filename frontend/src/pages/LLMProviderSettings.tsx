@@ -1,5 +1,6 @@
 import {useMemo, useState} from 'react'
-import {Button, Form, Input, InputNumber, message, Modal, Popconfirm, Select, Space, Switch} from 'antd'
+import {Button, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Switch} from 'antd'
+import {message} from '../utils/appMessage'
 import {CheckCircleOutlined, EditOutlined, PlusOutlined, StopOutlined, ThunderboltOutlined} from '@ant-design/icons'
 import client from '../api/client'
 import DataTable from '../components/DataTable'
@@ -244,7 +245,7 @@ export default function LLMProviderSettings() {
         open={modalOpen}
         onCancel={closeModal}
         width={760}
-        destroyOnClose
+        destroyOnHidden
         footer={(
           <Space>
             <Button onClick={testFormProvider} loading={testingForm}>Test</Button>

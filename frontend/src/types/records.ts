@@ -54,9 +54,16 @@ export interface TableFilterState {
 }
 
 export interface SavedTableFilter {
-  id: string
+  id: number
+  table_key: string
   name: string
   state: TableFilterState
+  visibility: 'private' | 'shared'
+  owner_id: number
+  owner_username: string
+  can_edit: boolean
+  created_at: string
+  updated_at: string
 }
 
 export interface EditableFieldConfig {
@@ -175,6 +182,8 @@ export interface ResourceConfig<RecordType = Record<string, unknown>> {
     fieldController?: FieldEditingController
   }) => ReactNode
   detailHeaderActions?: ComponentType<DetailHeaderActionProps<RecordType>>
+  showShare?: boolean
+  showActivity?: boolean
   basicSections: BasicSection<RecordType>[]
   tabs: RecordTab<RecordType>[]
 }

@@ -80,6 +80,7 @@ export default function KnowledgeBasicView({ record, fieldController, onOpenReso
               value={expiresAtState.value ? String(expiresAtState.value) : null}
               disabled={expiresAtState.saving}
               autoFocus={false}
+              placeholder="Leave empty to never expire"
               onChange={(next) => controller.setFieldDraftValue('expires_at', next)}
               onComplete={() => controller.finishFieldEdit('expires_at')}
               onCancel={() => controller.cancelFieldDraft('expires_at')}

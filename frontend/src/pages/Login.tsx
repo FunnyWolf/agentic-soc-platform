@@ -1,23 +1,27 @@
 import {useState} from 'react'
-import {useNavigate} from 'react-router-dom'
-import {BorderBeam, Button, Card, Form, Input, message, Segmented} from 'antd'
+import {useNavigate, useSearchParams} from 'react-router-dom'
+import {BorderBeam, Button, Card, Form, Input, Segmented} from 'antd'
+import {message} from '../utils/appMessage'
 import {LockOutlined, UserOutlined} from '@ant-design/icons'
 import type {AuthType} from '../api/auth'
 import {login} from '../api/auth'
 import {useAuthStore} from '../stores/auth'
+import {getSafeAuthRedirectPath} from '../utils/authRedirect'
 import './Login.css'
 
 export default function Login() {
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const setAuth = useAuthStore((s) => s.setAuth)
+  const nextPath = getSafeAuthRedirectPath(searchParams.get('next'))
 
   const onFinish = async (values: { username: string; password: string; auth_type: AuthType }) => {
     setLoading(true)
     try {
       const { data } = await login(values.username, values.password, values.auth_type)
       setAuth(data.access, data.user)
-      navigate('/')
+      navigate(nextPath, { replace: true })
     } catch { message.error('Invalid credentials') }
     finally { setLoading(false) }
   }

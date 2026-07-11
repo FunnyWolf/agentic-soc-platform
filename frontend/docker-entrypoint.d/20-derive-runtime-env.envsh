@@ -1,0 +1,17 @@
+#!/bin/sh
+
+asp_web_timeout="${ASP_WEB_TIMEOUT:-210}"
+case "$asp_web_timeout" in
+    ''|*[!0-9]*)
+        echo "ASP_WEB_TIMEOUT must be a positive integer." >&2
+        exit 1
+        ;;
+esac
+
+if [ "$asp_web_timeout" -le 0 ]; then
+    echo "ASP_WEB_TIMEOUT must be a positive integer." >&2
+    exit 1
+fi
+
+export ASP_NGINX_PROXY_TIMEOUT="$((asp_web_timeout + 5))s"
+export ASP_MAX_UPLOAD_SIZE="${ASP_MAX_UPLOAD_SIZE:-20m}"

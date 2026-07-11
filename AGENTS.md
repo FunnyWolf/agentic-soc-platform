@@ -2,6 +2,7 @@
 
 - 除非用户明确说明,否则不允许运行superpower相关skill
 - 如 superpower:writing-plan skill禁用,则根据spec直接进行代码实现,除非用户明确要求,实现feature过程中不要生成测试代码
+- TODO.md文件是用户手动编辑的,commit时不用处理也不用额外说明.
 
 ### 后端规则
 
@@ -22,7 +23,8 @@ frontend 是vite + ant design实现的前端
 
 asf-doc 是使用 vitepress 搭建的文档网站,承载项目的文档,使用独立的 github 仓库和 Cloudflare Pages
 文档更新需要先更新zh文档,zh文档定型后再更新对应的en文档.
-如果文档某些部分需要额外添加图片,请填写占位符并简要说明图片内容.
+预先占位图片: 图片占位符不要添加任何描述,用户会根据上下文推断,图片文件名使用img.png img_1.png 这种,方便我拷贝.
+VitePress 文档修改后不主动 build，除非用户明确要求
 
 ### marketplace
 

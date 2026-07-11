@@ -1,4 +1,4 @@
-from apps.agentic.analysis.knowledge_extraction import extract_knowledge_from_case
+from apps.agentic.analysis.knowledge import extract_knowledge_from_case
 from apps.agentic.runtime.base import BasePlaybook
 
 

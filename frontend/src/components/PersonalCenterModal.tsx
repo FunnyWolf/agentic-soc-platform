@@ -1,5 +1,6 @@
 import {useEffect, useState} from 'react'
-import {Button, Col, DatePicker, Form, Input, message, Modal, Popconfirm, Row, Space, Switch, Table, Tabs, Tag, Typography} from 'antd'
+import {Button, Col, DatePicker, Form, Input, Modal, Popconfirm, Row, Space, Switch, Table, Tabs, Tag, Typography} from 'antd'
+import {message} from '../utils/appMessage'
 import {ApiOutlined, CopyOutlined, DeleteOutlined, KeyOutlined, LockOutlined, ReloadOutlined, SettingOutlined, UserOutlined} from '@ant-design/icons'
 import type {ColumnsType} from 'antd/es/table'
 import type {Dayjs} from 'dayjs'
@@ -194,7 +195,7 @@ export default function PersonalCenterModal({ open, onClose }: PersonalCenterMod
       key: 'profile',
       label: <span><UserOutlined /> Profile</span>,
       children: (
-        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+        <Space vertical size="middle" style={{ width: '100%' }}>
           {user && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 16, paddingBottom: 8 }}>
               <AvatarUpload
@@ -204,7 +205,7 @@ export default function PersonalCenterModal({ open, onClose }: PersonalCenterMod
                   if (token) setAuth(token, nextUser)
                 }}
               />
-              <Space direction="vertical" size={6}>
+              <Space vertical size={6}>
                 <Typography.Title level={4} style={{ margin: 0 }}>{user.username}</Typography.Title>
                 <Space size={6}>
                   <Tag {...comfortableTagProps} color={roleColor(user.role)}>{user.role.toUpperCase()}</Tag>
@@ -239,7 +240,7 @@ export default function PersonalCenterModal({ open, onClose }: PersonalCenterMod
       key: 'settings',
       label: <span><SettingOutlined /> Settings</span>,
       children: (
-        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+        <Space vertical size="middle" style={{ width: '100%' }}>
           <Typography.Title level={5} style={{ margin: 0 }}>Notification Preferences</Typography.Title>
           <Form form={settingsForm} layout="vertical">
             <Form.Item
@@ -279,7 +280,7 @@ export default function PersonalCenterModal({ open, onClose }: PersonalCenterMod
       key: 'api-keys',
       label: <span><ApiOutlined /> API Keys</span>,
       children: (
-        <Space direction="vertical" style={{ width: '100%' }} size="middle">
+        <Space vertical style={{ width: '100%' }} size="middle">
         <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
           <Button type="primary" icon={<KeyOutlined />} onClick={() => setApiKeyModalOpen(true)} />
         </Space>
@@ -303,7 +304,7 @@ export default function PersonalCenterModal({ open, onClose }: PersonalCenterMod
         onCancel={onClose}
         footer={null}
         width={1100}
-        destroyOnClose
+        destroyOnHidden
         className="personal-modal"
       >
         <Tabs
@@ -311,10 +312,10 @@ export default function PersonalCenterModal({ open, onClose }: PersonalCenterMod
           className="personal-modal-tabs"
         />
       </Modal>
-      <Modal title="Create API Key" open={apiKeyModalOpen} onOk={createApiKey} onCancel={() => setApiKeyModalOpen(false)} destroyOnClose>
+      <Modal title="Create API Key" open={apiKeyModalOpen} onOk={createApiKey} onCancel={() => setApiKeyModalOpen(false)} destroyOnHidden>
         <Form form={apiKeyForm} layout="vertical">
           <Form.Item name="name" label="Name" rules={[{ required: true }]}><Input /></Form.Item>
-          <Form.Item name="expires_at" label="Expires At"><DatePicker showTime style={{ width: '100%' }} /></Form.Item>
+          <Form.Item name="expires_at" label="Expires At"><DatePicker showTime placeholder="Leave empty to never expire" style={{ width: '100%' }} /></Form.Item>
         </Form>
       </Modal>
     </>

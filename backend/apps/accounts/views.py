@@ -6,6 +6,7 @@ from django.db import models
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import parsers, permissions, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -222,6 +223,12 @@ class UserViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
         return Response(_serialized_user(user, request))
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if instance.pk == request.user.pk:
+            raise PermissionDenied("You cannot delete your own account.")
+        return super().destroy(request, *args, **kwargs)
 
     @action(detail=True, methods=["post"])
     def reset_password(self, request, pk=None):

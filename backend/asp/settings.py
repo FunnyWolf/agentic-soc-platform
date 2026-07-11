@@ -12,14 +12,32 @@ from apps.common.logging import (
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
-CUSTOM_DIR = Path(os.environ.get("ASP_CUSTOM_DIR", BASE_DIR / "custom"))
+CUSTOM_DIR = BASE_DIR / "custom"
+
+
+def _env_int(name, default, *, minimum=1):
+    try:
+        value = int(os.environ.get(name, default))
+    except (TypeError, ValueError):
+        value = default
+    return max(minimum, value)
+
+
+def _env_bool(name, default=False):
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return value.lower() in {"1", "true", "yes", "on"}
+
 
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "dev-secret-key-change-in-prod-32-byte-minimum")
 DEBUG = os.environ.get("DJANGO_DEBUG", "false").lower() == "true"
 ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "*").split(",")
+ASP_WEB_TIMEOUT = _env_int("ASP_WEB_TIMEOUT", 210)
+SYNC_OPERATION_TIMEOUT_SECONDS = max(1, ASP_WEB_TIMEOUT - 30)
+CONFIG_TEST_TIMEOUT_SECONDS = 10
 
 INSTALLED_APPS = [
-    "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
@@ -31,6 +49,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "django_filters",
     "storages",
+    "channels",
     # Local apps
     "apps.common",
     "apps.dashboard",
@@ -46,9 +65,11 @@ INSTALLED_APPS = [
     "apps.attachments",
     "apps.audit",
     "apps.inbox",
+    "apps.preferences",
+    "apps.realtime",
     "apps.webhook",
-    "apps.mcp",
     "apps.agentic",
+    "apps.agent_api",
 ]
 
 MIDDLEWARE = [
@@ -81,6 +102,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = "asp.wsgi.application"
+ASGI_APPLICATION = "asp.asgi.application"
 
 DATABASES = {
     "default": {
@@ -90,6 +112,8 @@ DATABASES = {
         "PASSWORD": os.environ.get("POSTGRES_PASSWORD", ""),
         "HOST": os.environ.get("POSTGRES_HOST", "localhost"),
         "PORT": os.environ.get("POSTGRES_PORT", "5432"),
+        "CONN_MAX_AGE": _env_int("POSTGRES_CONN_MAX_AGE", 0, minimum=0),
+        "CONN_HEALTH_CHECKS": _env_bool("POSTGRES_CONN_HEALTH_CHECKS", True),
     }
 }
 
@@ -99,6 +123,7 @@ REDIS_DB = os.environ.get("REDIS_DB", "1")
 REDIS_PASSWORD = os.environ.get("REDIS_PASSWORD", "")
 REDIS_AUTH = f":{quote(REDIS_PASSWORD, safe='')}@" if REDIS_PASSWORD else ""
 REDIS_URL = f"redis://{REDIS_AUTH}{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB}"
+CHANNEL_REDIS_SOCKET_TIMEOUT = int(os.environ.get("CHANNEL_REDIS_SOCKET_TIMEOUT", "10"))
 
 CACHES = {
     "default": {
@@ -108,6 +133,18 @@ CACHES = {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
         },
     }
+}
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [{
+                "address": REDIS_URL,
+                "socket_timeout": CHANNEL_REDIS_SOCKET_TIMEOUT,
+            }],
+        },
+    },
 }
 
 AUTH_USER_MODEL = "accounts.User"

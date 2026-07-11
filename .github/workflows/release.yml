@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  id-token: write
   packages: write
 
 jobs:
@@ -14,47 +15,19 @@ jobs:
     name: Prepare release
     runs-on: ubuntu-latest
     outputs:
-      version: ${{ steps.version.outputs.version }}
-      backend_image: ${{ steps.images.outputs.backend_image }}
-      frontend_image: ${{ steps.images.outputs.frontend_image }}
-      release_doc_url: ${{ steps.release_docs.outputs.release_doc_url }}
+      version: ${{ steps.release.outputs.version }}
+      backend_image: ${{ steps.release.outputs.backend_image }}
+      frontend_image: ${{ steps.release.outputs.frontend_image }}
+      release_doc_url: ${{ steps.release.outputs.release_doc_url }}
     steps:
       - uses: actions/checkout@v4
-      - name: Resolve version
-        id: version
-        shell: bash
-        run: |
-          version="${GITHUB_REF_NAME#v}"
-          if [ -z "$version" ] || [ "$version" = "$GITHUB_REF_NAME" ]; then
-            echo "Tag must use v<version> format." >&2
-            exit 1
-          fi
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-      - name: Resolve image names
-        id: images
-        shell: bash
-        run: |
-          owner="${GITHUB_REPOSITORY_OWNER,,}"
-          repo="${GITHUB_REPOSITORY#*/}"
-          repo="${repo,,}"
-          echo "backend_image=ghcr.io/${owner}/${repo}/asp-backend:${{ steps.version.outputs.version }}" >> "$GITHUB_OUTPUT"
-          echo "frontend_image=ghcr.io/${owner}/${repo}/asp-frontend:${{ steps.version.outputs.version }}" >> "$GITHUB_OUTPUT"
-      - name: Resolve release docs URL
-        id: release_docs
-        run: |
-          python - <<'PY' >> "$GITHUB_OUTPUT"
-          import json
-          import os
-          from pathlib import Path
-
-          version = "${{ steps.version.outputs.version }}"
-          config = json.loads(Path("deploy/release-docs.json").read_text(encoding="utf-8"))
-          slug = config.get("releases", {}).get(version)
-          if not slug:
-              raise SystemExit(f"Missing asf-doc release mapping for version {version} in deploy/release-docs.json")
-          base_url = str(config["base_url"]).rstrip("/")
-          print(f"release_doc_url={base_url}/{slug}/")
-          PY
+        with:
+          submodules: true
+      - name: Check release manifest
+        run: python deploy/release_tool.py check --tag "$GITHUB_REF_NAME"
+      - name: Resolve release outputs
+        id: release
+        run: python deploy/release_tool.py show --format github-output >> "$GITHUB_OUTPUT"
 
   images:
     name: Build and push images
@@ -75,7 +48,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build Compose package
         run: |
-          ./deploy/package-asp-compose.sh \
+          bash ./deploy/package-asp-compose.sh \
             --version "${{ needs.prepare.outputs.version }}" \
             --output-dir dist \
             --backend-image "${{ needs.prepare.outputs.backend_image }}" \
@@ -116,3 +89,49 @@ jobs:
         with:
           body_path: dist/release-body.md
           files: dist/asp-compose-${{ needs.prepare.outputs.version }}.tar.gz
+
+  publish-cli:
+    name: Publish CLI to PyPI
+    runs-on: ubuntu-latest
+    needs:
+      - prepare
+      - release
+    environment:
+      name: pypi
+      url: https://pypi.org/p/asp-cli
+    defaults:
+      run:
+        working-directory: cli
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - name: Check CLI version matches release tag
+        run: |
+          python - <<'PY'
+          import tomllib
+          from pathlib import Path
+
+          release_version = "${{ needs.prepare.outputs.version }}"
+          pyproject = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
+          cli_version = pyproject["project"]["version"]
+          if cli_version != release_version:
+              raise SystemExit(
+                  f"cli/pyproject.toml version {cli_version!r} must match release tag version {release_version!r}"
+              )
+          PY
+      - name: Build CLI package
+        run: uv build
+      - name: Check package metadata
+        run: uvx twine check dist/*
+      - name: Publish CLI package
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: cli/dist

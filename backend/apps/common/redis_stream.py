@@ -80,12 +80,22 @@ class RedisStreamClient:
         messages = self.redis.xrange(stream, min="-", max="+", count=count)
         return [_decode_stream_message(message_id, fields, stream=stream) for message_id, fields in messages]
 
+    def read_stream_recent(self, stream, count):
+        messages = self.redis.xrevrange(stream, max="+", min="-", count=count)
+        return [_decode_stream_message(message_id, fields, stream=stream) for message_id, fields in messages]
+
     def read_stream_message_by_id(self, stream, message_id):
         messages = self.redis.xrange(stream, min=message_id, max=message_id, count=1)
         if not messages:
             return {}
         found_id, fields = messages[0]
         return _decode_stream_message(found_id, fields, stream=stream)
+
+    def stream_info(self, stream):
+        return self.redis.xinfo_stream(stream)
+
+    def stream_groups(self, stream):
+        return self.redis.xinfo_groups(stream)
 
     def delete_stream(self, stream):
         return bool(self.redis.delete(stream))

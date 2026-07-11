@@ -1,4 +1,4 @@
-from apps.agentic.analysis.service import run_case_analysis
+from apps.agentic.analysis.analysis import run_case_analysis
 from apps.agentic.runtime.base import BasePlaybook
 
 

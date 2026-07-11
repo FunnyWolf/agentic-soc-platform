@@ -21,7 +21,7 @@
     "antd-img-crop": "^4.30.0",
     "axios": "^1.17.0",
     "dayjs": "^1.11.21",
-    "lucide-react": "^1.21.0",
+    "lucide-react": "^1.23.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "react-router-dom": "^7.17.0",
@@ -36,9 +36,9 @@
     "eslint": "^10.3.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",
-    "globals": "^17.6.0",
+    "globals": "^17.7.0",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.59.2",
-    "vite": "^8.0.12"
+    "vite": "^8.1.3"
   }
 }

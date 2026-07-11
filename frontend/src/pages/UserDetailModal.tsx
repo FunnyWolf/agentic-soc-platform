@@ -1,5 +1,6 @@
 import {useEffect, useState} from 'react'
-import {Button, Col, Divider, Form, Input, message, Modal, Row, Select, Space, theme, Typography} from 'antd'
+import {Button, Col, Divider, Form, Input, Modal, Row, Select, Space, theme, Typography} from 'antd'
+import {message} from '../utils/appMessage'
 import client from '../api/client'
 import type {AuthUser} from '../stores/auth'
 import AvatarUpload from '../components/AvatarUpload'
@@ -27,13 +28,8 @@ export default function UserDetailModal({ userId, open, onClose, onSaved }: User
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    if (!open || userId === null) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setUser(null)
-      form.resetFields()
-      return
-    }
-    setLoading(true)
+    if (!open || userId === null) return
+
     client.get<AuthUser>(`/auth/users/${userId}/`)
       .then(({ data }) => {
         setUser(data)
@@ -88,7 +84,15 @@ export default function UserDetailModal({ userId, open, onClose, onSaved }: User
         body: { background: token.colorBgContainer },
         footer: { background: token.colorBgContainer },
       }}
-      destroyOnClose
+      destroyOnHidden
+      afterOpenChange={(nextOpen) => {
+        if (nextOpen) {
+          if (userId !== null) setLoading(true)
+          return
+        }
+        setUser(null)
+        form.resetFields()
+      }}
     >
       <Form form={form} layout="vertical" disabled={loading} style={{ paddingTop: 8 }}>
         <Row gutter={16}>

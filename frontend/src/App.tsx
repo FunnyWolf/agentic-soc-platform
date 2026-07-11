@@ -1,5 +1,5 @@
 import {useEffect} from 'react'
-import {Navigate, Route, Routes} from 'react-router-dom'
+import {Navigate, Route, Routes, useLocation} from 'react-router-dom'
 import Login from './pages/Login'
 import MainLayout from './components/MainLayout'
 import ResourceDetailRoute from './components/ResourceDetailRoute'
@@ -11,11 +11,15 @@ import PlaybookList from './pages/PlaybookList'
 import KnowledgeList from './pages/KnowledgeList'
 import Dashboard from './pages/Dashboard'
 import SystemSettings from './pages/SystemSettings'
+import CustomDefinitions from './pages/CustomDefinitions'
 import {useAuthStore} from './stores/auth'
 import {hasPermission, type PermissionKey} from './utils/permissions'
 import {getMe} from './api/auth'
+import {buildLoginRedirectPath} from './utils/authRedirect'
+import {RealtimeProvider} from './realtime'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const location = useLocation()
   const token = useAuthStore((s) => s.token)
   const user = useAuthStore((s) => s.user)
   const setAuth = useAuthStore((s) => s.setAuth)
@@ -27,8 +31,8 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     })
   }, [setAuth, token, user?.role])
 
-  if (!token) return <Navigate to="/login" replace />
-  return <>{children}</>
+  if (!token) return <Navigate to={buildLoginRedirectPath(`${location.pathname}${location.search}${location.hash}`)} replace />
+  return <RealtimeProvider>{children}</RealtimeProvider>
 }
 
 function PermissionRoute({ permission, children }: { permission: PermissionKey; children: React.ReactNode }) {
@@ -56,6 +60,7 @@ export default function App() {
         <Route path="playbooks/:rowId" element={<ResourceDetailRoute resourceKey="playbooks" />} />
         <Route path="knowledge" element={<KnowledgeList />} />
         <Route path="knowledge/:rowId" element={<ResourceDetailRoute resourceKey="knowledge" />} />
+        <Route path="custom" element={<PermissionRoute permission="admin"><CustomDefinitions /></PermissionRoute>} />
         <Route path="system" element={<PermissionRoute permission="admin"><SystemSettings /></PermissionRoute>} />
         <Route path="system/users" element={<Navigate to="/system" replace />} />
       </Route>

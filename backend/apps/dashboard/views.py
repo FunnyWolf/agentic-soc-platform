@@ -2,7 +2,8 @@ import re
 from collections import Counter
 from datetime import timedelta
 
-from django.db.models import Count, DateTimeField, Min, Q
+from django.db import connection
+from django.db.models import Case as DbCase, Count, DateTimeField, FloatField, Min, Q, Sum, Value, When
 from django.db.models.functions import Coalesce, TruncDay, TruncHour
 from django.utils import timezone
 from rest_framework import permissions, status
@@ -55,6 +56,7 @@ KEYWORD_STOP_WORDS = {
     "mock",
     "unknown",
 }
+KEYWORD_AGGREGATION_LIMIT = 120
 
 
 def iso_datetime(value):
@@ -71,20 +73,11 @@ def severity_weight(value):
     return SEVERITY_WEIGHTS.get(value or "", 0)
 
 
-def non_negative_duration_seconds(start, end):
-    if not start or not end:
-        return None
-    seconds = int((end - start).total_seconds())
-    return seconds if seconds >= 0 else None
-
-
-def mean_duration(values):
-    valid_values = [value for value in values if value is not None]
-    if not valid_values:
-        return {"seconds": None, "sample_count": 0}
+def mean_duration_result(row):
+    seconds, sample_count = row or (None, 0)
     return {
-        "seconds": round(sum(valid_values) / len(valid_values)),
-        "sample_count": len(valid_values),
+        "seconds": int(seconds) if seconds is not None and sample_count else None,
+        "sample_count": sample_count or 0,
     }
 
 
@@ -152,31 +145,101 @@ def add_keyword(counter, value, weight=1, split=False):
         counter[text] += weight
 
 
+def keyword_weight(value):
+    return max(1, int(severity_weight(value) or 1))
+
+
+def category_keyword_weight(value):
+    return max(1, keyword_weight(value) // 2)
+
+
+def weighted_severity_sum(queryset, multiplier=1):
+    severity_score = DbCase(
+        *[
+            When(severity=severity, then=Value(float(weight) * multiplier))
+            for severity, weight in SEVERITY_WEIGHTS.items()
+        ],
+        default=Value(0.0),
+        output_field=FloatField(),
+    )
+    return queryset.aggregate(total=Sum(severity_score))["total"] or 0
+
+
+def add_grouped_keywords(counter, queryset, field, weight_function):
+    for row in queryset.exclude(**{field: ""}).values(field, "severity").annotate(count=Count("id")).order_by():
+        add_keyword(counter, row[field], weight=row["count"] * weight_function(row["severity"]))
+
+
+def add_title_tokens(counter, queryset, field):
+    sql, params = queryset.order_by().values(field).query.sql_with_params()
+    stop_words = list(KEYWORD_STOP_WORDS)
+    with connection.cursor() as cursor:
+        cursor.execute(
+            f"""
+            SELECT token, COUNT(*) AS value
+            FROM (
+                SELECT lower(trim(both '._-' FROM raw_token.value)) AS token
+                FROM ({sql}) AS source
+                CROSS JOIN LATERAL regexp_split_to_table(source.{field}, '[^A-Za-z0-9+._-]+') AS raw_token(value)
+            ) AS tokens
+            WHERE length(token) >= 3
+              AND token ~ '^[a-z][a-z0-9+._-]*$'
+              AND NOT (token = ANY(%s))
+            GROUP BY token
+            ORDER BY value DESC, token
+            LIMIT %s
+            """,
+            [*params, stop_words, KEYWORD_AGGREGATION_LIMIT],
+        )
+        for token, value in cursor.fetchall():
+            counter[token] += value
+
+
+def add_json_array_keywords(counter, queryset, field):
+    sql, params = queryset.order_by().values(field, "severity").query.sql_with_params()
+    severity_cases = " ".join(
+        "WHEN severity = %s THEN %s"
+        for _severity, _weight in SEVERITY_WEIGHTS.items()
+    )
+    severity_params = [
+        item
+        for severity, weight in SEVERITY_WEIGHTS.items()
+        for item in (severity, keyword_weight(severity))
+    ]
+    with connection.cursor() as cursor:
+        cursor.execute(
+            f"""
+            SELECT value, SUM(weight) AS score
+            FROM (
+                SELECT
+                    jsonb_array_elements_text(source.{field}) AS value,
+                    CASE {severity_cases} ELSE 1 END AS weight
+                FROM ({sql}) AS source
+            ) AS tokens
+            WHERE value <> ''
+            GROUP BY value
+            ORDER BY score DESC, value
+            LIMIT %s
+            """,
+            [*severity_params, *params, KEYWORD_AGGREGATION_LIMIT],
+        )
+        for value, score in cursor.fetchall():
+            add_keyword(counter, value, weight=score)
+
+
 def build_threat_keywords(window_cases, window_alerts):
     counter = Counter()
 
-    for alert in window_alerts.values(
-        "title",
-        "severity",
-        "labels",
-        "tactic",
-        "technique",
-        "product_category",
-        "product_name",
-    ):
-        weight = max(1, int(severity_weight(alert["severity"]) or 1))
-        add_keyword(counter, alert["title"], weight=1, split=True)
-        add_keyword(counter, alert["labels"], weight=weight)
-        add_keyword(counter, alert["tactic"], weight=weight)
-        add_keyword(counter, alert["technique"], weight=weight)
-        add_keyword(counter, alert["product_category"], weight=max(1, weight // 2))
-        add_keyword(counter, alert["product_name"], weight=1)
+    add_title_tokens(counter, window_alerts, "title")
+    add_json_array_keywords(counter, window_alerts, "labels")
+    add_grouped_keywords(counter, window_alerts, "tactic", keyword_weight)
+    add_grouped_keywords(counter, window_alerts, "technique", keyword_weight)
+    add_grouped_keywords(counter, window_alerts, "product_category", category_keyword_weight)
+    add_grouped_keywords(counter, window_alerts, "product_name", lambda _severity: 1)
 
-    for case in window_cases.values("title", "severity", "category", "tags"):
-        weight = max(1, int(severity_weight(case["severity"]) or 1))
-        add_keyword(counter, case["title"], weight=1, split=True)
-        add_keyword(counter, case["category"], weight=max(1, weight // 2))
-        add_keyword(counter, case["tags"], weight=weight)
+    add_title_tokens(counter, window_cases, "title")
+    add_json_array_keywords(counter, window_cases, "tags")
+    add_grouped_keywords(counter, window_cases, "category", category_keyword_weight)
 
     return [
         {"text": text, "value": value}
@@ -240,45 +303,59 @@ def build_alert_trend(window, start, generated_at):
 
 
 def build_mean_times(start):
-    mttd_values = []
-    cases_for_detection = Case.objects.filter(created_at__gte=start).annotate(
-        first_alert_seen_time=Min("alerts__first_seen_time")
-    ).values("created_at", "first_alert_seen_time")
-    for case in cases_for_detection:
-        mttd_values.append(non_negative_duration_seconds(case["first_alert_seen_time"], case["created_at"]))
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT ROUND(EXTRACT(EPOCH FROM AVG(created_at - first_alert_seen_time)))::int, COUNT(*)::int
+            FROM (
+                SELECT cases.id, cases.created_at, MIN(alerts.first_seen_time) AS first_alert_seen_time
+                FROM cases
+                LEFT JOIN alerts ON alerts.case_id = cases.id
+                WHERE cases.created_at >= %s
+                GROUP BY cases.id, cases.created_at
+            ) AS detected_cases
+            WHERE first_alert_seen_time IS NOT NULL
+              AND created_at >= first_alert_seen_time
+            """,
+            [start],
+        )
+        mttd = mean_duration_result(cursor.fetchone())
 
-    mtta_values = []
-    cases_for_acknowledgement = Case.objects.filter(
-        acknowledged_time__gte=start,
-        acknowledged_time__isnull=False,
-    ).values("created_at", "acknowledged_time")
-    for case in cases_for_acknowledgement:
-        mtta_values.append(non_negative_duration_seconds(case["created_at"], case["acknowledged_time"]))
+        cursor.execute(
+            """
+            SELECT ROUND(EXTRACT(EPOCH FROM AVG(acknowledged_time - created_at)))::int, COUNT(*)::int
+            FROM cases
+            WHERE acknowledged_time >= %s
+              AND acknowledged_time IS NOT NULL
+              AND acknowledged_time >= created_at
+            """,
+            [start],
+        )
+        mtta = mean_duration_result(cursor.fetchone())
 
-    mttr_values = []
-    cases_for_resolution = Case.objects.filter(
-        closed_time__gte=start,
-        closed_time__isnull=False,
-    ).values("acknowledged_time", "closed_time")
-    for case in cases_for_resolution:
-        mttr_values.append(non_negative_duration_seconds(case["acknowledged_time"], case["closed_time"]))
+        cursor.execute(
+            """
+            SELECT ROUND(EXTRACT(EPOCH FROM AVG(closed_time - acknowledged_time)))::int, COUNT(*)::int
+            FROM cases
+            WHERE closed_time >= %s
+              AND closed_time IS NOT NULL
+              AND acknowledged_time IS NOT NULL
+              AND closed_time >= acknowledged_time
+            """,
+            [start],
+        )
+        mttr = mean_duration_result(cursor.fetchone())
 
     return {
-        "mttd": mean_duration(mttd_values),
-        "mtta": mean_duration(mtta_values),
-        "mttr": mean_duration(mttr_values),
+        "mttd": mttd,
+        "mtta": mtta,
+        "mttr": mttr,
     }
 
 
 def build_active_risk_index(window_cases, window_alerts, window_playbooks):
-    case_score = sum(
-        severity_weight(severity) * 2
-        for severity in window_cases.filter(status__in=OPEN_CASE_STATUSES).values_list("severity", flat=True)
-    )
-    alert_score = sum(
-        severity_weight(severity)
-        for severity in window_alerts.filter(status__in=ACTIVE_ALERT_STATUSES).values_list("severity", flat=True)
-    )
+    case_score = weighted_severity_sum(window_cases.filter(status__in=OPEN_CASE_STATUSES), multiplier=2)
+    alert_score = weighted_severity_sum(window_alerts.filter(status__in=ACTIVE_ALERT_STATUSES))
     playbook_score = (
         window_playbooks.filter(job_status=PlaybookJobStatus.FAILED).count() * 4
         + window_playbooks.filter(job_status=PlaybookJobStatus.RUNNING).count()
@@ -287,35 +364,41 @@ def build_active_risk_index(window_cases, window_alerts, window_playbooks):
 
 
 def build_top_risk_artifacts(window_alerts):
-    artifact_scores = {}
-    alerts = window_alerts.prefetch_related("artifacts")
-    for alert in alerts:
-        weight = severity_weight(alert.severity)
-        for artifact in alert.artifacts.all():
-            key = str(artifact.id)
-            entry = artifact_scores.setdefault(key, {
-                "id": key,
-                "name": artifact.name,
-                "type": artifact.type,
-                "role": artifact.role,
-                "value": artifact.value,
-                "risk_score": 0,
-                "alert_count": 0,
-            })
-            entry["risk_score"] += weight
-            entry["alert_count"] += 1
-
-    ranked = sorted(
-        artifact_scores.values(),
-        key=lambda item: (item["risk_score"], item["alert_count"], item["value"]),
-        reverse=True,
+    severity_score = DbCase(
+        *[
+            When(alert__severity=severity, then=Value(float(weight)))
+            for severity, weight in SEVERITY_WEIGHTS.items()
+        ],
+        default=Value(0.0),
+        output_field=FloatField(),
+    )
+    rows = (
+        Alert.artifacts.through.objects
+        .filter(alert_id__in=window_alerts.order_by().values("id"))
+        .values(
+            "artifact_id",
+            "artifact__name",
+            "artifact__type",
+            "artifact__role",
+            "artifact__value",
+        )
+        .annotate(
+            risk_score=Sum(severity_score),
+            alert_count=Count("alert_id"),
+        )
+        .order_by("-risk_score", "-alert_count", "-artifact__value")[:8]
     )
     return [
         {
-            **item,
-            "risk_score": round(item["risk_score"], 1),
+            "id": str(row["artifact_id"]),
+            "name": row["artifact__name"],
+            "type": row["artifact__type"],
+            "role": row["artifact__role"],
+            "value": row["artifact__value"],
+            "risk_score": round(row["risk_score"] or 0, 1),
+            "alert_count": row["alert_count"],
         }
-        for item in ranked[:8]
+        for row in rows
     ]
 
 
