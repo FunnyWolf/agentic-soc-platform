@@ -50,6 +50,7 @@ export default function CaseInvestigationView({ caseId }: CaseInvestigationViewP
   }, [caseId])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadReport()
     return () => {
       requestIdRef.current += 1
