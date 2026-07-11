@@ -150,7 +150,8 @@ def mark_playbook_failed(playbook, error):
     if locked.job_status != PlaybookJobStatus.RUNNING:
         raise ValueError(f"Playbook must be Running before failure, got {locked.job_status}")
     locked.job_status = PlaybookJobStatus.FAILED
-    locked.remark = f"{type(error).__name__}: {error}"
+    logger.exception("Playbook execution failed", exc_info=error)
+    locked.remark = "Playbook execution failed."
     locked.save(update_fields=["job_status", "remark", "updated_at"])
     notify_playbook_completion(locked)
     return locked
