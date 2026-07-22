@@ -15,7 +15,7 @@ jobs:
     name: Release consistency
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           submodules: true
       - uses: actions/setup-python@v6
@@ -68,7 +68,7 @@ jobs:
       RUSTFS_SECRET_KEY: ci-rustfs-secret
       RUSTFS_BUCKET: asp
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v6
         with:
           python-version: "3.14"
@@ -87,7 +87,7 @@ jobs:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4
         with:
           version: 10
@@ -106,7 +106,7 @@ jobs:
     name: Compose package
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Render Compose config
         working-directory: deploy/asp-compose
         run: |

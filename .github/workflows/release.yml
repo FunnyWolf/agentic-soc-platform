@@ -20,7 +20,7 @@ jobs:
       frontend_image: ${{ steps.release.outputs.frontend_image }}
       release_doc_url: ${{ steps.release.outputs.release_doc_url }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           submodules: true
       - name: Check release manifest
@@ -45,7 +45,7 @@ jobs:
       - prepare
       - images
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Build Compose package
         run: |
           bash ./deploy/package-asp-compose.sh \
@@ -106,7 +106,7 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v6
         with:
           python-version: "3.14"
