@@ -18,7 +18,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@uiw/react-json-view": "2.0.0-alpha.43",
     "@uiw/react-md-editor": "^4.1.1",
-    "antd": "^6.4.3",
+    "antd": "^6.5.1",
     "antd-img-crop": "^4.30.0",
     "axios": "^1.17.0",
     "dayjs": "^1.11.21",
