@@ -57,6 +57,29 @@ def build_splunk_keyword_clause(keyword_input: str | list[str]) -> str:
     return " AND ".join(format_splunk_keyword(keyword) for keyword in normalize_keywords(keyword_input))
 
 
+# Splunk index names are restricted to lowercase letters, digits, underscores,
+# and hyphens (Splunk enforces a max length of 80). We also allow the bare
+# wildcard "*" as a sentinel used by keyword_search when no index is provided.
+# Rejecting anything else prevents SPL injection through the `search index="..."`
+# clause, e.g. an index_name like `main" | delete index=* | search index="x`.
+_SPLUNK_INDEX_RE = re.compile(r"[a-zA-Z0-9_.:-]{1,80}")
+
+
+def format_splunk_index(index_name: str) -> str:
+    """Return ``index_name`` if it is a safe Splunk index token.
+
+    Raises ``ValueError`` for values that could break out of the surrounding
+    ``search index="..."`` clause. The allow-list matches the character set
+    Splunk permits for real index names plus the ``*`` wildcard sentinel used
+    internally when the caller intentionally targets all indices.
+    """
+    if index_name == "*":
+        return "*"
+    if not isinstance(index_name, str) or not _SPLUNK_INDEX_RE.fullmatch(index_name):
+        raise ValueError(f"Invalid Splunk index name: {index_name!r}")
+    return index_name
+
+
 def extract_field_types(properties: dict[str, Any], prefix: str, result: dict[str, str]) -> None:
     for field_name, field_info in properties.items():
         full_name = f"{prefix}{field_name}" if prefix else field_name

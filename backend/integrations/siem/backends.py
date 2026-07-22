@@ -31,6 +31,7 @@ from integrations.siem.query_builders import (
     build_safe_aggs,
     build_splunk_keyword_clause,
     build_time_range_clause,
+    format_splunk_index,
     parse_time_range,
 )
 from integrations.siem.registry import get_default_agg_fields
@@ -203,7 +204,7 @@ class SplunkQueryBackend:
 
     @classmethod
     def execute_structured_query(cls, input_data: AdaptiveQueryInput) -> BackendQueryResult:
-        search_query = f"search index=\"{input_data.index_name}\""
+        search_query = f"search index=\"{format_splunk_index(input_data.index_name)}\""
         for field, value in input_data.filters.items():
             if isinstance(value, list):
                 search_query += f" ({' OR '.join(f'{field}=\"{v}\"' for v in value)})"
@@ -216,7 +217,7 @@ class SplunkQueryBackend:
 
     @classmethod
     def execute_keyword_query(cls, input_data: KeywordSearchInput) -> BackendQueryResult:
-        effective_index = input_data.index_name or "*"
+        effective_index = format_splunk_index(input_data.index_name or "*")
         search_query = f"search index=\"{effective_index}\" ({build_splunk_keyword_clause(input_data.keyword)})"
         aggregation_fields = get_default_agg_fields(input_data.index_name) if input_data.index_name else []
 
@@ -266,7 +267,7 @@ class SplunkQueryBackend:
             return []
         service = get_splunk_service()
         start_time, end_time = parse_time_range(input_data.time_range_start, input_data.time_range_end)
-        index_clause = " OR ".join(f'index="{i}"' for i in indices)
+        index_clause = " OR ".join(f'index="{format_splunk_index(i)}"' for i in indices)
         search_query = f"search ({index_clause}) ({build_splunk_keyword_clause(input_data.keyword)}) | stats count by index"
 
         oneshot = service.jobs.oneshot(search_query, earliest_time=start_time, latest_time=end_time, output_mode="json")
@@ -282,7 +283,7 @@ class SplunkQueryBackend:
         service = get_splunk_service()
         start_time, end_time = parse_time_range(time_start, time_end)
         oneshot = service.jobs.oneshot(
-            f'search index="{index_name}" | head {doc_limit} | fieldsummary maxvals={max_samples}',
+            f'search index="{format_splunk_index(index_name)}" | head {doc_limit} | fieldsummary maxvals={max_samples}',
             earliest_time=start_time, latest_time=end_time, output_mode="json",
         )
 
