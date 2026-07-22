@@ -467,8 +467,11 @@ class SIEMKeywordSearchView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        input_data = KeywordSearchInput(**request.data)
-        result = run_with_operation_timeout("siem.search.keyword", siem_service.keyword_search, input_data)
+        result = _run_siem_operation(
+            "siem.search.keyword",
+            siem_service.keyword_search,
+            KeywordSearchInput(**request.data),
+        )
         return agent_response(request, operation="siem.search.keyword", data=_dump(result))
 
 
@@ -476,8 +479,11 @@ class SIEMAdaptiveQueryView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        input_data = AdaptiveQueryInput(**request.data)
-        result = run_with_operation_timeout("siem.query.adaptive", siem_service.execute_adaptive_query, input_data)
+        result = _run_siem_operation(
+            "siem.query.adaptive",
+            siem_service.execute_adaptive_query,
+            AdaptiveQueryInput(**request.data),
+        )
         return agent_response(request, operation="siem.query.adaptive", data=_dump(result))
 
 
@@ -485,8 +491,11 @@ class SIEMDiscoverFieldsView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        input_data = DiscoverIndexFieldsInput(**request.data)
-        result = run_with_operation_timeout("siem.fields.discover", siem_service.discover_index_fields, input_data)
+        result = _run_siem_operation(
+            "siem.fields.discover",
+            siem_service.discover_index_fields,
+            DiscoverIndexFieldsInput(**request.data),
+        )
         return agent_response(request, operation="siem.fields.discover", data=_dump(result))
 
 
@@ -769,3 +778,11 @@ def _dump(value):
     if hasattr(value, "model_dump"):
         return value.model_dump()
     return value
+
+
+def _run_siem_operation(operation, func, input_data):
+    try:
+        return run_with_operation_timeout(operation, func, input_data)
+    except ValueError as exc:
+        logger.info("Invalid agent SIEM request", exc_info=True)
+        raise ValidationError({"detail": str(exc)}) from exc
