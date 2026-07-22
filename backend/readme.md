@@ -34,3 +34,9 @@ Product, deployment, and operations documentation lives in the docs site:
 - https://asp.viperrtp.com/asp/quick-start/deployment/
 - https://asp.viperrtp.com/asp/quick-start/first-login/
 - https://asp.viperrtp.com/asp/settings/users/
+
+Runtime API documentation is served by the backend:
+
+- Swagger UI: `/api/docs/`
+- Redoc: `/api/redoc/`
+- OpenAPI schema: `/api/schema/`

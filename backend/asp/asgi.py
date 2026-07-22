@@ -4,7 +4,9 @@ ASGI config for asp project.
 
 import os
 
+from django.conf import settings
 from django.core.asgi import get_asgi_application
+from django.contrib.staticfiles.handlers import ASGIStaticFilesHandler
 from channels.routing import ProtocolTypeRouter, URLRouter
 
 from apps.common.logging import configure_process_file_logging
@@ -22,3 +24,6 @@ application = ProtocolTypeRouter({
     "http": django_application,
     "websocket": JWTAuthMiddleware(URLRouter(websocket_urlpatterns)),
 })
+
+if settings.DEBUG:
+    application = ASGIStaticFilesHandler(application)

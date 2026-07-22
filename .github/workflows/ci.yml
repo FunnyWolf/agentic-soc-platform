@@ -77,6 +77,7 @@ jobs:
           enable-cache: true
       - run: uv sync --frozen
       - run: uv run python manage.py check
+      - run: uv run python manage.py spectacular --file /tmp/asp-openapi.yaml
       - run: uv run python manage.py test
 
   frontend:

@@ -46,6 +46,8 @@ INSTALLED_APPS = [
     # Third party
     "rest_framework",
     "rest_framework_simplejwt",
+    "drf_spectacular",
+    "drf_spectacular_sidecar",
     "corsheaders",
     "django_filters",
     "storages",
@@ -164,7 +166,50 @@ REST_FRAMEWORK = {
         "rest_framework.filters.SearchFilter",
         "rest_framework.filters.OrderingFilter",
     ],
+    "DEFAULT_SCHEMA_CLASS": "apps.common.openapi.AspAutoSchema",
     "EXCEPTION_HANDLER": "apps.common.exceptions.custom_exception_handler",
+}
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Agentic SOC Platform API",
+    "DESCRIPTION": "HTTP API for Agentic SOC Platform. External automation integrations should prefer API keys.",
+    "VERSION": "0.5.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+    "COMPONENT_SPLIT_REQUEST": True,
+    "SWAGGER_UI_DIST": "SIDECAR",
+    "SWAGGER_UI_FAVICON_HREF": "SIDECAR",
+    "REDOC_DIST": "SIDECAR",
+    "SWAGGER_UI_SETTINGS": {
+        "deepLinking": True,
+        "persistAuthorization": True,
+    },
+    "POSTPROCESSING_HOOKS": [
+        "drf_spectacular.hooks.postprocess_schema_enums",
+        "apps.common.openapi.postprocess_business_tags",
+    ],
+    "TAGS": [
+        {"name": "Auth", "description": "Login, refresh token, profile, and current user operations."},
+        {"name": "Users", "description": "User administration APIs."},
+        {"name": "API Keys", "description": "Personal API key management APIs."},
+        {"name": "Cases", "description": "Case investigation records."},
+        {"name": "Alerts", "description": "Security alert records."},
+        {"name": "Artifacts", "description": "Indicators, assets, and other related artifacts."},
+        {"name": "Enrichments", "description": "Enrichment records and creation APIs."},
+        {"name": "Playbooks", "description": "Playbook records and execution APIs."},
+        {"name": "Knowledge", "description": "Knowledge base records."},
+        {"name": "Comments", "description": "Record comment APIs."},
+        {"name": "Attachments", "description": "Attachment upload, metadata, and download APIs."},
+        {"name": "Audit", "description": "Audit log query APIs."},
+        {"name": "Inbox", "description": "User inbox message APIs."},
+        {"name": "Preferences", "description": "User table preference APIs."},
+        {"name": "Settings", "description": "System configuration APIs."},
+        {"name": "Custom", "description": "Custom module, playbook, and SIEM definition APIs."},
+        {"name": "Dashboard", "description": "Dashboard summary APIs."},
+        {"name": "Metadata", "description": "Resource metadata APIs."},
+        {"name": "Webhooks", "description": "Inbound alert webhook APIs."},
+        {"name": "Agent API", "description": "Versioned APIs for agent and CLI integrations."},
+        {"name": "System", "description": "System health and utility APIs."},
+    ],
 }
 
 SIMPLE_JWT = {
