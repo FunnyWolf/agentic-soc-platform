@@ -2,6 +2,7 @@ from unittest.mock import patch
 from types import SimpleNamespace
 from uuid import uuid4
 
+from django.conf import settings
 from django.test import SimpleTestCase
 from django.utils import timezone
 
@@ -35,3 +36,10 @@ class CursorPaginationTests(SimpleTestCase):
 
         self.assertEqual(decoded_created_at, created_at)
         self.assertEqual(decoded_id, str(record_id))
+
+
+class BackendImageDependencyTests(SimpleTestCase):
+    def test_backend_image_installs_libmagic_for_python_magic(self):
+        dockerfile = settings.BASE_DIR / "Dockerfile"
+
+        self.assertIn("libmagic1", dockerfile.read_text(encoding="utf-8"))
